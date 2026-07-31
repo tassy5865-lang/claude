@@ -1,0 +1,2120 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FileData</title>
+<script>
+(function() {
+  try {
+    if (localStorage.getItem('taretool_theme') === 'dark') {
+      document.documentElement.dataset.theme = 'dark';
+    }
+  } catch (e) {}
+})();
+</script>
+<style>
+  :root {
+    --bg: #efe6d8;
+    --panel: #f7f1e6;
+    --accent: #1f4f42;
+    --accent-dark: #163a30;
+    --text: #2b2620;
+    --muted: #8a8072;
+    --danger: #b3432b;
+    --border: #ddd0ba;
+    --input-bg: #ffffff;
+    --hover-tint: rgba(0,0,0,0.06);
+    --btn-hover-bg: #ffffff;
+    color-scheme: light;
+  }
+  :root[data-theme="dark"] {
+    --bg: #1c1a17;
+    --panel: #262320;
+    --accent: #4caf8f;
+    --accent-dark: #3a8a70;
+    --text: #ede6da;
+    --muted: #a39a8c;
+    --danger: #e2836a;
+    --border: #3a352c;
+    --input-bg: #2f2b26;
+    --hover-tint: rgba(255,255,255,0.08);
+    --btn-hover-bg: #33302a;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  .hidden { display: none !important; }
+  body {
+    margin: 0;
+    font-family: "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  header {
+    padding: 20px 24px 0;
+  }
+  .db-switcher {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .db-icon { font-size: 15px; opacity: 0.8; }
+  .db-switcher select {
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 5px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--panel);
+    color: var(--accent);
+    max-width: 240px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .db-switcher select:hover {
+    border-color: var(--accent);
+    background: var(--btn-hover-bg);
+  }
+  .db-switcher select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--hover-tint);
+  }
+  h1 {
+    margin: 6px 0 18px;
+    font-size: 32px;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    font-family: "Segoe UI", system-ui, "Hiragino Sans", sans-serif;
+    background: linear-gradient(135deg, var(--accent) 20%, var(--accent-dark) 80%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: var(--accent);
+    text-shadow: 0 1px 12px rgba(0,0,0,0.08);
+  }
+  .toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .toolbar-left { display: flex; align-items: center; gap: 12px; }
+  #itemCount { color: var(--muted); font-size: 14px; white-space: nowrap; }
+  .search-input {
+    font-family: inherit;
+    font-size: 14px;
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--input-bg);
+    color: var(--text);
+    width: 180px;
+  }
+  .toolbar-buttons { display: flex; gap: 8px; }
+  button {
+    font-family: inherit;
+    cursor: pointer;
+  }
+  .btn {
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--text);
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-size: 14px;
+  }
+  .btn:hover { background: var(--btn-hover-bg); }
+  .btn.primary {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+  .btn.primary:hover { background: var(--accent-dark); }
+  .btn.danger {
+    background: var(--input-bg);
+    color: var(--danger);
+    border-color: var(--danger);
+  }
+  .icon-btn {
+    border: none;
+    background: transparent;
+    font-size: 18px;
+    color: var(--text);
+    padding: 6px;
+    border-radius: 6px;
+  }
+  .icon-btn:hover { background: var(--hover-tint); }
+
+  main {
+    padding: 20px 24px 60px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 720px;
+  }
+  .empty-state {
+    color: var(--muted);
+    padding: 40px 0;
+    text-align: center;
+  }
+  .item-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+  }
+  .item-row {
+    display: flex;
+    gap: 8px;
+    padding: 3px 0;
+    font-size: 14px;
+  }
+  .item-row .item-label {
+    color: var(--muted);
+    min-width: 6em;
+    flex-shrink: 0;
+  }
+  .item-row .item-value {
+    word-break: break-word;
+    white-space: pre-wrap;
+  }
+  .item-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(40,32,20,0.45);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 6vh 16px;
+    overflow-y: auto;
+  }
+  .modal-overlay.hidden { display: none; }
+  .modal {
+    background: var(--panel);
+    border-radius: 10px;
+    width: 100%;
+    max-width: 480px;
+    padding: 20px;
+  }
+  .modal.modal-wide { max-width: 640px; }
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .modal-header h2 { margin: 0; font-size: 18px; }
+  .close-btn {
+    border: none;
+    background: none;
+    font-size: 20px;
+    color: var(--muted);
+  }
+  .form-field { margin-bottom: 14px; }
+  .form-field label {
+    display: block;
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  .form-field input[type="text"],
+  .form-field input[type="number"],
+  .form-field input[type="date"],
+  .form-field select,
+  .form-field textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--input-bg);
+    color: var(--text);
+    font-size: 14px;
+    font-family: inherit;
+  }
+  .form-field textarea { min-height: 70px; resize: vertical; }
+  .field-hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .field-hint code { background: var(--input-bg); border: 1px solid var(--border); border-radius: 4px; padding: 1px 4px; }
+  .formula-note { font-size: 13px; color: var(--muted); }
+  .formula-insert-row { display: flex; gap: 8px; margin-bottom: 8px; }
+  .formula-insert-row select {
+    flex: 1;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--input-bg);
+    color: var(--text);
+    font-size: 14px;
+    font-family: inherit;
+  }
+  .form-field input[type="checkbox"] { width: 18px; height: 18px; }
+  .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 18px;
+  }
+  .modal-actions .danger { margin-right: auto; }
+
+  .backup-section {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .backup-section:last-of-type { border-bottom: none; }
+  .backup-section .backup-desc {
+    margin: 0 0 8px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .history-section { padding: 12px 0; border-bottom: 1px solid var(--border); max-height: 240px; overflow-y: auto; }
+  .history-section:last-of-type { border-bottom: none; }
+  .history-section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+    position: sticky;
+    top: 0;
+    background: var(--panel);
+  }
+  .history-section-head h3 { margin: 0; font-size: 14px; }
+  .snapshot-entry, .history-entry {
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-bottom: 6px;
+    font-size: 13px;
+  }
+  .snapshot-entry { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .history-entry-head { margin-bottom: 4px; }
+  .history-diff { color: var(--muted); padding-left: 8px; }
+
+  .field-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin-bottom: 8px;
+  }
+  .field-row .field-info { flex: 1; }
+  .field-row .field-name { font-size: 14px; }
+  .field-row .field-type { font-size: 12px; color: var(--muted); }
+  .field-row .field-btns { display: flex; gap: 2px; }
+  #addFieldBtn { width: 100%; margin-top: 4px; }
+
+  details.group-block { margin-bottom: 8px; }
+  details.group-block summary.group-header {
+    cursor: pointer;
+    list-style: none;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 8px 10px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+  }
+  details.group-block summary.group-header::-webkit-details-marker { display: none; }
+  details.group-block summary.group-header::before {
+    content: '▸';
+    display: inline-block;
+    margin-right: 6px;
+    transition: transform 0.15s;
+  }
+  details.group-block[open] > summary.group-header::before {
+    transform: rotate(90deg);
+  }
+  .group-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .form-divider, .item-divider {
+    display: flex;
+    align-items: center;
+    margin: 14px 0;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .form-divider::before, .form-divider::after,
+  .item-divider::before, .item-divider::after {
+    content: '';
+    flex: 1;
+    border-top: 1px solid var(--border);
+  }
+  .form-divider span, .item-divider span { padding: 0 8px; white-space: nowrap; }
+
+  .multiselect-group { display: flex; flex-direction: column; gap: 6px; }
+  .multiselect-option { display: flex; align-items: center; gap: 6px; font-size: 14px; cursor: pointer; }
+  .multiselect-option input { width: 16px; height: 16px; }
+
+  .image-field { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+  .image-preview { max-width: 160px; max-height: 160px; border-radius: 6px; border: 1px solid var(--border); }
+  .item-thumb { max-width: 120px; max-height: 120px; border-radius: 6px; display: block; }
+
+  .form-view { display: flex; flex-direction: column; gap: 14px; }
+  .form-nav { display: flex; align-items: center; justify-content: center; gap: 16px; }
+  .form-position { color: var(--muted); font-size: 14px; }
+  .form-card-head { margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+  .form-title { font-size: 20px; font-weight: 700; }
+  .form-subtitle { font-size: 14px; color: var(--muted); margin-top: 2px; }
+
+  .toast-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 1000;
+  }
+  .toast {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.2s, transform 0.2s;
+    max-width: 280px;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.error { border-color: var(--danger); color: var(--danger); }
+
+  #globalErrorOverlay {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    color: var(--text);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 12px;
+    padding: 24px;
+    text-align: center;
+    z-index: 2000;
+  }
+  #globalErrorOverlay.show { display: flex; }
+  #globalErrorOverlay .error-icon { font-size: 32px; }
+
+  .print-meta { display: none; }
+
+  @media print {
+    :root, :root[data-theme="dark"] {
+      --bg: #ffffff;
+      --panel: #ffffff;
+      --text: #000000;
+      --muted: #444444;
+      --border: #999999;
+      --accent: #000000;
+    }
+    body { background: #fff; }
+    .toolbar, .modal-overlay, .toast-container, #globalErrorOverlay, .db-switcher { display: none !important; }
+    .item-actions, .form-nav { display: none !important; }
+    main { padding: 0 4px; max-width: none; }
+    .item-card { border: 1px solid #999; box-shadow: none; break-inside: avoid; }
+    details.group-block summary.group-header { color: #000; background: #eee; }
+    .print-meta {
+      display: block;
+      font-size: 12px;
+      color: #444;
+      padding: 0 24px 8px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="db-switcher">
+    <span class="db-icon">🗂</span>
+    <select id="dbSelect" title="データベースを切り替え"></select>
+    <button class="icon-btn" id="addDbBtn" title="新規データベースを追加">＋</button>
+    <button class="icon-btn" id="manageDbBtn" title="データベース管理（名前変更・削除・並び替え・複製）">🗄</button>
+  </div>
+  <h1>FileData</h1>
+</header>
+
+<div class="toolbar">
+  <div class="toolbar-left">
+    <span id="itemCount">0件</span>
+    <input type="search" id="searchInput" class="search-input" placeholder="🔍 検索">
+  </div>
+  <div class="toolbar-buttons">
+    <button class="icon-btn" id="fieldSettingsBtn" title="フィールド設定">⚙</button>
+    <button class="icon-btn" id="viewSettingsBtn" title="表示設定（グループ化・タイトル）">🗂</button>
+    <button class="icon-btn" id="backupBtn" title="CSV書き出し／JSONバックアップ">💾</button>
+    <button class="icon-btn" id="historyBtn" title="変更履歴／スナップショット">🕘</button>
+    <button class="icon-btn" id="printBtn" title="印刷">🖨️</button>
+    <button class="icon-btn" id="themeToggleBtn" title="ダークモード切替">🌙</button>
+    <button class="btn" id="viewToggleBtn">📄 フォーム表示</button>
+    <button class="btn primary" id="addItemBtn">＋ 追加</button>
+  </div>
+</div>
+
+<div class="print-meta" id="printMeta"></div>
+<main id="itemList"></main>
+
+<!-- データ登録・編集モーダル -->
+<div class="modal-overlay hidden" id="itemModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="itemModalTitle">追加</h2>
+      <button class="close-btn" data-close="itemModal">×</button>
+    </div>
+    <form id="itemForm"></form>
+    <div class="modal-actions">
+      <button type="button" class="btn danger hidden" id="deleteItemBtn">削除</button>
+      <button type="button" class="btn" id="cancelItemBtn">キャンセル</button>
+      <button type="submit" form="itemForm" class="btn primary">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- フィールド設定モーダル -->
+<div class="modal-overlay hidden" id="fieldModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>フィールド設定</h2>
+      <button class="close-btn" data-close="fieldModal">×</button>
+    </div>
+    <div id="fieldList"></div>
+    <button class="btn" id="addFieldBtn">＋ フィールド追加</button>
+  </div>
+</div>
+
+<!-- フィールド編集モーダル -->
+<div class="modal-overlay hidden" id="fieldEditModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>フィールド編集</h2>
+      <button class="close-btn" data-close="fieldEditModal">×</button>
+    </div>
+    <div class="form-field">
+      <label>フィールド名</label>
+      <input type="text" id="fieldNameInput">
+    </div>
+    <div class="form-field">
+      <label>タイプ</label>
+      <select id="fieldTypeInput">
+        <option value="text">テキスト</option>
+        <option value="longtext">長文</option>
+        <option value="number">数値</option>
+        <option value="date">日付</option>
+        <option value="checkbox">チェックする</option>
+        <option value="select">選択肢</option>
+        <option value="multiselect">複数選択</option>
+        <option value="image">画像</option>
+        <option value="formula">計算式</option>
+        <option value="relation">リレーション</option>
+        <option value="divider">区切り線</option>
+      </select>
+    </div>
+    <div class="form-field hidden" id="fieldOptionsWrap">
+      <label>選択肢（1行1つ）</label>
+      <textarea id="fieldOptionsInput"></textarea>
+    </div>
+    <div class="form-field hidden" id="fieldFormulaWrap">
+      <label>計算式</label>
+      <div class="formula-insert-row">
+        <select id="fieldFormulaFieldSelect"></select>
+        <button type="button" class="btn" id="insertFormulaFieldBtn">＋ 挿入</button>
+      </div>
+      <input type="text" id="fieldFormulaInput" placeholder="例: IF({数量} > 10, {単価} * 0.9, {単価})">
+      <div class="field-hint">
+        上のフィールド名を選んで「挿入」すると <code>{フィールド名}</code> の形でカーソル位置に追加されます。<br>
+        使える演算子: <code>+ - * /</code>、比較 <code>&gt; &lt; &gt;= &lt;= == !=</code>、括弧 <code>( )</code><br>
+        使える関数: <code>IF(条件, 真の場合, 偽の場合)</code>、<code>SUM(値1, 値2, ...)</code>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" id="cancelFieldEditBtn">キャンセル</button>
+      <button class="btn primary" id="saveFieldEditBtn">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 表示設定モーダル -->
+<div class="modal-overlay hidden" id="viewSettingsModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>表示設定</h2>
+      <button class="close-btn" data-close="viewSettingsModal">×</button>
+    </div>
+    <div class="form-field">
+      <label>グループ化（第1階層）</label>
+      <select id="groupField1"></select>
+    </div>
+    <div class="form-field">
+      <label>グループ化（第2階層）</label>
+      <select id="groupField2"></select>
+    </div>
+    <div class="form-field">
+      <label>グループ化（第3階層）</label>
+      <select id="groupField3"></select>
+    </div>
+    <div class="form-field">
+      <label>フォームビューのタイトル項目</label>
+      <select id="titleFieldSelect"></select>
+    </div>
+    <div class="form-field">
+      <label>フォームビューのサブタイトル項目</label>
+      <select id="subtitleFieldSelect"></select>
+    </div>
+    <div class="form-field">
+      <label>並び替え項目</label>
+      <select id="sortFieldSelect"></select>
+    </div>
+    <div class="form-field">
+      <label>並び順</label>
+      <select id="sortDirectionSelect">
+        <option value="asc">昇順</option>
+        <option value="desc">降順</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" id="cancelViewSettingsBtn">キャンセル</button>
+      <button class="btn primary" id="saveViewSettingsBtn">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- CSV書き出し／JSONバックアップ -->
+<div class="modal-overlay hidden" id="backupModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>CSV書き出し／JSONバックアップ</h2>
+      <button class="close-btn" data-close="backupModal">×</button>
+    </div>
+    <div class="backup-section">
+      <p class="backup-desc">現在の一覧（検索・並び替え適用後）をCSVファイルとして書き出します。</p>
+      <button class="btn primary" id="exportCsvBtn">CSVエクスポート</button>
+    </div>
+    <div class="backup-section">
+      <p class="backup-desc">フィールド定義・全データ・表示設定をまとめてJSONファイルに書き出します。</p>
+      <button class="btn primary" id="exportJsonBtn">JSONバックアップを書き出す</button>
+    </div>
+    <div class="backup-section">
+      <p class="backup-desc">JSONバックアップファイルを読み込み、現在のデータを置き換えます。</p>
+      <button class="btn danger" id="importJsonBtn">JSONバックアップを読み込む</button>
+      <input type="file" id="jsonImportInput" accept="application/json" class="hidden">
+    </div>
+    <div class="modal-actions">
+      <button class="btn" id="closeBackupBtn">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- 変更履歴／スナップショット -->
+<div class="modal-overlay hidden" id="historyModal">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <h2>変更履歴／スナップショット</h2>
+      <button class="close-btn" data-close="historyModal">×</button>
+    </div>
+    <div class="history-section">
+      <div class="history-section-head">
+        <h3>自動スナップショット</h3>
+        <span class="field-hint">データ変更のたびに自動保存（最大5件・画像データは含みません）</span>
+      </div>
+      <div id="snapshotList"></div>
+    </div>
+    <div class="history-section">
+      <div class="history-section-head">
+        <h3>変更履歴</h3>
+        <button class="btn" id="clearHistoryBtn">履歴をクリア</button>
+      </div>
+      <div id="historyList"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" id="closeHistoryBtn">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- データベース管理モーダル -->
+<div class="modal-overlay hidden" id="dbManageModal">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <h2>データベース管理</h2>
+      <button class="close-btn" data-close="dbManageModal">×</button>
+    </div>
+    <div id="dbManageList"></div>
+    <button class="btn" id="addDbFromManageBtn">＋ データベース追加</button>
+    <div class="modal-actions">
+      <button class="btn" id="closeDbManageBtn">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- データベース追加／名前変更モーダル -->
+<div class="modal-overlay hidden" id="dbModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="dbModalTitle">新規データベース</h2>
+      <button class="close-btn" data-close="dbModal">×</button>
+    </div>
+    <div class="form-field">
+      <label>データベース名</label>
+      <input type="text" id="dbNameInput">
+    </div>
+    <div class="modal-actions">
+      <button class="btn" id="cancelDbBtn">キャンセル</button>
+      <button class="btn primary" id="saveDbBtn">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- トースト通知 -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- グローバルエラー表示 -->
+<div id="globalErrorOverlay">
+  <div class="error-icon">⚠️</div>
+  <div>予期しない問題が発生しました。</div>
+  <button class="btn primary" id="globalErrorReloadBtn">再読み込み</button>
+</div>
+
+<script>
+const STORAGE_DATABASES = 'taretool_databases';
+const STORAGE_ACTIVE_DB = 'taretool_active_db';
+const STORAGE_THEME = 'taretool_theme';
+const MAX_HISTORY = 200;
+const MAX_SNAPSHOTS = 5;
+
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
+function fieldsKey(dbId) { return `taretool_fields_${dbId}`; }
+function itemsKey(dbId) { return `taretool_items_${dbId}`; }
+function settingsKey(dbId) { return `taretool_settings_${dbId}`; }
+function historyKey(dbId) { return `taretool_history_${dbId}`; }
+function snapshotsKey(dbId) { return `taretool_snapshots_${dbId}`; }
+
+function loadDatabases() {
+  const raw = localStorage.getItem(STORAGE_DATABASES);
+  return raw ? JSON.parse(raw) : [];
+}
+function saveDatabases() {
+  localStorage.setItem(STORAGE_DATABASES, JSON.stringify(databases));
+}
+
+// 旧バージョン（単一データベース構成）からの移行: 既存データを「データベース1」として引き継ぐ
+let databases = loadDatabases();
+let activeDbId = localStorage.getItem(STORAGE_ACTIVE_DB);
+if (databases.length === 0) {
+  const id = uid();
+  databases = [{ id, name: 'データベース1' }];
+  activeDbId = id;
+  const legacyFields = localStorage.getItem('taretool_fields');
+  if (legacyFields) {
+    localStorage.setItem(fieldsKey(id), legacyFields);
+    ['taretool_items', 'taretool_settings', 'taretool_history', 'taretool_snapshots'].forEach((legacyKey, i) => {
+      const newKeyFn = [itemsKey, settingsKey, historyKey, snapshotsKey][i];
+      const raw = localStorage.getItem(legacyKey);
+      if (raw) localStorage.setItem(newKeyFn(id), raw);
+    });
+  }
+  saveDatabases();
+  localStorage.setItem(STORAGE_ACTIVE_DB, activeDbId);
+} else if (!activeDbId || !databases.some(d => d.id === activeDbId)) {
+  activeDbId = databases[0].id;
+  localStorage.setItem(STORAGE_ACTIVE_DB, activeDbId);
+}
+
+function loadFields() {
+  const raw = localStorage.getItem(fieldsKey(activeDbId));
+  if (raw) return JSON.parse(raw);
+  const defaults = [
+    { id: uid(), name: '品名', type: 'text' },
+    { id: uid(), name: '風袋重量', type: 'number' },
+    { id: uid(), name: '単位', type: 'select', options: ['g', 'kg'] },
+    { id: uid(), name: 'メモ', type: 'longtext' }
+  ];
+  localStorage.setItem(fieldsKey(activeDbId), JSON.stringify(defaults));
+  return defaults;
+}
+
+function loadItems() {
+  const raw = localStorage.getItem(itemsKey(activeDbId));
+  return raw ? JSON.parse(raw) : [];
+}
+
+function loadSettings() {
+  const raw = localStorage.getItem(settingsKey(activeDbId));
+  if (raw) return JSON.parse(raw);
+  return { groupFields: [], titleFieldId: '', subtitleFieldId: '', sortFieldId: '', sortDirection: 'asc' };
+}
+
+let fields = loadFields();
+let items = loadItems();
+let settings = loadSettings();
+let editingItemId = null;
+let editingFieldId = null;
+let viewMode = 'list';
+let formIndex = 0;
+let searchQuery = '';
+
+function saveFields() {
+  localStorage.setItem(fieldsKey(activeDbId), JSON.stringify(fields));
+}
+function saveItems() {
+  try {
+    localStorage.setItem(itemsKey(activeDbId), JSON.stringify(items));
+    saveSnapshot();
+    return true;
+  } catch (e) {
+    showToast('保存に失敗しました（保存容量オーバーの可能性があります。画像サイズを見直してください）', 'error');
+    return false;
+  }
+}
+function saveSettings() {
+  localStorage.setItem(settingsKey(activeDbId), JSON.stringify(settings));
+}
+
+// ---- 変更履歴 ----
+function loadHistory() {
+  const raw = localStorage.getItem(historyKey(activeDbId));
+  return raw ? JSON.parse(raw) : [];
+}
+
+function addHistoryEntry(action, label, changes) {
+  try {
+    const history = loadHistory();
+    history.unshift({ id: uid(), timestamp: new Date().toISOString(), action, label, changes: changes || [] });
+    while (history.length > MAX_HISTORY) history.pop();
+    localStorage.setItem(historyKey(activeDbId), JSON.stringify(history));
+  } catch (e) {
+    // 履歴保存の失敗は本体データの保存に影響しないため無視する
+  }
+}
+
+function diffValues(oldValues, newValues) {
+  const changes = [];
+  fields.forEach(f => {
+    if (f.type === 'divider' || f.type === 'formula') return;
+    const oldStr = String(formatFieldValue(f, oldValues ? oldValues[f.id] : undefined));
+    const newStr = String(formatFieldValue(f, newValues[f.id]));
+    if (oldStr !== newStr) changes.push({ fieldName: f.name, oldValue: oldStr, newValue: newStr });
+  });
+  return changes;
+}
+
+// ---- 自動スナップショット ----
+function loadSnapshots() {
+  const raw = localStorage.getItem(snapshotsKey(activeDbId));
+  return raw ? JSON.parse(raw) : [];
+}
+
+function stripImagesForSnapshot(itemsArr) {
+  const imageFieldIds = fields.filter(f => f.type === 'image').map(f => f.id);
+  if (imageFieldIds.length === 0) return itemsArr;
+  return itemsArr.map(it => {
+    const values = Object.assign({}, it.values);
+    imageFieldIds.forEach(fid => { if (values[fid]) values[fid] = '(スナップショットでは省略)'; });
+    return { id: it.id, values };
+  });
+}
+
+function saveSnapshot() {
+  try {
+    const snapshots = loadSnapshots();
+    snapshots.unshift({
+      id: uid(),
+      timestamp: new Date().toISOString(),
+      fields: JSON.parse(JSON.stringify(fields)),
+      items: stripImagesForSnapshot(items),
+      settings: JSON.parse(JSON.stringify(settings))
+    });
+    while (snapshots.length > MAX_SNAPSHOTS) snapshots.pop();
+    localStorage.setItem(snapshotsKey(activeDbId), JSON.stringify(snapshots));
+  } catch (e) {
+    // スナップショット保存の失敗は本体データの保存に影響しないため無視する
+  }
+}
+
+const itemListEl = document.getElementById('itemList');
+const itemCountEl = document.getElementById('itemCount');
+const itemModal = document.getElementById('itemModal');
+const itemForm = document.getElementById('itemForm');
+const itemModalTitle = document.getElementById('itemModalTitle');
+const deleteItemBtn = document.getElementById('deleteItemBtn');
+const fieldModal = document.getElementById('fieldModal');
+const fieldListEl = document.getElementById('fieldList');
+const fieldEditModal = document.getElementById('fieldEditModal');
+const fieldNameInput = document.getElementById('fieldNameInput');
+const fieldTypeInput = document.getElementById('fieldTypeInput');
+const fieldOptionsWrap = document.getElementById('fieldOptionsWrap');
+const fieldOptionsInput = document.getElementById('fieldOptionsInput');
+const fieldFormulaWrap = document.getElementById('fieldFormulaWrap');
+const fieldFormulaInput = document.getElementById('fieldFormulaInput');
+const fieldFormulaFieldSelect = document.getElementById('fieldFormulaFieldSelect');
+const insertFormulaFieldBtn = document.getElementById('insertFormulaFieldBtn');
+const viewSettingsModal = document.getElementById('viewSettingsModal');
+const viewToggleBtn = document.getElementById('viewToggleBtn');
+const groupField1 = document.getElementById('groupField1');
+const groupField2 = document.getElementById('groupField2');
+const groupField3 = document.getElementById('groupField3');
+const titleFieldSelect = document.getElementById('titleFieldSelect');
+const subtitleFieldSelect = document.getElementById('subtitleFieldSelect');
+const sortFieldSelect = document.getElementById('sortFieldSelect');
+const sortDirectionSelect = document.getElementById('sortDirectionSelect');
+const themeToggleBtn = document.getElementById('themeToggleBtn');
+const toastContainer = document.getElementById('toastContainer');
+const globalErrorOverlay = document.getElementById('globalErrorOverlay');
+const searchInput = document.getElementById('searchInput');
+const backupModal = document.getElementById('backupModal');
+const jsonImportInput = document.getElementById('jsonImportInput');
+const printMeta = document.getElementById('printMeta');
+const historyModal = document.getElementById('historyModal');
+const snapshotListEl = document.getElementById('snapshotList');
+const historyListEl = document.getElementById('historyList');
+const dbSelect = document.getElementById('dbSelect');
+const dbModal = document.getElementById('dbModal');
+const dbModalTitle = document.getElementById('dbModalTitle');
+const dbNameInput = document.getElementById('dbNameInput');
+const dbManageModal = document.getElementById('dbManageModal');
+const dbManageListEl = document.getElementById('dbManageList');
+
+function closeModal(el) { el.classList.add('hidden'); }
+function openModal(el) { el.classList.remove('hidden'); }
+
+document.querySelectorAll('[data-close]').forEach(btn => {
+  btn.addEventListener('click', () => closeModal(document.getElementById(btn.dataset.close)));
+});
+
+// ---- データベース切替 ----
+function renderDbSelect() {
+  dbSelect.innerHTML = '';
+  databases.forEach(db => {
+    const opt = document.createElement('option');
+    opt.value = db.id;
+    opt.textContent = db.name;
+    dbSelect.appendChild(opt);
+  });
+  dbSelect.value = activeDbId;
+}
+
+function switchDatabase(dbId) {
+  activeDbId = dbId;
+  localStorage.setItem(STORAGE_ACTIVE_DB, dbId);
+  fields = loadFields();
+  items = loadItems();
+  settings = loadSettings();
+  editingItemId = null;
+  editingFieldId = null;
+  viewMode = 'list';
+  formIndex = 0;
+  searchQuery = '';
+  searchInput.value = '';
+  updateViewToggleBtn();
+  renderDbSelect();
+  renderList();
+}
+
+dbSelect.addEventListener('change', () => {
+  if (dbSelect.value && dbSelect.value !== activeDbId) switchDatabase(dbSelect.value);
+});
+
+let dbModalMode = 'add';
+let dbModalTargetId = null;
+
+function openDbModal(mode, targetId) {
+  dbModalMode = mode;
+  dbModalTargetId = targetId || activeDbId;
+  dbModalTitle.textContent = mode === 'add' ? '新規データベース' : 'データベース名を変更';
+  dbNameInput.value = mode === 'rename' ? databases.find(d => d.id === dbModalTargetId).name : '';
+  openModal(dbModal);
+}
+
+document.getElementById('addDbBtn').addEventListener('click', () => openDbModal('add'));
+document.getElementById('addDbFromManageBtn').addEventListener('click', () => openDbModal('add'));
+document.getElementById('cancelDbBtn').addEventListener('click', () => closeModal(dbModal));
+
+document.getElementById('saveDbBtn').addEventListener('click', () => {
+  const name = dbNameInput.value.trim();
+  if (!name) { alert('データベース名を入力してください'); return; }
+  if (dbModalMode === 'add') {
+    const db = { id: uid(), name };
+    databases.push(db);
+    saveDatabases();
+    switchDatabase(db.id);
+    showToast('データベースを追加しました');
+  } else {
+    databases.find(d => d.id === dbModalTargetId).name = name;
+    saveDatabases();
+    renderDbSelect();
+    renderDbManageList();
+    showToast('データベース名を変更しました');
+  }
+  closeModal(dbModal);
+});
+
+function duplicateDatabase(dbId) {
+  const source = databases.find(d => d.id === dbId);
+  if (!source) return;
+  const newId = uid();
+  databases.push({ id: newId, name: source.name + 'のコピー' });
+  saveDatabases();
+  [fieldsKey, itemsKey, settingsKey].forEach(keyFn => {
+    const raw = localStorage.getItem(keyFn(dbId));
+    if (raw) localStorage.setItem(keyFn(newId), raw);
+  });
+  renderDbSelect();
+  renderDbManageList();
+  showToast('データベースを複製しました');
+}
+
+function deleteDatabase(dbId) {
+  if (databases.length <= 1) { alert('最後の1つのデータベースは削除できません。'); return; }
+  const db = databases.find(d => d.id === dbId);
+  if (!db) return;
+  if (!confirm(`データベース「${db.name}」を削除しますか?（このデータベースの全データが完全に削除され、元に戻せません）`)) return;
+  databases = databases.filter(d => d.id !== dbId);
+  saveDatabases();
+  [fieldsKey, itemsKey, settingsKey, historyKey, snapshotsKey].forEach(keyFn => {
+    localStorage.removeItem(keyFn(dbId));
+  });
+  if (dbId === activeDbId) {
+    switchDatabase(databases[0].id);
+  }
+  renderDbSelect();
+  renderDbManageList();
+  showToast('データベースを削除しました');
+}
+
+function renderDbManageList() {
+  dbManageListEl.innerHTML = '';
+  databases.forEach((db, idx) => {
+    const itemCount = db.id === activeDbId
+      ? items.length
+      : JSON.parse(localStorage.getItem(itemsKey(db.id)) || '[]').length;
+    const row = document.createElement('div');
+    row.className = 'field-row';
+    row.innerHTML = `
+      <div class="field-info">
+        <div class="field-name">${escapeHtml(db.name)}${db.id === activeDbId ? ' <span class="field-hint">(選択中)</span>' : ''}</div>
+        <div class="field-type">${itemCount}件のデータ</div>
+      </div>
+      <div class="field-btns">
+        <button class="icon-btn" data-action="up" title="上へ" ${idx === 0 ? 'disabled' : ''}>↑</button>
+        <button class="icon-btn" data-action="down" title="下へ" ${idx === databases.length - 1 ? 'disabled' : ''}>↓</button>
+        <button class="icon-btn" data-action="rename" title="名前変更">✎</button>
+        <button class="icon-btn" data-action="duplicate" title="複製">📋</button>
+        <button class="icon-btn" data-action="delete" title="削除" ${databases.length <= 1 ? 'disabled' : ''}>🗑</button>
+      </div>`;
+    row.querySelector('[data-action="up"]').addEventListener('click', () => {
+      [databases[idx - 1], databases[idx]] = [databases[idx], databases[idx - 1]];
+      saveDatabases(); renderDbManageList(); renderDbSelect();
+    });
+    row.querySelector('[data-action="down"]').addEventListener('click', () => {
+      [databases[idx + 1], databases[idx]] = [databases[idx], databases[idx + 1]];
+      saveDatabases(); renderDbManageList(); renderDbSelect();
+    });
+    row.querySelector('[data-action="rename"]').addEventListener('click', () => openDbModal('rename', db.id));
+    row.querySelector('[data-action="duplicate"]').addEventListener('click', () => duplicateDatabase(db.id));
+    row.querySelector('[data-action="delete"]').addEventListener('click', () => deleteDatabase(db.id));
+    dbManageListEl.appendChild(row);
+  });
+}
+
+document.getElementById('manageDbBtn').addEventListener('click', () => {
+  renderDbManageList();
+  openModal(dbManageModal);
+});
+document.getElementById('closeDbManageBtn').addEventListener('click', () => closeModal(dbManageModal));
+
+renderDbSelect();
+
+// ---- テーマ切替 ----
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  localStorage.setItem(STORAGE_THEME, theme);
+  themeToggleBtn.textContent = theme === 'dark' ? '☀️' : '🌙';
+}
+applyTheme(document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light');
+themeToggleBtn.addEventListener('click', () => {
+  applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+});
+
+// ---- トースト通知 ----
+function showToast(message, type) {
+  const el = document.createElement('div');
+  el.className = 'toast' + (type === 'error' ? ' error' : '');
+  el.textContent = message;
+  toastContainer.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('show'));
+  setTimeout(() => {
+    el.classList.remove('show');
+    setTimeout(() => el.remove(), 200);
+  }, 2200);
+}
+
+// ---- 予期しないエラーの捕捉 ----
+window.addEventListener('error', () => globalErrorOverlay.classList.add('show'));
+window.addEventListener('unhandledrejection', () => globalErrorOverlay.classList.add('show'));
+document.getElementById('globalErrorReloadBtn').addEventListener('click', () => location.reload());
+
+// ---- 一覧表示 ----
+function getRelationLabel(item) {
+  if (!item) return '(削除済み)';
+  const scalarTypes = ['divider', 'multiselect', 'image', 'formula', 'relation'];
+  const titleField = fields.find(f => f.id === settings.titleFieldId && !scalarTypes.includes(f.type)) || fields.find(f => !scalarTypes.includes(f.type));
+  if (!titleField) return '(無題)';
+  const val = formatFieldValue(titleField, item.values[titleField.id]);
+  return val || '(無題)';
+}
+
+function safeEvalArithmetic(expr) {
+  let pos = 0;
+  function skipSpace() { while (expr[pos] === ' ') pos++; }
+  function parseNumber() {
+    skipSpace();
+    const start = pos;
+    while (pos < expr.length && /[0-9.]/.test(expr[pos])) pos++;
+    if (pos === start) throw new Error('式が不正です');
+    return parseFloat(expr.slice(start, pos));
+  }
+  function parseIdentifier() {
+    skipSpace();
+    const start = pos;
+    while (pos < expr.length && /[A-Za-z_]/.test(expr[pos])) pos++;
+    return expr.slice(start, pos);
+  }
+  function parseArgs() {
+    const args = [];
+    skipSpace();
+    if (expr[pos] === ')') return args;
+    args.push(parseComparison());
+    skipSpace();
+    while (expr[pos] === ',') {
+      pos++;
+      args.push(parseComparison());
+      skipSpace();
+    }
+    return args;
+  }
+  function callFunction(name, args) {
+    const upper = name.toUpperCase();
+    if (upper === 'IF') {
+      if (args.length !== 3) throw new Error('IF関数は3つの引数が必要です（条件, 真の場合, 偽の場合）');
+      return args[0] !== 0 ? args[1] : args[2];
+    }
+    if (upper === 'SUM') {
+      return args.reduce((a, b) => a + b, 0);
+    }
+    throw new Error(`不明な関数です: ${name}`);
+  }
+  function parseFactor() {
+    skipSpace();
+    if (expr[pos] === '(') {
+      pos++;
+      const val = parseComparison();
+      skipSpace();
+      if (expr[pos] !== ')') throw new Error('括弧が閉じられていません');
+      pos++;
+      return val;
+    }
+    if (expr[pos] === '-') { pos++; return -parseFactor(); }
+    if (expr[pos] === '+') { pos++; return parseFactor(); }
+    if (/[A-Za-z_]/.test(expr[pos])) {
+      const name = parseIdentifier();
+      skipSpace();
+      if (expr[pos] !== '(') throw new Error(`不明な識別子です: ${name}（フィールド参照は {フィールド名} を使ってください）`);
+      pos++;
+      const args = parseArgs();
+      skipSpace();
+      if (expr[pos] !== ')') throw new Error('括弧が閉じられていません（関数の引数）');
+      pos++;
+      return callFunction(name, args);
+    }
+    return parseNumber();
+  }
+  function parseTerm() {
+    let val = parseFactor();
+    skipSpace();
+    while (expr[pos] === '*' || expr[pos] === '/') {
+      const op = expr[pos]; pos++;
+      const rhs = parseFactor();
+      val = op === '*' ? val * rhs : val / rhs;
+      skipSpace();
+    }
+    return val;
+  }
+  function parseAdditive() {
+    let val = parseTerm();
+    skipSpace();
+    while (expr[pos] === '+' || expr[pos] === '-') {
+      const op = expr[pos]; pos++;
+      const rhs = parseTerm();
+      val = op === '+' ? val + rhs : val - rhs;
+      skipSpace();
+    }
+    return val;
+  }
+  function readCompOp() {
+    skipSpace();
+    const two = expr.slice(pos, pos + 2);
+    if (two === '>=' || two === '<=' || two === '==' || two === '!=') {
+      pos += 2;
+      return two;
+    }
+    if (expr[pos] === '>' || expr[pos] === '<') {
+      const op = expr[pos];
+      pos++;
+      return op;
+    }
+    return null;
+  }
+  function parseComparison() {
+    let val = parseAdditive();
+    skipSpace();
+    let op;
+    while ((op = readCompOp())) {
+      const rhs = parseAdditive();
+      if (op === '>') val = val > rhs ? 1 : 0;
+      else if (op === '<') val = val < rhs ? 1 : 0;
+      else if (op === '>=') val = val >= rhs ? 1 : 0;
+      else if (op === '<=') val = val <= rhs ? 1 : 0;
+      else if (op === '==') val = val === rhs ? 1 : 0;
+      else if (op === '!=') val = val !== rhs ? 1 : 0;
+      skipSpace();
+    }
+    return val;
+  }
+  const result = parseComparison();
+  skipSpace();
+  if (pos !== expr.length) throw new Error('式が不正です');
+  return result;
+}
+
+function evaluateFormula(f, item) {
+  if (!f.formula) return '';
+  const expr = f.formula.replace(/\{([^}]+)\}/g, (_, name) => {
+    const refField = fields.find(x => x.name === name.trim() && x.type !== 'formula' && x.type !== 'divider' && x.type !== 'multiselect' && x.type !== 'image' && x.type !== 'relation');
+    if (!refField) return '0';
+    const num = Number(item.values[refField.id]);
+    return Number.isFinite(num) ? String(num) : '0';
+  });
+  try {
+    const result = safeEvalArithmetic(expr);
+    if (!Number.isFinite(result)) return '#ERROR';
+    return Math.round(result * 100) / 100;
+  } catch (e) {
+    return '#ERROR';
+  }
+}
+
+function formatFieldValue(f, val) {
+  if (!f) return '';
+  if (f.type === 'checkbox') return val ? '✓' : '';
+  if (f.type === 'multiselect') return Array.isArray(val) ? val.join('、') : '';
+  if (f.type === 'image') return val ? '(画像あり)' : '';
+  if (f.type === 'relation') {
+    if (!val) return '';
+    return getRelationLabel(items.find(it => it.id === val));
+  }
+  if (val === undefined || val === null) return '';
+  return val;
+}
+
+searchInput.addEventListener('input', () => {
+  searchQuery = searchInput.value.trim();
+  formIndex = 0;
+  renderList();
+});
+
+function matchesSearch(item) {
+  if (!searchQuery) return true;
+  const q = searchQuery.toLowerCase();
+  return fields.some(f => {
+    if (f.type === 'divider') return false;
+    if (f.type === 'formula') return String(evaluateFormula(f, item)).toLowerCase().includes(q);
+    return String(formatFieldValue(f, item.values[f.id])).toLowerCase().includes(q);
+  });
+}
+
+function compareValues(f, itemA, itemB) {
+  let va = itemA.values[f.id];
+  let vb = itemB.values[f.id];
+  if (f.type === 'number') {
+    va = va === '' || va === undefined || va === null ? -Infinity : Number(va);
+    vb = vb === '' || vb === undefined || vb === null ? -Infinity : Number(vb);
+    return va - vb;
+  }
+  if (f.type === 'checkbox') return (va ? 1 : 0) - (vb ? 1 : 0);
+  va = va === undefined || va === null ? '' : String(va);
+  vb = vb === undefined || vb === null ? '' : String(vb);
+  return va.localeCompare(vb, 'ja');
+}
+
+function sortItems(arr) {
+  const f = fields.find(x => x.id === settings.sortFieldId);
+  if (!f) return arr;
+  const dir = settings.sortDirection === 'desc' ? -1 : 1;
+  return arr.slice().sort((a, b) => compareValues(f, a, b) * dir);
+}
+
+function getVisibleItems() {
+  return sortItems(items.filter(matchesSearch));
+}
+
+function clearRelationReferences(deletedId) {
+  const relationFieldIds = fields.filter(f => f.type === 'relation').map(f => f.id);
+  if (relationFieldIds.length === 0) return;
+  items.forEach(it => {
+    relationFieldIds.forEach(fid => {
+      if (it.values[fid] === deletedId) it.values[fid] = '';
+    });
+  });
+}
+
+function deleteItem(itemId) {
+  if (!confirm('このデータを削除しますか?')) return;
+  const target = items.find(i => i.id === itemId);
+  items = items.filter(i => i.id !== itemId);
+  clearRelationReferences(itemId);
+  saveItems();
+  addHistoryEntry('delete', getRelationLabel(target), []);
+  renderList();
+  showToast('削除しました');
+}
+
+function createItemCard(item) {
+  const card = document.createElement('div');
+  card.className = 'item-card';
+  const rows = fields.map(f => {
+    if (f.type === 'divider') {
+      return `<div class="item-divider">${f.name ? `<span>${escapeHtml(f.name)}</span>` : ''}</div>`;
+    }
+    if (f.type === 'image') {
+      const imgVal = item.values[f.id];
+      return `<div class="item-row"><span class="item-label">${escapeHtml(f.name)}</span><span class="item-value">${imgVal ? `<img class="item-thumb" src="${imgVal}" alt="">` : ''}</span></div>`;
+    }
+    if (f.type === 'formula') {
+      return `<div class="item-row"><span class="item-label">${escapeHtml(f.name)}</span><span class="item-value">${escapeHtml(String(evaluateFormula(f, item)))}</span></div>`;
+    }
+    const val = formatFieldValue(f, item.values[f.id]);
+    return `<div class="item-row"><span class="item-label">${escapeHtml(f.name)}</span><span class="item-value">${escapeHtml(val)}</span></div>`;
+  }).join('');
+  card.innerHTML = rows + `
+    <div class="item-actions">
+      <button class="btn" data-action="edit">編集</button>
+      <button class="btn danger" data-action="delete">削除</button>
+    </div>`;
+  card.querySelector('[data-action="edit"]').addEventListener('click', () => openItemModal(item.id));
+  card.querySelector('[data-action="delete"]').addEventListener('click', () => deleteItem(item.id));
+  return card;
+}
+
+function getGroupFieldIds() {
+  return (settings.groupFields || []).filter(id => fields.some(f => f.id === id));
+}
+
+function buildGroupTree(itemsArr, groupFieldIds) {
+  const fieldId = groupFieldIds[0];
+  const f = fields.find(x => x.id === fieldId);
+  const map = new Map();
+  itemsArr.forEach(item => {
+    let val = item.values[fieldId];
+    if (f && f.type === 'checkbox') val = val ? '済' : '未';
+    else if (val === undefined || val === null || val === '') val = '(未設定)';
+    if (!map.has(val)) map.set(val, []);
+    map.get(val).push(item);
+  });
+  const keys = Array.from(map.keys()).sort((a, b) => {
+    if (a === '(未設定)') return 1;
+    if (b === '(未設定)') return -1;
+    return String(a).localeCompare(String(b), 'ja');
+  });
+  const rest = groupFieldIds.slice(1);
+  return keys.map(key => ({
+    key,
+    isLeaf: rest.length === 0,
+    items: rest.length === 0 ? map.get(key) : buildGroupTree(map.get(key), rest)
+  }));
+}
+
+function countLeafItems(node) {
+  return node.isLeaf ? node.items.length : node.items.reduce((sum, n) => sum + countLeafItems(n), 0);
+}
+
+function renderGroupNodes(container, nodes, groupFieldIds, level) {
+  const fieldName = fields.find(f => f.id === groupFieldIds[level]).name;
+  nodes.forEach(node => {
+    const details = document.createElement('details');
+    details.className = 'group-block';
+    details.open = true;
+    const summary = document.createElement('summary');
+    summary.className = 'group-header';
+    summary.style.marginLeft = (level * 16) + 'px';
+    summary.textContent = `${fieldName}: ${node.key} (${countLeafItems(node)}件)`;
+    details.appendChild(summary);
+    const body = document.createElement('div');
+    body.className = 'group-body';
+    body.style.marginLeft = (level * 16 + 12) + 'px';
+    if (node.isLeaf) {
+      node.items.forEach(item => body.appendChild(createItemCard(item)));
+    } else {
+      renderGroupNodes(body, node.items, groupFieldIds, level + 1);
+    }
+    details.appendChild(body);
+    container.appendChild(details);
+  });
+}
+
+function getFlattenedOrder() {
+  const visible = getVisibleItems();
+  const groupFieldIds = getGroupFieldIds();
+  if (groupFieldIds.length === 0) return visible;
+  const tree = buildGroupTree(visible, groupFieldIds);
+  const out = [];
+  (function walk(nodes) {
+    nodes.forEach(node => {
+      if (node.isLeaf) out.push(...node.items);
+      else walk(node.items);
+    });
+  })(tree);
+  return out;
+}
+
+function renderFormView() {
+  const order = getFlattenedOrder();
+  if (formIndex >= order.length) formIndex = order.length - 1;
+  if (formIndex < 0) formIndex = 0;
+  const item = order[formIndex];
+
+  const wrap = document.createElement('div');
+  wrap.className = 'form-view';
+
+  const nav = document.createElement('div');
+  nav.className = 'form-nav';
+  nav.innerHTML = `
+    <button class="btn" id="formPrevBtn" ${formIndex === 0 ? 'disabled' : ''}>← 前へ</button>
+    <span class="form-position">${formIndex + 1} / ${order.length}</span>
+    <button class="btn" id="formNextBtn" ${formIndex === order.length - 1 ? 'disabled' : ''}>次へ →</button>
+  `;
+  wrap.appendChild(nav);
+
+  const card = document.createElement('div');
+  card.className = 'item-card form-card';
+
+  const titleField = fields.find(f => f.id === settings.titleFieldId) || fields[0];
+  const subtitleField = fields.find(f => f.id === settings.subtitleFieldId);
+  const titleVal = titleField ? formatFieldValue(titleField, item.values[titleField.id]) : '';
+
+  const head = document.createElement('div');
+  head.className = 'form-card-head';
+  head.innerHTML = `
+    <div class="form-title">${escapeHtml(titleVal || '(無題)')}</div>
+    ${subtitleField ? `<div class="form-subtitle">${escapeHtml(formatFieldValue(subtitleField, item.values[subtitleField.id]))}</div>` : ''}
+  `;
+  card.appendChild(head);
+
+  fields.forEach(f => {
+    if (f.type === 'divider') {
+      const div = document.createElement('div');
+      div.className = 'item-divider';
+      if (f.name) {
+        const span = document.createElement('span');
+        span.textContent = f.name;
+        div.appendChild(span);
+      }
+      card.appendChild(div);
+      return;
+    }
+    const row = document.createElement('div');
+    row.className = 'item-row';
+    if (f.type === 'image') {
+      const imgVal = item.values[f.id];
+      row.innerHTML = `<span class="item-label">${escapeHtml(f.name)}</span><span class="item-value">${imgVal ? `<img class="item-thumb" src="${imgVal}" alt="">` : ''}</span>`;
+      card.appendChild(row);
+      return;
+    }
+    if (f.type === 'formula') {
+      row.innerHTML = `<span class="item-label">${escapeHtml(f.name)}</span><span class="item-value">${escapeHtml(String(evaluateFormula(f, item)))}</span>`;
+      card.appendChild(row);
+      return;
+    }
+    row.innerHTML = `<span class="item-label">${escapeHtml(f.name)}</span><span class="item-value">${escapeHtml(formatFieldValue(f, item.values[f.id]))}</span>`;
+    card.appendChild(row);
+  });
+
+  const actions = document.createElement('div');
+  actions.className = 'item-actions';
+  actions.innerHTML = `
+    <button class="btn" data-action="edit">編集</button>
+    <button class="btn danger" data-action="delete">削除</button>
+  `;
+  actions.querySelector('[data-action="edit"]').addEventListener('click', () => openItemModal(item.id));
+  actions.querySelector('[data-action="delete"]').addEventListener('click', () => deleteItem(item.id));
+  card.appendChild(actions);
+
+  wrap.appendChild(card);
+  itemListEl.appendChild(wrap);
+
+  document.getElementById('formPrevBtn').addEventListener('click', () => { formIndex--; renderList(); });
+  document.getElementById('formNextBtn').addEventListener('click', () => { formIndex++; renderList(); });
+}
+
+function renderList() {
+  const visible = getVisibleItems();
+  itemCountEl.textContent = searchQuery
+    ? `${visible.length} / ${items.length}件`
+    : items.length + '件';
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const stamp = `${now.getFullYear()}/${pad(now.getMonth() + 1)}/${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  printMeta.textContent = (searchQuery ? `検索: 「${searchQuery}」 該当 ${visible.length} / 全 ${items.length}件` : `全 ${items.length}件`) + ` ・ 出力日時: ${stamp}`;
+  itemListEl.innerHTML = '';
+  if (items.length === 0) {
+    itemListEl.innerHTML = '<div class="empty-state">データがありません。「＋ 追加」から登録してください。</div>';
+    return;
+  }
+  if (visible.length === 0) {
+    itemListEl.innerHTML = '<div class="empty-state">検索条件に一致するデータがありません。</div>';
+    return;
+  }
+  if (viewMode === 'form') {
+    renderFormView();
+    return;
+  }
+  const groupFieldIds = getGroupFieldIds();
+  if (groupFieldIds.length === 0) {
+    visible.forEach(item => itemListEl.appendChild(createItemCard(item)));
+  } else {
+    const tree = buildGroupTree(visible, groupFieldIds);
+    renderGroupNodes(itemListEl, tree, groupFieldIds, 0);
+  }
+}
+
+function updateViewToggleBtn() {
+  viewToggleBtn.textContent = viewMode === 'list' ? '📄 フォーム表示' : '🗂 一覧表示';
+}
+
+viewToggleBtn.addEventListener('click', () => {
+  viewMode = viewMode === 'list' ? 'form' : 'list';
+  if (viewMode === 'form') formIndex = 0;
+  updateViewToggleBtn();
+  renderList();
+});
+
+function populateFieldSelect(sel, selectedId) {
+  sel.innerHTML = '';
+  const noneOpt = document.createElement('option');
+  noneOpt.value = '';
+  noneOpt.textContent = 'なし';
+  sel.appendChild(noneOpt);
+  const nonScalarTypes = ['divider', 'multiselect', 'image', 'formula', 'relation'];
+  fields.forEach(f => {
+    if (nonScalarTypes.includes(f.type)) return;
+    const opt = document.createElement('option');
+    opt.value = f.id;
+    opt.textContent = f.name;
+    sel.appendChild(opt);
+  });
+  sel.value = selectedId || '';
+}
+
+document.getElementById('viewSettingsBtn').addEventListener('click', () => {
+  const g = settings.groupFields || [];
+  populateFieldSelect(groupField1, g[0]);
+  populateFieldSelect(groupField2, g[1]);
+  populateFieldSelect(groupField3, g[2]);
+  populateFieldSelect(titleFieldSelect, settings.titleFieldId);
+  populateFieldSelect(subtitleFieldSelect, settings.subtitleFieldId);
+  populateFieldSelect(sortFieldSelect, settings.sortFieldId);
+  sortDirectionSelect.value = settings.sortDirection === 'desc' ? 'desc' : 'asc';
+  openModal(viewSettingsModal);
+});
+
+document.getElementById('cancelViewSettingsBtn').addEventListener('click', () => closeModal(viewSettingsModal));
+
+document.getElementById('saveViewSettingsBtn').addEventListener('click', () => {
+  const g = [groupField1.value, groupField2.value, groupField3.value].filter(Boolean);
+  settings.groupFields = [...new Set(g)];
+  settings.titleFieldId = titleFieldSelect.value || '';
+  settings.subtitleFieldId = subtitleFieldSelect.value || '';
+  settings.sortFieldId = sortFieldSelect.value || '';
+  settings.sortDirection = sortDirectionSelect.value === 'desc' ? 'desc' : 'asc';
+  saveSettings();
+  renderList();
+  closeModal(viewSettingsModal);
+  showToast('表示設定を保存しました');
+});
+
+// ---- CSV書き出し／JSONバックアップ ----
+function dateStamp() {
+  const d = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`;
+}
+
+function downloadFile(content, filename, mime) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function csvEscape(val) {
+  val = val === undefined || val === null ? '' : String(val);
+  if (/[",\r\n]/.test(val)) val = '"' + val.replace(/"/g, '""') + '"';
+  return val;
+}
+
+document.getElementById('printBtn').addEventListener('click', () => {
+  if (viewMode === 'form') { viewMode = 'list'; updateViewToggleBtn(); renderList(); }
+  document.querySelectorAll('details.group-block').forEach(d => d.open = true);
+  window.print();
+});
+
+document.getElementById('backupBtn').addEventListener('click', () => openModal(backupModal));
+document.getElementById('closeBackupBtn').addEventListener('click', () => closeModal(backupModal));
+
+document.getElementById('exportCsvBtn').addEventListener('click', () => {
+  const visible = getVisibleItems();
+  const csvFields = fields.filter(f => f.type !== 'divider');
+  const header = csvFields.map(f => f.name);
+  const rows = visible.map(item => csvFields.map(f => {
+    if (f.type === 'formula') return evaluateFormula(f, item);
+    const val = item.values[f.id];
+    if (f.type === 'checkbox') return val ? 'TRUE' : 'FALSE';
+    return formatFieldValue(f, val);
+  }));
+  const csv = [header, ...rows].map(row => row.map(csvEscape).join(',')).join('\r\n');
+  downloadFile(String.fromCharCode(0xFEFF) + csv, `taretool_${dateStamp()}.csv`, 'text/csv;charset=utf-8');
+  showToast('CSVを書き出しました');
+});
+
+document.getElementById('exportJsonBtn').addEventListener('click', () => {
+  const backup = { fields, items, settings, exportedAt: new Date().toISOString() };
+  downloadFile(JSON.stringify(backup, null, 2), `taretool_backup_${dateStamp()}.json`, 'application/json');
+  showToast('JSONバックアップを書き出しました');
+});
+
+document.getElementById('importJsonBtn').addEventListener('click', () => jsonImportInput.click());
+
+jsonImportInput.addEventListener('change', () => {
+  const file = jsonImportInput.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    let parsed;
+    try {
+      parsed = JSON.parse(reader.result);
+    } catch (e) {
+      showToast('JSONファイルの形式が正しくありません', 'error');
+      jsonImportInput.value = '';
+      return;
+    }
+    if (!Array.isArray(parsed.fields) || !Array.isArray(parsed.items)) {
+      showToast('バックアップファイルの形式が正しくありません', 'error');
+      jsonImportInput.value = '';
+      return;
+    }
+    if (!confirm('現在のフィールド・データ・表示設定をすべて上書きします。続行しますか?')) {
+      jsonImportInput.value = '';
+      return;
+    }
+    saveSnapshot();
+    fields = parsed.fields;
+    items = parsed.items;
+    settings = parsed.settings || { groupFields: [], titleFieldId: '', subtitleFieldId: '', sortFieldId: '', sortDirection: 'asc' };
+    saveFields();
+    saveItems();
+    saveSettings();
+    searchQuery = '';
+    searchInput.value = '';
+    formIndex = 0;
+    renderList();
+    closeModal(backupModal);
+    jsonImportInput.value = '';
+    showToast('JSONバックアップを読み込みました');
+  };
+  reader.readAsText(file);
+});
+
+// ---- 変更履歴／スナップショット UI ----
+const historyActionLabels = { add: '追加', edit: '更新', delete: '削除' };
+
+function formatTimestamp(iso) {
+  const d = new Date(iso);
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+function renderHistoryList() {
+  const history = loadHistory();
+  historyListEl.innerHTML = '';
+  if (history.length === 0) {
+    historyListEl.innerHTML = '<div class="empty-state">変更履歴はまだありません。</div>';
+    return;
+  }
+  history.forEach(entry => {
+    const row = document.createElement('div');
+    row.className = 'history-entry';
+    const diffHtml = entry.changes.map(c => {
+      const oldText = escapeHtml(c.oldValue) || '(空欄)';
+      const newText = escapeHtml(c.newValue) || '(空欄)';
+      return `<div class="history-diff">${escapeHtml(c.fieldName)}: ${oldText} → ${newText}</div>`;
+    }).join('');
+    row.innerHTML = `<div class="history-entry-head"><strong>[${historyActionLabels[entry.action] || entry.action}]</strong> ${escapeHtml(entry.label)} <span class="field-hint">${formatTimestamp(entry.timestamp)}</span></div>${diffHtml}`;
+    historyListEl.appendChild(row);
+  });
+}
+
+function renderSnapshotList() {
+  const snapshots = loadSnapshots();
+  snapshotListEl.innerHTML = '';
+  if (snapshots.length === 0) {
+    snapshotListEl.innerHTML = '<div class="empty-state">スナップショットはまだありません。</div>';
+    return;
+  }
+  snapshots.forEach(snap => {
+    const row = document.createElement('div');
+    row.className = 'snapshot-entry';
+    row.innerHTML = `
+      <div class="snapshot-info">
+        <div>${formatTimestamp(snap.timestamp)}</div>
+        <div class="field-hint">${snap.items.length}件のデータ・${snap.fields.length}個のフィールド</div>
+      </div>
+      <button class="btn danger" data-action="restore">復元</button>
+    `;
+    row.querySelector('[data-action="restore"]').addEventListener('click', () => restoreSnapshot(snap.id));
+    snapshotListEl.appendChild(row);
+  });
+}
+
+function restoreSnapshot(snapshotId) {
+  const snapshots = loadSnapshots();
+  const snap = snapshots.find(s => s.id === snapshotId);
+  if (!snap) return;
+  if (!confirm('このスナップショット時点のデータに復元します（画像データは復元されません）。現在のデータは上書きされます。続行しますか?')) return;
+  saveSnapshot();
+  fields = snap.fields;
+  items = snap.items;
+  settings = snap.settings;
+  saveFields();
+  saveItems();
+  saveSettings();
+  searchQuery = '';
+  searchInput.value = '';
+  formIndex = 0;
+  renderList();
+  renderSnapshotList();
+  closeModal(historyModal);
+  showToast('スナップショットを復元しました');
+}
+
+document.getElementById('historyBtn').addEventListener('click', () => {
+  renderSnapshotList();
+  renderHistoryList();
+  openModal(historyModal);
+});
+
+document.getElementById('closeHistoryBtn').addEventListener('click', () => closeModal(historyModal));
+
+document.getElementById('clearHistoryBtn').addEventListener('click', () => {
+  if (!confirm('変更履歴をすべて削除しますか?')) return;
+  localStorage.removeItem(historyKey(activeDbId));
+  renderHistoryList();
+  showToast('変更履歴を削除しました');
+});
+
+// ---- データ登録・編集フォーム ----
+function buildItemForm(prefill) {
+  itemForm.innerHTML = '';
+  fields.forEach(f => {
+    if (f.type === 'divider') {
+      const div = document.createElement('div');
+      div.className = 'form-divider';
+      if (f.name) {
+        const span = document.createElement('span');
+        span.textContent = f.name;
+        div.appendChild(span);
+      }
+      itemForm.appendChild(div);
+      return;
+    }
+    if (f.type === 'formula') {
+      const wrap = document.createElement('div');
+      wrap.className = 'form-field';
+      const label = document.createElement('label');
+      label.textContent = f.name;
+      const note = document.createElement('div');
+      note.className = 'formula-note';
+      note.textContent = `自動計算: ${f.formula || ''}`;
+      wrap.appendChild(label);
+      wrap.appendChild(note);
+      itemForm.appendChild(wrap);
+      return;
+    }
+    const wrap = document.createElement('div');
+    wrap.className = 'form-field';
+    const label = document.createElement('label');
+    label.textContent = f.name;
+    wrap.appendChild(label);
+
+    let input;
+    if (f.type === 'longtext') {
+      input = document.createElement('textarea');
+    } else if (f.type === 'checkbox') {
+      input = document.createElement('input');
+      input.type = 'checkbox';
+    } else if (f.type === 'select') {
+      input = document.createElement('select');
+      const empty = document.createElement('option');
+      empty.value = '';
+      empty.textContent = '選択してください';
+      input.appendChild(empty);
+      (f.options || []).forEach(opt => {
+        const o = document.createElement('option');
+        o.value = opt;
+        o.textContent = opt;
+        input.appendChild(o);
+      });
+    } else if (f.type === 'relation') {
+      input = document.createElement('select');
+      const empty = document.createElement('option');
+      empty.value = '';
+      empty.textContent = 'なし';
+      input.appendChild(empty);
+      items.filter(it => it.id !== editingItemId).forEach(it => {
+        const o = document.createElement('option');
+        o.value = it.id;
+        o.textContent = getRelationLabel(it);
+        input.appendChild(o);
+      });
+    } else if (f.type === 'multiselect') {
+      input = document.createElement('div');
+      input.className = 'multiselect-group';
+      (f.options || []).forEach(opt => {
+        const optLabel = document.createElement('label');
+        optLabel.className = 'multiselect-option';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.value = opt;
+        optLabel.appendChild(cb);
+        optLabel.appendChild(document.createTextNode(opt));
+        input.appendChild(optLabel);
+      });
+    } else if (f.type === 'image') {
+      input = document.createElement('div');
+      input.className = 'image-field';
+      input.dataset.value = '';
+      const preview = document.createElement('img');
+      preview.className = 'image-preview hidden';
+      const fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.accept = 'image/*';
+      const clearBtn = document.createElement('button');
+      clearBtn.type = 'button';
+      clearBtn.className = 'btn hidden';
+      clearBtn.textContent = '画像を削除';
+      fileInput.addEventListener('change', () => {
+        const file = fileInput.files[0];
+        if (!file) return;
+        if (file.size > 2 * 1024 * 1024) {
+          showToast('画像は2MB以下にしてください', 'error');
+          fileInput.value = '';
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+          input.dataset.value = reader.result;
+          preview.src = reader.result;
+          preview.classList.remove('hidden');
+          clearBtn.classList.remove('hidden');
+        };
+        reader.readAsDataURL(file);
+      });
+      clearBtn.addEventListener('click', () => {
+        input.dataset.value = '';
+        preview.src = '';
+        preview.classList.add('hidden');
+        clearBtn.classList.add('hidden');
+        fileInput.value = '';
+      });
+      input.appendChild(preview);
+      input.appendChild(fileInput);
+      input.appendChild(clearBtn);
+    } else if (f.type === 'number') {
+      input = document.createElement('input');
+      input.type = 'number';
+      input.step = 'any';
+    } else if (f.type === 'date') {
+      input = document.createElement('input');
+      input.type = 'date';
+    } else {
+      input = document.createElement('input');
+      input.type = 'text';
+    }
+    input.dataset.fieldId = f.id;
+    input.id = 'f_' + f.id;
+
+    if (prefill && prefill[f.id] !== undefined) {
+      if (f.type === 'checkbox') input.checked = !!prefill[f.id];
+      else if (f.type === 'multiselect') {
+        const selected = Array.isArray(prefill[f.id]) ? prefill[f.id] : [];
+        input.querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = selected.includes(cb.value));
+      } else if (f.type === 'image') {
+        if (prefill[f.id]) {
+          input.dataset.value = prefill[f.id];
+          input.querySelector('.image-preview').src = prefill[f.id];
+          input.querySelector('.image-preview').classList.remove('hidden');
+          input.querySelector('button').classList.remove('hidden');
+        }
+      } else input.value = prefill[f.id];
+    }
+    wrap.appendChild(input);
+    itemForm.appendChild(wrap);
+  });
+}
+
+function openItemModal(itemId) {
+  editingItemId = itemId || null;
+  const item = editingItemId ? items.find(i => i.id === editingItemId) : null;
+  itemModalTitle.textContent = item ? '編集' : '追加';
+  deleteItemBtn.classList.toggle('hidden', !item);
+  buildItemForm(item ? item.values : null);
+  openModal(itemModal);
+}
+
+document.getElementById('addItemBtn').addEventListener('click', () => openItemModal(null));
+document.getElementById('cancelItemBtn').addEventListener('click', () => closeModal(itemModal));
+
+itemForm.addEventListener('submit', e => {
+  e.preventDefault();
+  const values = {};
+  fields.forEach(f => {
+    const input = document.getElementById('f_' + f.id);
+    if (!input) return;
+    if (f.type === 'checkbox') values[f.id] = input.checked;
+    else if (f.type === 'multiselect') {
+      values[f.id] = Array.from(input.querySelectorAll('input[type=checkbox]:checked')).map(cb => cb.value);
+    } else if (f.type === 'image') values[f.id] = input.dataset.value || '';
+    else if (f.type === 'number') values[f.id] = input.value === '' ? '' : Number(input.value);
+    else values[f.id] = input.value;
+  });
+  const wasEdit = !!editingItemId;
+  const prevValues = wasEdit ? items.find(i => i.id === editingItemId).values : null;
+  if (editingItemId) {
+    const item = items.find(i => i.id === editingItemId);
+    item.values = values;
+  } else {
+    items.push({ id: uid(), values });
+  }
+  if (!saveItems()) {
+    if (wasEdit) items.find(i => i.id === editingItemId).values = prevValues;
+    else items.pop();
+    return;
+  }
+  addHistoryEntry(wasEdit ? 'edit' : 'add', getRelationLabel({ values }), diffValues(prevValues, values));
+  renderList();
+  closeModal(itemModal);
+  showToast(wasEdit ? '更新しました' : '追加しました');
+});
+
+deleteItemBtn.addEventListener('click', () => {
+  if (!editingItemId) return;
+  if (confirm('このデータを削除しますか?')) {
+    const target = items.find(i => i.id === editingItemId);
+    items = items.filter(i => i.id !== editingItemId);
+    clearRelationReferences(editingItemId);
+    saveItems();
+    addHistoryEntry('delete', getRelationLabel(target), []);
+    renderList();
+    closeModal(itemModal);
+    showToast('削除しました');
+  }
+});
+
+// ---- フィールド設定 ----
+const fieldTypeLabels = {
+  text: 'テキスト', longtext: '長文', number: '数値',
+  date: '日付', checkbox: 'チェックする', select: '選択肢',
+  multiselect: '複数選択', image: '画像', formula: '計算式',
+  relation: 'リレーション', divider: '区切り線'
+};
+
+function renderFieldList() {
+  fieldListEl.innerHTML = '';
+  fields.forEach((f, idx) => {
+    const row = document.createElement('div');
+    row.className = 'field-row';
+    row.innerHTML = `
+      <div class="field-info">
+        <div class="field-name">${escapeHtml(f.type === 'divider' ? (f.name || '（区切り線）') : f.name)}</div>
+        <div class="field-type">${fieldTypeLabels[f.type] || f.type}</div>
+      </div>
+      <div class="field-btns">
+        <button class="icon-btn" data-action="up" title="上へ" ${idx === 0 ? 'disabled' : ''}>↑</button>
+        <button class="icon-btn" data-action="down" title="下へ" ${idx === fields.length - 1 ? 'disabled' : ''}>↓</button>
+        <button class="icon-btn" data-action="edit" title="編集">✎</button>
+        <button class="icon-btn" data-action="delete" title="削除">🗑</button>
+      </div>`;
+    row.querySelector('[data-action="up"]').addEventListener('click', () => {
+      [fields[idx - 1], fields[idx]] = [fields[idx], fields[idx - 1]];
+      saveFields(); renderFieldList(); renderList();
+    });
+    row.querySelector('[data-action="down"]').addEventListener('click', () => {
+      [fields[idx + 1], fields[idx]] = [fields[idx], fields[idx + 1]];
+      saveFields(); renderFieldList(); renderList();
+    });
+    row.querySelector('[data-action="edit"]').addEventListener('click', () => openFieldEditModal(f.id));
+    row.querySelector('[data-action="delete"]').addEventListener('click', () => {
+      if (confirm(`フィールド「${f.name}」を削除しますか?（登録済みデータのこの項目は失われます）`)) {
+        fields = fields.filter(x => x.id !== f.id);
+        settings.groupFields = (settings.groupFields || []).filter(id => id !== f.id);
+        if (settings.titleFieldId === f.id) settings.titleFieldId = '';
+        if (settings.subtitleFieldId === f.id) settings.subtitleFieldId = '';
+        if (settings.sortFieldId === f.id) settings.sortFieldId = '';
+        saveFields(); saveSettings(); renderFieldList(); renderList();
+        showToast('フィールドを削除しました');
+      }
+    });
+    fieldListEl.appendChild(row);
+  });
+}
+
+document.getElementById('fieldSettingsBtn').addEventListener('click', () => {
+  renderFieldList();
+  openModal(fieldModal);
+});
+
+document.getElementById('addFieldBtn').addEventListener('click', () => openFieldEditModal(null));
+
+function updateFieldNamePlaceholder() {
+  fieldNameInput.placeholder = fieldTypeInput.value === 'divider' ? '見出し（任意・空欄可）' : '';
+}
+
+function populateFormulaFieldSelect() {
+  fieldFormulaFieldSelect.innerHTML = '';
+  const excludeTypes = ['divider', 'multiselect', 'image', 'formula', 'relation'];
+  const candidates = fields.filter(f => !excludeTypes.includes(f.type) && f.id !== editingFieldId);
+  if (candidates.length === 0) {
+    const opt = document.createElement('option');
+    opt.value = '';
+    opt.textContent = '(参照できるフィールドがありません)';
+    fieldFormulaFieldSelect.appendChild(opt);
+    return;
+  }
+  candidates.forEach(f => {
+    const opt = document.createElement('option');
+    opt.value = f.name;
+    opt.textContent = f.name;
+    fieldFormulaFieldSelect.appendChild(opt);
+  });
+}
+
+function openFieldEditModal(fieldId) {
+  editingFieldId = fieldId || null;
+  const f = editingFieldId ? fields.find(x => x.id === editingFieldId) : null;
+  fieldNameInput.value = f ? f.name : '';
+  fieldTypeInput.value = f ? f.type : 'text';
+  fieldOptionsInput.value = f && f.options ? f.options.join('\n') : '';
+  fieldFormulaInput.value = f && f.formula ? f.formula : '';
+  fieldOptionsWrap.classList.toggle('hidden', !['select', 'multiselect'].includes(fieldTypeInput.value));
+  fieldFormulaWrap.classList.toggle('hidden', fieldTypeInput.value !== 'formula');
+  populateFormulaFieldSelect();
+  updateFieldNamePlaceholder();
+  openModal(fieldEditModal);
+}
+
+fieldTypeInput.addEventListener('change', () => {
+  fieldOptionsWrap.classList.toggle('hidden', !['select', 'multiselect'].includes(fieldTypeInput.value));
+  fieldFormulaWrap.classList.toggle('hidden', fieldTypeInput.value !== 'formula');
+  populateFormulaFieldSelect();
+  updateFieldNamePlaceholder();
+});
+
+insertFormulaFieldBtn.addEventListener('click', () => {
+  const name = fieldFormulaFieldSelect.value;
+  if (!name) return;
+  const token = `{${name}}`;
+  const start = fieldFormulaInput.selectionStart ?? fieldFormulaInput.value.length;
+  const end = fieldFormulaInput.selectionEnd ?? fieldFormulaInput.value.length;
+  fieldFormulaInput.value = fieldFormulaInput.value.slice(0, start) + token + fieldFormulaInput.value.slice(end);
+  const pos = start + token.length;
+  fieldFormulaInput.focus();
+  fieldFormulaInput.setSelectionRange(pos, pos);
+});
+
+document.getElementById('cancelFieldEditBtn').addEventListener('click', () => closeModal(fieldEditModal));
+
+document.getElementById('saveFieldEditBtn').addEventListener('click', () => {
+  const name = fieldNameInput.value.trim();
+  const type = fieldTypeInput.value;
+  if (!name && type !== 'divider') { alert('フィールド名を入力してください'); return; }
+  const options = (type === 'select' || type === 'multiselect')
+    ? fieldOptionsInput.value.split('\n').map(s => s.trim()).filter(Boolean)
+    : undefined;
+  let formula;
+  if (type === 'formula') {
+    formula = fieldFormulaInput.value.trim().replace(/^=\s*/, '');
+    if (!formula) { alert('計算式を入力してください'); return; }
+    try {
+      safeEvalArithmetic(formula.replace(/\{[^}]+\}/g, '1'));
+    } catch (e) {
+      alert('計算式が正しくありません: ' + e.message);
+      return;
+    }
+  }
+
+  const wasEdit = !!editingFieldId;
+  if (editingFieldId) {
+    const f = fields.find(x => x.id === editingFieldId);
+    f.name = name; f.type = type;
+    if (options) f.options = options; else delete f.options;
+    if (formula !== undefined) f.formula = formula; else delete f.formula;
+  } else {
+    const newField = { id: uid(), name, type };
+    if (options) newField.options = options;
+    if (formula !== undefined) newField.formula = formula;
+    fields.push(newField);
+  }
+  saveFields();
+  renderFieldList();
+  renderList();
+  closeModal(fieldEditModal);
+  showToast(wasEdit ? 'フィールドを更新しました' : 'フィールドを追加しました');
+});
+
+// ---- 初期描画 ----
+updateViewToggleBtn();
+renderList();
+</script>
+</body>
+</html>

@@ -1,0 +1,1638 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>透析指標計算・分析ツール</title>
+<style>
+  :root {
+    --bg: #eef1f8;
+    --card-bg: #ffffff;
+    --border: #dfe5ef;
+    --text: #1a2436;
+    --text-sub: #647089;
+    --accent: #2f6fed;
+    --accent-hover: #2457c4;
+    --accent-soft: #eaf1ff;
+    --ok-bg: #e5f6ec;
+    --ok-text: #1d7a46;
+    --warn-bg: #fdeeea;
+    --warn-text: #b3401f;
+    --caution-bg: #fff6e0;
+    --caution-text: #96700a;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 18px;
+    --shadow-sm: 0 1px 2px rgba(26, 36, 54, 0.05);
+    --shadow-md: 0 8px 24px rgba(26, 36, 54, 0.08);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 28px 16px 60px;
+  }
+  h1 {
+    text-align: center;
+    font-size: 1.6rem;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    margin: 0 0 4px;
+    color: var(--text);
+  }
+  .subtitle {
+    text-align: center;
+    color: var(--text-sub);
+    font-size: 0.85rem;
+    margin-bottom: 26px;
+  }
+  .container {
+    max-width: 980px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+  @media (min-width: 860px) {
+    .container { grid-template-columns: 1fr 1fr; }
+    .full { grid-column: 1 / -1; }
+  }
+  .container section[data-tab]:not([data-tab="input"]) { display: none; }
+
+  .tabs {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    max-width: 980px;
+    margin: 0 auto 22px;
+    padding-bottom: 8px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .tabs::-webkit-scrollbar { height: 5px; }
+  .tabs::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
+  .tabs::-webkit-scrollbar-track { background: transparent; }
+  .tab-btn {
+    flex: none;
+    padding: 9px 16px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--card-bg);
+    color: var(--text-sub);
+    font-size: 0.86rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .tab-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .tab-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(47, 111, 237, 0.28);
+  }
+  section.card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px 22px;
+    box-shadow: var(--shadow-sm);
+  }
+  section.card h2 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.02rem;
+    font-weight: 700;
+    margin: 0 0 16px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+  section.card h2::before {
+    content: "";
+    display: inline-block;
+    width: 4px;
+    height: 18px;
+    flex: none;
+    border-radius: 4px;
+    background: var(--accent);
+  }
+  .field-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .field-row label {
+    font-size: 0.86rem;
+    color: var(--text-sub);
+    flex: 1;
+  }
+  .field-row input {
+    width: 110px;
+    padding: 7px 9px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    text-align: right;
+    background: var(--card-bg);
+    color: var(--text);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .field-row input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  .field-row .unit {
+    width: 62px;
+    font-size: 0.78rem;
+    color: var(--text-sub);
+  }
+  .out-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px dashed var(--border);
+    font-size: 0.88rem;
+  }
+  .out-row:last-child { border-bottom: none; }
+  .out-row .label { color: var(--text-sub); }
+  .out-row .label .note { display: block; font-size: 0.72rem; opacity: 0.8; }
+  .out-row .value {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .out-row .value .unit { font-weight: 400; font-size: 0.78rem; color: var(--text-sub); margin-left: 3px; }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 5px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 0.76rem;
+    font-weight: 600;
+  }
+  .badge::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    flex: none;
+    border-radius: 50%;
+    background: currentColor;
+  }
+  .badge.ok { background: var(--ok-bg); color: var(--ok-text); }
+  .badge.warn { background: var(--warn-bg); color: var(--warn-text); }
+  .badge.caution { background: var(--caution-bg); color: var(--caution-text); }
+  .divider {
+    grid-column: 1 / -1;
+    font-size: 0.8rem;
+    color: var(--text-sub);
+    margin: 2px 0 -6px;
+    font-weight: 600;
+  }
+  .action-box {
+    background: var(--accent-soft);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius-sm);
+    padding: 12px 16px;
+    font-size: 0.9rem;
+    line-height: 1.6;
+  }
+  .action-box .title { font-size: 0.76rem; color: var(--text-sub); margin-bottom: 4px; font-weight: 600; }
+  footer {
+    max-width: 980px;
+    margin: 32px auto 0;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    font-size: 0.72rem;
+    color: var(--text-sub);
+    text-align: center;
+    line-height: 1.6;
+  }
+  .prompt-block { margin-bottom: 18px; }
+  .prompt-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+  .prompt-title { font-size: 0.86rem; font-weight: 600; }
+  .copy-btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 6px 14px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    box-shadow: var(--shadow-sm);
+    transition: background 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+  }
+  .copy-btn:hover { background: var(--accent-hover); transform: translateY(-1px); box-shadow: var(--shadow-md); }
+  .copy-btn:active { transform: translateY(0); }
+  textarea.prompt-textarea {
+    width: 100%;
+    font-family: "Segoe UI", "Hiragino Kaku Gothic ProN", monospace;
+    font-size: 0.78rem;
+    line-height: 1.55;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: #fafcff;
+    color: var(--text);
+    resize: vertical;
+  }
+  .toast {
+    position: fixed;
+    bottom: 22px;
+    right: 22px;
+    background: #1a2436;
+    color: #fff;
+    padding: 10px 18px;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    box-shadow: var(--shadow-md);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(8px);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    z-index: 50;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  .mini-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; margin: 8px 0 14px; }
+  .mini-table th, .mini-table td { padding: 7px 8px; border-bottom: 1px solid var(--border); text-align: left; }
+  .mini-table th { color: var(--text-sub); font-weight: 600; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.03em; }
+  .mini-table tbody tr:hover { background: var(--accent-soft); }
+  .mini-table select {
+    padding: 5px 7px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    background: var(--card-bg);
+    color: var(--text);
+  }
+  .territory-badge {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+  .legend-row {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    font-size: 0.74rem;
+    color: var(--text-sub);
+    margin: 4px 0 10px;
+  }
+  .chart-wrap { margin-bottom: 20px; }
+  .chart-wrap h3 { font-size: 0.86rem; margin: 0 0 6px; color: var(--text); }
+  .trend-chart { width: 100%; height: auto; display: block; }
+  .chart-empty {
+    font-size: 0.82rem;
+    color: var(--text-sub);
+    padding: 30px 0;
+    text-align: center;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-sm);
+  }
+  .log-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .log-controls input[type="date"] {
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    background: var(--card-bg);
+    color: var(--text);
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 7px 15px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+    transition: background 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+  }
+  .btn-primary:hover { background: var(--accent-hover); transform: translateY(-1px); box-shadow: var(--shadow-md); }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-del {
+    background: none;
+    border: none;
+    color: var(--warn-text);
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    transition: background 0.15s ease;
+  }
+  .btn-del:hover { background: var(--warn-bg); }
+  details.section-details {
+    margin: 16px 0 4px;
+    border-top: 1px solid var(--border);
+    padding-top: 10px;
+  }
+  details.section-details summary {
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    padding: 4px 6px;
+    margin: 0 -6px;
+    border-radius: var(--radius-sm);
+    transition: background 0.15s ease;
+  }
+  details.section-details summary:hover { background: var(--accent-soft); }
+  details.section-details summary .details-row {
+    display: inline-flex;
+    width: calc(100% - 20px);
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  details.section-details summary .value {
+    font-weight: 600;
+    font-size: 0.86rem;
+    color: var(--accent);
+  }
+  details.section-details[open] summary { margin-bottom: 8px; }
+
+  .two-col-grid { display: grid; grid-template-columns: 1fr; gap: 0; }
+  @media (min-width: 640px) {
+    .two-col-grid { grid-template-columns: 1fr 1fr; gap: 0 24px; }
+  }
+  .export-bar {
+    max-width: 980px;
+    margin: 0 auto 18px;
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+  }
+  .btn-secondary {
+    background: var(--card-bg);
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-sm);
+    padding: 7px 16px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  }
+  .btn-secondary:hover { background: var(--accent-soft); }
+  #patientDeleteBtn:hover { border-color: var(--warn-text); color: var(--warn-text); background: var(--warn-bg); }
+
+  .patient-bar {
+    max-width: 980px;
+    margin: 0 auto 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-size: 0.86rem;
+  }
+  .patient-bar label { color: var(--text-sub); }
+  .patient-bar select {
+    padding: 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 0.86rem;
+    background: var(--card-bg);
+    color: var(--text);
+  }
+  .patient-panel {
+    max-width: 980px;
+    margin: 0 auto 16px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background: var(--accent-soft);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    font-size: 0.86rem;
+  }
+  .patient-panel input[type="text"] {
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 0.86rem;
+  }
+
+  button:focus-visible, select:focus-visible, input:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .print-header { display: none; }
+  @media print {
+    body { background: #fff; color: #1a2436; padding: 0 12px; }
+    .no-print { display: none !important; }
+    .print-header {
+      display: block;
+      text-align: center;
+      margin-bottom: 14px;
+    }
+    .print-header h2 { margin: 0 0 4px; color: #000; font-size: 1.2rem; }
+    .print-header .print-meta { font-size: 0.8rem; color: #444; }
+    .container { display: block; max-width: 100%; }
+    .container section[data-tab] {
+      display: block !important;
+      break-inside: avoid;
+      margin-bottom: 14px;
+    }
+    .container section[data-tab="ai"] { display: none !important; }
+    section.card { box-shadow: none; border: 1px solid #999; }
+    .badge { border: 1px solid currentColor; }
+    details.section-details:not([open]) > *:not(summary) { display: block !important; }
+  }
+</style>
+</head>
+<body>
+
+<h1>透析指標計算・分析ツール</h1>
+<p class="subtitle">除水・循環動態・透析効率・貧血/電解質の指標を自動計算します（入力するとリアルタイムに更新）</p>
+
+<div class="patient-bar no-print">
+  <label for="patientSelect">患者</label>
+  <select id="patientSelect"></select>
+  <button type="button" class="btn-secondary" id="patientRenameBtn">✏️ 名前変更</button>
+  <button type="button" class="btn-secondary" id="patientAddBtn">＋ 新規患者</button>
+  <button type="button" class="btn-secondary" id="patientDeleteBtn">🗑 削除</button>
+</div>
+<div class="patient-panel no-print" id="patientPanel">
+  <span id="patientPanelMsg"></span>
+  <input type="text" id="patientPanelInput">
+  <button type="button" class="btn-primary" id="patientPanelConfirm">OK</button>
+  <button type="button" class="btn-secondary" id="patientPanelCancel">キャンセル</button>
+</div>
+
+<div class="print-header">
+  <h2>透析指標計算・分析ツール 記録</h2>
+  <div class="print-meta" id="printTimestamp"></div>
+</div>
+
+<div class="tabs no-print" id="tabBar">
+  <button type="button" class="tab-btn active" data-tab="input">💧 除水・循環動態</button>
+  <button type="button" class="tab-btn" data-tab="efficiency">⚙️ 透析効率・処方</button>
+  <button type="button" class="tab-btn" data-tab="anemia">🩸 貧血・電解質</button>
+  <button type="button" class="tab-btn" data-tab="heart">❤️ 心不全管理</button>
+  <button type="button" class="tab-btn" data-tab="trend">📈 経時グラフ</button>
+  <button type="button" class="tab-btn" data-tab="ai">🤖 AIプロンプト</button>
+</div>
+
+<div class="export-bar no-print">
+  <button type="button" class="btn-secondary" id="exportSnapshotBtn">📥 現在のデータをCSVダウンロード</button>
+  <button type="button" class="btn-secondary" id="printBtn" style="margin-left:8px;">🖨 印刷する</button>
+</div>
+
+<div class="container">
+
+  <section class="card" data-tab="input">
+    <h2>基本情報・体重データ</h2>
+    <div class="field-row"><label for="t">透析時間 (t)</label><input type="number" id="t" value="240" step="1"><span class="unit">min</span></div>
+    <div class="field-row"><label for="ufTotal">総除水量 (Total UFR)</label><input type="number" id="ufTotal" value="3800" step="1"><span class="unit">ml</span></div>
+    <div class="field-row"><label for="bwPre">透析前 体重 (BW Pre)</label><input type="number" id="bwPre" value="" step="0.1"><span class="unit">kg</span></div>
+    <div class="field-row"><label for="bwPost">透析後 体重 (BW Post / DW)</label><input type="number" id="bwPost" value="" step="0.1"><span class="unit">kg</span></div>
+  </section>
+
+  <section class="card" data-tab="input">
+    <h2>血液データ</h2>
+    <div class="field-row"><label for="tp1">透析前 TP (TP1)</label><input type="number" id="tp1" value="" step="0.1"><span class="unit">g/dL</span></div>
+    <div class="field-row"><label for="tp2">透析後 TP (TP2)</label><input type="number" id="tp2" value="" step="0.1"><span class="unit">g/dL</span></div>
+    <div class="field-row"><label for="ht1">透析前 Ht (Ht1)</label><input type="number" id="ht1" value="" step="0.1"><span class="unit">%</span></div>
+    <div class="field-row"><label for="co">透析前 BUN (Co)</label><input type="number" id="co" value="" step="0.1"><span class="unit">mg/dL</span></div>
+    <div class="field-row"><label for="ct">透析後 BUN (Ct)</label><input type="number" id="ct" value="" step="0.1"><span class="unit">mg/dL</span></div>
+  </section>
+
+  <section class="card full" data-tab="input">
+    <h2>循環動態指標（除水設定）</h2>
+    <div class="out-row"><span class="label">除水量 (ΔBW)</span><span class="value" id="out-dbw">—</span></div>
+    <div class="out-row"><span class="label">体重変化率</span><span class="value" id="out-bwr">—</span></div>
+    <div class="out-row"><span class="label">TP濃縮率</span><span class="value" id="out-tpr">—</span></div>
+    <div class="out-row"><span class="label">UFR (除水速度)</span><span class="value" id="out-ufr">—</span></div>
+    <div class="out-row"><span class="label">膠質浸透圧 π1 → π2</span><span class="value" id="out-pi">—</span></div>
+    <div class="out-row"><span class="label">循環血漿量 CPV1 → CPV2</span><span class="value" id="out-cpv">—</span></div>
+    <div class="out-row"><span class="label">CPV Rate (血漿量減少速度)</span><span class="value" id="out-cpvrate">—</span></div>
+    <div class="out-row">
+      <span class="label">PWI (Protein-Water Index)<span class="note">2≦PWI≦4 が適正範囲</span></span>
+      <span class="value"><span id="out-pwi">—</span><br><span class="badge" id="badge-pwi"></span></span>
+    </div>
+    <div class="out-row">
+      <span class="label">mean Kr (プラズマリフィル係数)<span class="note">1≦Kr≦4 が適正範囲 / ml/min/mmHg</span></span>
+      <span class="value"><span id="out-kr">—</span><br><span class="badge" id="badge-kr"></span></span>
+    </div>
+  </section>
+
+  <section class="card" data-tab="efficiency">
+    <h2>透析効率</h2>
+    <div class="out-row">
+      <span class="label">URR (除去率)<span class="note">目標 65%以上</span></span>
+      <span class="value"><span id="out-urr">—</span><br><span class="badge" id="badge-urr"></span></span>
+    </div>
+    <div class="out-row">
+      <span class="label">Kt/V (Daugirdas)<span class="note">目標 1.2以上</span></span>
+      <span class="value"><span id="out-ktv">—</span><br><span class="badge" id="badge-ktv"></span></span>
+    </div>
+  </section>
+
+  <section class="card" data-tab="efficiency">
+    <h2>現在の機器設定</h2>
+    <div class="field-row"><label for="qb">血流量 (Qb)</label><input type="number" id="qb" value="250" step="1"><span class="unit">ml/min</span></div>
+    <div class="field-row"><label for="qd">透析液流量 (Qd)</label><input type="number" id="qd" value="500" step="1"><span class="unit">ml/min</span></div>
+    <div class="field-row"><label for="area">表面積 (Area)</label><input type="number" id="area" value="2.1" step="0.1"><span class="unit">㎡</span></div>
+    <div class="out-row"><span class="label">現在の KoA（実測Kt/Vから逆算）</span><span class="value" id="out-koa">—</span></div>
+    <div class="out-row"><span class="label">理論クリアランス K（Michaels式）</span><span class="value" id="out-ktheory">—</span></div>
+    <div class="out-row"><span class="label">実測クリアランス K</span><span class="value" id="out-kmeasured">—</span></div>
+    <div class="out-row"><span class="label">実効効率係数<span class="note">1.0に近いほど機器性能が発揮</span></span><span class="value" id="out-eff">—</span></div>
+  </section>
+
+  <section class="card full" data-tab="efficiency">
+    <h2>処方変更シミュレーション</h2>
+    <div class="field-row"><label for="qbNew">変更後の 血流量 (Qb)</label><input type="number" id="qbNew" value="300" step="1"><span class="unit">ml/min</span></div>
+    <div class="field-row"><label for="tNew">変更後の 透析時間 (t)</label><input type="number" id="tNew" value="240" step="1"><span class="unit">min</span></div>
+    <div class="field-row"><label for="koaNew">変更後の KoA</label><input type="number" id="koaNew" value="" step="1"><span class="unit">ml/min</span></div>
+    <div class="field-row"><label for="areaNew">変更後の 膜面積</label><input type="number" id="areaNew" value="" step="0.1"><span class="unit">㎡</span></div>
+    <div class="out-row"><span class="label">新・理論クリアランス</span><span class="value" id="out-ktheory-new">—</span></div>
+    <div class="out-row"><span class="label">新・実測予測クリアランス</span><span class="value" id="out-kmeasured-new">—</span></div>
+    <div class="out-row"><span class="label">予測 Kt/V</span><span class="value" id="out-ktv-new">—</span></div>
+    <div class="action-box">
+      <div class="title">優先改善アクション</div>
+      <div id="out-action">—</div>
+    </div>
+    <div class="action-box" style="margin-top:8px;">
+      <div class="title">除水リスク判定（PWIベース）</div>
+      <div id="out-risk">—</div>
+    </div>
+  </section>
+
+  <section class="card full" data-tab="anemia">
+    <h2>貧血・電解質管理</h2>
+    <div class="two-col-grid">
+      <div>
+        <div class="field-row"><label for="hgb">ヘモグロビン (Hgb)</label><input type="number" id="hgb" value="" step="0.1"><span class="unit">g/dL</span></div>
+        <div class="field-row"><label for="esa">ESA投与量/週</label><input type="number" id="esa" value="" step="1"><span class="unit">IU/週</span></div>
+      </div>
+      <div>
+        <div class="field-row"><label for="pPre">透析前 リン</label><input type="number" id="pPre" value="" step="0.1"><span class="unit">mg/dL</span></div>
+        <div class="field-row"><label for="pPost">透析後 リン</label><input type="number" id="pPost" value="" step="0.1"><span class="unit">mg/dL</span></div>
+        <div class="field-row"><label for="kPre">透析前 カリウム</label><input type="number" id="kPre" value="" step="0.1"><span class="unit">mEq/L</span></div>
+        <div class="field-row"><label for="kPost">透析後 カリウム</label><input type="number" id="kPost" value="" step="0.1"><span class="unit">mEq/L</span></div>
+      </div>
+    </div>
+    <div class="out-row">
+      <span class="label">ERI (ESA抵抗性指数)<span class="note">目安10〜15以上でESA低反応性 / ESA÷体重(DW)÷Hgb</span></span>
+      <span class="value" id="out-eri">—</span>
+    </div>
+    <div class="out-row"><span class="label">リン除去率 (PRR)<span class="note">通常50〜60%程度</span></span><span class="value" id="out-prr">—</span></div>
+    <div class="out-row"><span class="label">カリウム除去率 (KRR)</span><span class="value" id="out-krr">—</span></div>
+    <div class="action-box" style="margin-top:10px;">
+      <div class="title">貧血管理アラート</div>
+      <div id="out-anemia-alert">—</div>
+    </div>
+    <div class="action-box" style="margin-top:8px;">
+      <div class="title">リン除去アラート</div>
+      <div id="out-p-alert">—</div>
+    </div>
+  </section>
+
+  <section class="card full" data-tab="heart">
+    <h2>心不全管理</h2>
+
+    <h3 style="font-size:0.9rem; margin:4px 0 8px;">基本計測とEF分類</h3>
+    <div class="two-col-grid">
+      <div>
+        <div class="field-row"><label for="lvef">左室駆出率 (LVEF)</label><input type="number" id="lvef" value="" step="1"><span class="unit">%</span></div>
+        <div class="field-row"><label for="lvdd">LVDd</label><input type="number" id="lvdd" value="" step="1"><span class="unit">mm</span></div>
+      </div>
+      <div>
+        <div class="out-row"><span class="label">判定結果</span><span class="value" id="out-hf-class">—</span></div>
+        <div class="out-row"><span class="label">収縮能評価</span><span class="value" id="out-hf-systolic">—</span></div>
+      </div>
+    </div>
+    <div class="out-row"><span class="label">分類の正式名称</span><span class="value" id="out-hf-fullname">—</span></div>
+    <div class="out-row"><span class="label">推奨治療薬の概要</span><span class="value" id="out-hf-treatment" style="text-align:right; max-width:65%; white-space:normal; overflow-wrap:anywhere; line-height:1.4;">—</span></div>
+
+    <details class="section-details">
+      <summary><span class="details-row"><span>壁運動スコアリング (WMSI)</span><span class="value" id="out-wmsi">—</span></span></summary>
+      <div class="legend-row">
+        <span>1点: Normal（正常）</span>
+        <span>2点: Hypokinesis（低下、壁肥厚&lt;30%）</span>
+        <span>3点: Akinesis（消失）</span>
+        <span>4点: Dyskinesis（奇異性、動脈瘤様）</span>
+      </div>
+      <table class="mini-table">
+        <thead><tr><th>領域</th><th>灌流域</th><th>スコア</th></tr></thead>
+        <tbody id="wallSegmentBody"></tbody>
+      </table>
+    </details>
+
+    <details class="section-details">
+      <summary><span class="details-row"><span>弁膜症評価</span><span class="value" id="out-valve-summary">—</span></span></summary>
+      <table class="mini-table">
+        <thead><tr><th>弁膜症</th><th>重症度</th></tr></thead>
+        <tbody>
+          <tr><td>MR (僧帽弁逆流)</td><td><select id="valveMR"><option>None</option><option>Trivial</option><option>Mild</option><option>Moderate</option><option>Severe</option></select></td></tr>
+          <tr><td>AR (大動脈弁逆流)</td><td><select id="valveAR"><option>None</option><option>Trivial</option><option>Mild</option><option>Moderate</option><option>Severe</option></select></td></tr>
+          <tr><td>AS (大動脈弁狭窄)</td><td><select id="valveAS"><option>None</option><option>Trivial</option><option>Mild</option><option>Moderate</option><option>Severe</option></select></td></tr>
+          <tr><td>TR (三尖弁逆流)</td><td><select id="valveTR"><option>None</option><option>Trivial</option><option>Mild</option><option>Moderate</option><option>Severe</option></select></td></tr>
+        </tbody>
+      </table>
+    </details>
+
+    <div class="action-box" style="margin-top:10px;">
+      <div class="title">解析結果</div>
+      <div id="out-hf-summary">—</div>
+    </div>
+  </section>
+
+  <section class="card full" data-tab="trend">
+    <h2>PWI・mean Kr 経時グラフ</h2>
+    <p style="font-size:0.8rem; color:var(--text-sub); margin-top:-6px;">現在の計算結果を日付付きで記録し、経時変化をグラフ化します。</p>
+    <div class="log-controls no-print">
+      <label for="logDate" style="font-size:0.85rem; color:var(--text-sub);">記録日</label>
+      <input type="date" id="logDate">
+      <button type="button" class="btn-primary" id="logAddBtn">この結果を記録する</button>
+      <button type="button" class="btn-secondary" id="exportLogBtn">📤 記録をCSVダウンロード</button>
+    </div>
+    <table class="mini-table">
+      <thead><tr><th>日付</th><th>PWI</th><th>mean Kr</th><th>UFR</th><th class="no-print"></th></tr></thead>
+      <tbody id="logTableBody"></tbody>
+    </table>
+
+    <div class="chart-wrap">
+      <h3>PWI の推移（適正範囲 2〜4 を網掛け表示）</h3>
+      <div id="chart-pwi"></div>
+    </div>
+    <div class="chart-wrap" style="margin-bottom:0;">
+      <h3>mean Kr の推移（適正範囲 1〜4 を網掛け表示）</h3>
+      <div id="chart-kr"></div>
+    </div>
+  </section>
+
+  <section class="card full" data-tab="ai">
+    <h2>AI相談用プロンプト自動生成</h2>
+    <p style="font-size:0.8rem; color:var(--text-sub); margin-top:-6px;">入力中のデータから、AI（Claude等）へ考察を依頼する文章を自動生成します。「コピー」を押してAIチャットに貼り付けてください。</p>
+
+    <div class="prompt-block">
+      <div class="prompt-head">
+        <span class="prompt-title">① 除水設定・循環動態の考察依頼</span>
+        <button type="button" class="copy-btn" data-target="prompt-a">📋 コピー</button>
+      </div>
+      <textarea id="prompt-a" class="prompt-textarea" readonly rows="11"></textarea>
+    </div>
+
+    <div class="prompt-block">
+      <div class="prompt-head">
+        <span class="prompt-title">② 透析効率とのバランス考察依頼</span>
+        <button type="button" class="copy-btn" data-target="prompt-b">📋 コピー</button>
+      </div>
+      <textarea id="prompt-b" class="prompt-textarea" readonly rows="8"></textarea>
+    </div>
+
+    <div class="prompt-block">
+      <div class="prompt-head">
+        <span class="prompt-title">③ 透析処方最適化レポート依頼</span>
+        <button type="button" class="copy-btn" data-target="prompt-c">📋 コピー</button>
+      </div>
+      <textarea id="prompt-c" class="prompt-textarea" readonly rows="14"></textarea>
+    </div>
+
+    <div class="prompt-block">
+      <div class="prompt-head">
+        <span class="prompt-title">④ 処方シミュレーション・コンサルテーション依頼</span>
+        <button type="button" class="copy-btn" data-target="prompt-d">📋 コピー</button>
+      </div>
+      <textarea id="prompt-d" class="prompt-textarea" readonly rows="14"></textarea>
+    </div>
+
+    <div class="prompt-block" style="margin-bottom:0;">
+      <div class="prompt-head">
+        <span class="prompt-title">⑤ 総合カンファレンス評価依頼（透析効率・循環動態・貧血・電解質・心機能）</span>
+        <button type="button" class="copy-btn" data-target="prompt-e">📋 コピー</button>
+      </div>
+      <textarea id="prompt-e" class="prompt-textarea" readonly rows="16"></textarea>
+    </div>
+  </section>
+
+</div>
+
+<div id="toast" class="toast"></div>
+
+<footer>
+  数値は透析指標計算・分析.xlsx の計算式（除水設定/循環動態管理・透析効率/貧血管理・PWI.Krグラフ・心不全管理の4シート）に基づく参考値です。臨床判断は必ず医師・専門スタッフが行ってください。<br>
+  入力内容と記録データはブラウザの localStorage に自動保存され、次回開いたときも復元されます。
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  const WALL_SEGMENTS = [
+    ["Basal Anterior(基部前壁)", "LAD"],
+    ["Basal Ant-Sept(基部前壁中隔)", "LAD"],
+    ["Mid Anterior(中部前壁)", "LAD"],
+    ["Mid Ant-Sept(中部前壁中隔)", "LAD"],
+    ["Apical Anterior(心尖部前壁)", "LAD"],
+    ["Apical Septal(心尖部中隔)", "LAD"],
+    ["Basal Inferior(基部下壁)", "RCA"],
+    ["Basal Inf-Sept(基部下壁中隔)", "RCA"],
+    ["Mid Inferior(中部下壁)", "RCA"],
+    ["Mid Inf-Sept(中部下壁中隔)", "RCA"],
+    ["Apical Inferior(心尖部下壁)", "RCA"],
+    ["Basal Inf-Lat(基部下壁側壁)", "LCX"],
+    ["Basal Ant-Lat(基部前壁側壁)", "LCX"],
+    ["Mid Inf-Lat(中部下壁側壁)", "LCX"],
+    ["Mid Ant-Lat(中部前壁側壁)", "LCX"],
+    ["Apical Lateral(心尖部側壁)", "LCX"]
+  ];
+  const segIds = WALL_SEGMENTS.map((_, i) => "seg" + (i + 1));
+  const valveIds = ["valveMR", "valveAR", "valveAS", "valveTR"];
+
+  const ids = [
+    "t","ufTotal","bwPre","bwPost","tp1","tp2","ht1","co","ct",
+    "qb","qd","area","qbNew","tNew","koaNew","areaNew",
+    "hgb","esa","pPre","pPost","kPre","kPost",
+    "lvef","lvdd"
+  ].concat(valveIds).concat(segIds);
+  const LEGACY_STORAGE_KEY = "dialysisCalc_v1";
+  const LEGACY_LOG_KEY = "dialysisCalc_trend_v1";
+  const PATIENTS_KEY = "dialysisCalc_patients_v1";
+  const CURRENT_PATIENT_KEY = "dialysisCalc_currentPatientId_v1";
+  const TAB_KEY = "dialysisCalc_tab";
+
+  let patients = [];
+  let currentPatientId = null;
+  function dataKey() { return "dialysisCalc_v1_" + currentPatientId; }
+  function logKeyName() { return "dialysisCalc_trend_v1_" + currentPatientId; }
+  function currentPatientName() {
+    const p = patients.find(function (x) { return x.id === currentPatientId; });
+    return p ? p.name : "";
+  }
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function sanitizeFilename(s) {
+    return String(s).replace(/[\\/:*?"<>|]/g, "_");
+  }
+
+  function setTab(tab) {
+    document.querySelectorAll(".tab-btn").forEach(function (btn) {
+      btn.classList.toggle("active", btn.getAttribute("data-tab") === tab);
+    });
+    document.querySelectorAll(".container > section[data-tab]").forEach(function (sec) {
+      sec.style.display = (sec.getAttribute("data-tab") === tab) ? "block" : "none";
+    });
+    try { localStorage.setItem(TAB_KEY, tab); } catch (e) {}
+  }
+
+  let currentPWI = NaN, currentMeanKr = NaN, currentUFR = NaN;
+  let lastResults = {};
+
+  function num(id) {
+    const el = document.getElementById(id);
+    const v = parseFloat(el.value);
+    return isNaN(v) ? NaN : v;
+  }
+
+  function fmt(v, digits, suffix) {
+    if (!isFinite(v)) return "—";
+    return v.toFixed(digits) + (suffix || "");
+  }
+
+  function rv(v) {
+    return isFinite(v) ? v : "未入力";
+  }
+
+  let toastTimer = null;
+  function showToast(msg) {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.classList.remove("show"); }, 1600);
+  }
+
+  function setBadge(el, cls, text) {
+    el.className = "badge " + cls;
+    el.textContent = text;
+  }
+
+  function pwiJudge(pwi) {
+    if (!isFinite(pwi)) return { cls: "caution", text: "入力不足" };
+    if (pwi < 2) return { cls: "warn", text: "DWを下げる必要がある（循環血漿量が多い）" };
+    if (pwi > 4) return { cls: "warn", text: "DWを上げる必要がある（循環血漿量が不足）" };
+    return { cls: "ok", text: "適正範囲" };
+  }
+
+  function krJudge(kr) {
+    if (!isFinite(kr)) return { cls: "caution", text: "入力不足" };
+    if (kr < 1) return { cls: "warn", text: "DWを上げる必要がある" };
+    if (kr > 4) return { cls: "warn", text: "DWを下げる必要がある" };
+    return { cls: "ok", text: "適正範囲" };
+  }
+
+  function michaelsK(Qb, Qd, KoA) {
+    const x = (KoA / Qb) * (1 - Qb / Qd);
+    const e = Math.exp(x);
+    return (Qb * (e - 1)) / (e - Qb / Qd);
+  }
+
+  function koaFromK(Qb, Qd, K) {
+    const a = 1 - K / Qd;
+    const b = 1 - K / Qb;
+    if (a <= 0 || b <= 0) return NaN;
+    return (Qb / (1 - Qb / Qd)) * Math.log(a / b);
+  }
+
+  function recalc() {
+    // --- 基本情報 ---
+    const t = num("t");
+    const ufTotal = num("ufTotal");
+    const bwPre = num("bwPre");
+    const bwPost = num("bwPost");
+    const tp1 = num("tp1");
+    const tp2 = num("tp2");
+    const ht1 = num("ht1");
+    const co = num("co");
+    const ct = num("ct");
+
+    // --- 循環動態 ---
+    const dBW = bwPre - bwPost; // ΔBW
+    const bwRate = bwPre ? dBW / bwPre : NaN; // 体重変化率
+    const tpRate = tp2 ? 1 - (tp1 / tp2) : NaN; // TP濃縮率
+    const ufr = t ? ufTotal / t : NaN; // ml/min
+    const pi1 = 2.1 * tp1 + 0.16 * Math.pow(tp1, 2) + 0.009 * Math.pow(tp1, 3);
+    const pi2 = 2.1 * tp2 + 0.16 * Math.pow(tp2, 2) + 0.009 * Math.pow(tp2, 3);
+    const cpv1 = 0.077 * bwPre * 1000 * (1 - ht1 / 100);
+    const cpv2 = cpv1 * (tp1 / tp2);
+    const cpvRate = t ? (cpv1 - cpv2) / t : NaN; // ml/min
+    const pwi = bwRate ? tpRate / bwRate : NaN;
+    const meanKr = (pi2 - pi1) ? (ufr - cpvRate) / (pi2 - pi1) : NaN;
+    currentPWI = pwi;
+    currentMeanKr = meanKr;
+    currentUFR = ufr;
+
+    document.getElementById("out-dbw").textContent = fmt(dBW, 2, " kg");
+    document.getElementById("out-bwr").textContent = fmt(bwRate * 100, 2, " %");
+    document.getElementById("out-tpr").textContent = fmt(tpRate * 100, 2, " %");
+    document.getElementById("out-ufr").textContent = fmt(ufr, 1, " ml/min");
+    document.getElementById("out-pi").textContent = isFinite(pi1) && isFinite(pi2)
+      ? fmt(pi1, 1, "") + " → " + fmt(pi2, 1, " mmHg") : "—";
+    document.getElementById("out-cpv").textContent = isFinite(cpv1) && isFinite(cpv2)
+      ? fmt(cpv1, 0, "") + " → " + fmt(cpv2, 0, " ml") : "—";
+    document.getElementById("out-cpvrate").textContent = fmt(cpvRate, 2, " ml/min");
+    document.getElementById("out-pwi").textContent = fmt(pwi, 3, "");
+    document.getElementById("out-kr").textContent = fmt(meanKr, 3, " ml/min/mmHg");
+
+    const pwiJ = pwiJudge(pwi);
+    setBadge(document.getElementById("badge-pwi"), pwiJ.cls, pwiJ.text);
+    const krJ = krJudge(meanKr);
+    setBadge(document.getElementById("badge-kr"), krJ.cls, krJ.text);
+
+    // --- 透析効率 ---
+    const urr = co ? ((co - ct) / co) * 100 : NaN;
+    const ktRatio = co ? ct / co : NaN;
+    const ktv = (isFinite(ktRatio) && bwPost)
+      ? -Math.log(ktRatio - 0.008 * (t / 60)) + (4 - 3.5 * ktRatio) * (dBW / bwPost)
+      : NaN;
+
+    document.getElementById("out-urr").textContent = fmt(urr, 1, " %");
+    document.getElementById("out-ktv").textContent = fmt(ktv, 2, "");
+    if (!isFinite(urr)) {
+      setBadge(document.getElementById("badge-urr"), "caution", "入力不足");
+    } else {
+      setBadge(document.getElementById("badge-urr"), urr >= 65 ? "ok" : "warn", urr >= 65 ? "目標達成" : "目標未達（65%以上）");
+    }
+    if (!isFinite(ktv)) {
+      setBadge(document.getElementById("badge-ktv"), "caution", "入力不足");
+    } else {
+      setBadge(document.getElementById("badge-ktv"), ktv >= 1.2 ? "ok" : "warn", ktv >= 1.2 ? "目標達成" : "目標未達（1.2以上）");
+    }
+
+    // --- 機器設定・クリアランス ---
+    const qb = num("qb");
+    const qd = num("qd");
+    const kMeasured = (t && bwPost && isFinite(ktv)) ? (ktv * (bwPost * 0.6) * 1000) / t : NaN;
+    const koaCurrent = (qb && qd && isFinite(kMeasured)) ? koaFromK(qb, qd, kMeasured) : NaN;
+    const kTheory = (qb && qd && isFinite(koaCurrent)) ? michaelsK(qb, qd, koaCurrent) : NaN;
+    const effCoef = (isFinite(kTheory) && kTheory) ? kMeasured / kTheory : NaN;
+
+    document.getElementById("out-koa").textContent = fmt(koaCurrent, 1, " ml/min");
+    document.getElementById("out-ktheory").textContent = fmt(kTheory, 1, " ml/min");
+    document.getElementById("out-kmeasured").textContent = fmt(kMeasured, 1, " ml/min");
+    document.getElementById("out-eff").textContent = fmt(effCoef, 2, "");
+
+    // --- シミュレーション ---
+    const qbNew = num("qbNew");
+    const tNew = num("tNew");
+    let koaNewInput = num("koaNew");
+    const koaNew = isFinite(koaNewInput) ? koaNewInput : koaCurrent;
+    const kTheoryNew = (qbNew && qd && isFinite(koaNew)) ? michaelsK(qbNew, qd, koaNew) : NaN;
+    const kMeasuredNew = (isFinite(kTheoryNew) && isFinite(effCoef)) ? kTheoryNew * effCoef : NaN;
+    const ktvNew = (isFinite(kMeasuredNew) && bwPost && tNew)
+      ? (kMeasuredNew * tNew) / ((bwPost * 0.6) * 1000) : NaN;
+
+    document.getElementById("out-ktheory-new").textContent = fmt(kTheoryNew, 1, " ml/min");
+    document.getElementById("out-kmeasured-new").textContent = fmt(kMeasuredNew, 1, " ml/min");
+    document.getElementById("out-ktv-new").textContent = fmt(ktvNew, 2, "");
+
+    let action;
+    if (!isFinite(ktv) || !isFinite(effCoef) || !qb) {
+      action = "入力不足のため判定できません。";
+    } else if (ktv >= 1.2) {
+      action = "現状維持可能";
+    } else if (effCoef < 0.8) {
+      action = "再循環/回路点検推奨";
+    } else if (qb < 250) {
+      action = "Qb増量を検討";
+    } else {
+      action = "膜面積(KoA)増を検討";
+    }
+    document.getElementById("out-action").textContent = action;
+
+    const riskJ = pwiJudge(pwi);
+    document.getElementById("out-risk").textContent = riskJ.text;
+
+    // --- 貧血・電解質 ---
+    const hgb = num("hgb");
+    const esa = num("esa");
+    const pPre = num("pPre");
+    const pPost = num("pPost");
+    const kPre = num("kPre");
+    const kPost = num("kPost");
+
+    const eri = (bwPost && hgb) ? esa / bwPost / hgb : NaN;
+    const prr = pPre ? ((pPre - pPost) / pPre) * 100 : NaN;
+    const krr = kPre ? ((kPre - kPost) / kPre) * 100 : NaN;
+
+    document.getElementById("out-eri").textContent = fmt(eri, 1, "");
+    document.getElementById("out-prr").textContent = fmt(prr, 1, " %");
+    document.getElementById("out-krr").textContent = fmt(krr, 1, " %");
+
+    let anemiaAlert;
+    if (!isFinite(eri) && !isFinite(hgb)) {
+      anemiaAlert = "入力不足のため判定できません。";
+    } else if (isFinite(eri) && eri > 15) {
+      anemiaAlert = "【警告】ESA低反応性（透析量不足/鉄欠乏/炎症を評価）";
+    } else if (isFinite(hgb) && hgb < 10) {
+      anemiaAlert = "Hgb低下（ESA増量検討）";
+    } else {
+      anemiaAlert = "貧血管理 良好";
+    }
+    document.getElementById("out-anemia-alert").textContent = anemiaAlert;
+
+    let pAlert;
+    if (!isFinite(prr)) {
+      pAlert = "入力不足のため判定できません。";
+    } else if (prr < 50) {
+      pAlert = "リン除去不足（KoA増/時間延長の検討）";
+    } else {
+      pAlert = "リン除去 良好";
+    }
+    document.getElementById("out-p-alert").textContent = pAlert;
+
+    // --- 心不全管理 ---
+    const lvef = num("lvef");
+    const lvdd = num("lvdd");
+    let efClass = null, efFullName = null, systolicEval = null, treatment = null;
+    if (isFinite(lvef)) {
+      if (lvef < 40) {
+        efClass = "HFrEF"; efFullName = "収縮能の低下した心不全"; systolicEval = "低下";
+        treatment = "Fantastic Four (ARNI/ACEi/ARB, β遮断薬, MRA, SGLT2i)";
+      } else if (lvef < 50) {
+        efClass = "HFmrEF"; efFullName = "軽度低下した心不全"; systolicEval = "軽度低下";
+        treatment = "SGLT2i推奨、その他HFrEFに準じた薬物療法";
+      } else {
+        efClass = "HFpEF"; efFullName = "収縮能の保持された心不全"; systolicEval = "保持";
+        treatment = "SGLT2i、利尿薬、併存症（HT, AF）の管理";
+      }
+    }
+    document.getElementById("out-hf-class").textContent = efClass || "—";
+    document.getElementById("out-hf-fullname").textContent = efFullName || "—";
+    document.getElementById("out-hf-systolic").textContent = systolicEval || "—";
+    document.getElementById("out-hf-treatment").textContent = treatment || "—";
+
+    let segSum = 0, segCount = 0;
+    segIds.forEach(function (id) {
+      const v = parseInt(document.getElementById(id).value, 10);
+      if (!isNaN(v)) { segSum += v; segCount++; }
+    });
+    const wmsi = segCount ? segSum / segCount : NaN;
+    document.getElementById("out-wmsi").textContent = fmt(wmsi, 2);
+
+    const valveMR = document.getElementById("valveMR").value;
+    const valveAR = document.getElementById("valveAR").value;
+    const valveAS = document.getElementById("valveAS").value;
+    const valveTR = document.getElementById("valveTR").value;
+    const severeValveCount = [valveMR, valveAR, valveAS, valveTR].filter(function (v) { return v === "Severe"; }).length;
+    const abnormalValveCount = [valveMR, valveAR, valveAS, valveTR].filter(function (v) { return v !== "None"; }).length;
+    const valveSummaryText = severeValveCount > 0
+      ? ("⚠ Severe " + severeValveCount + "件")
+      : (abnormalValveCount > 0 ? ("軽度〜中等度 " + abnormalValveCount + "件") : "異常なし");
+    document.getElementById("out-valve-summary").textContent = valveSummaryText;
+
+    let hfSummary = "—";
+    if (isFinite(lvef)) {
+      hfSummary = "【解析結果】 " + efClass + " (" + systolicEval + ") です。";
+      hfSummary += (wmsi > 1.2)
+        ? ("特定の壁運動異常(RWMA)を認め、WMSIは " + fmt(wmsi, 2) + " と上昇しており虚血性変化が疑われます。")
+        : "明らかなRWMAは認めず、全周性の病態が疑われます。";
+      hfSummary += (isFinite(lvdd) && lvdd >= 55)
+        ? (" LVDdが " + lvdd + "mm と拡大しており、左室リモデリングの進行が示唆されます。")
+        : " LVDdは許容範囲内です。";
+      if (severeValveCount > 0) {
+        hfSummary += " また、Severeな弁膜症を認めるため、心不全の主要因または増悪因子として考慮が必要です。";
+      }
+    }
+    document.getElementById("out-hf-summary").textContent = hfSummary;
+
+    // --- AI相談用プロンプト自動生成 ---
+    const area = num("area");
+    const areaNewRaw = num("areaNew");
+    const areaNewVal = isFinite(areaNewRaw) ? areaNewRaw : area;
+
+    const promptA =
+`【透析分析依頼】以下のデータに基づき、医学的な考察をお願いします。
+
+■基本データ
+透析時間: ${rv(t)}min, 除水量: ${rv(ufTotal)}ml (UFR: ${fmt(ufr, 1)} ml/min)
+体重: ${rv(bwPre)}kg → ${rv(bwPost)}kg (Δ${fmt(dBW, 2)}kg)
+TP: ${rv(tp1)} → ${rv(tp2)} g/dL
+Ht(前): ${rv(ht1)}%
+
+■算出指標
+1. PWI (Protein-Water Index): ${fmt(pwi, 3)}
+   (エビデンス：PWI <2 は除水量に対し循環血漿量が多い状態のためDWを下げる必要がある。2≦PWI≦4 はDWが適正範囲にある可能性が高い。これは体重の1%の除水に対し、循環血漿量が2〜4%減少することを示し、適切なplasma refilling rate（血管内への水分補充速度）が保たれている状態と解釈される。PWI >4 は除水量に対し循環血漿量が不足している状態のためDWを上げる必要がある。)
+2. mean Kr (プラズマリフィル係数): ${fmt(meanKr, 3)} ml/min/mmHg
+   (エビデンス：mean Kr<1 はDWを上げる必要がある。1≦mean Kr≦4 はDWが適正範囲にある可能性が高い。mean Kr>4 はDWを下げる必要がある。)
+3. CPV Rate (血漿量減少速度): ${fmt(cpvRate, 2)} ml/min
+4. 膠質浸透圧変化(π): ${fmt(pi1, 1)} → ${fmt(pi2, 1)} mmHg
+
+■依頼事項
+上記指標（特にPWIとmean Kr）のバランスから、現在の除水設定が患者のプラズマリフィル能力に対して適切か、またはリフィル不全のリスクがあるか分析してください。`;
+
+    const promptB =
+`【透析分析依頼】以下のデータに基づき考察をお願いします。
+
+■効率指標
+Kt/V: ${fmt(ktv, 2)} (目標1.2以上)
+URR: ${fmt(urr, 1)}% (目標65%以上)
+
+■動態指標
+PWI: ${fmt(pwi, 3)}, mean Kr: ${fmt(meanKr, 3)}
+
+■状況
+BUN: ${rv(co)}→${rv(ct)}, 除水: ${rv(ufTotal)}ml
+
+この患者の透析効率と循環動態のバランスについて分析してください。`;
+
+    const promptC =
+`【透析処方最適化レポート依頼】
+以下の計算結果に基づき、透析専門医として最適化案を提示してください。
+
+■1. 現在のステータス
+・実測Kt/V: ${fmt(ktv, 2)} (目標1.2以上)
+・実行効率係数: ${fmt(effCoef, 2)} (※1.0に近いほど機器性能が発揮されている)
+・循環動態PWI: ${fmt(pwi, 2)} (※エビデンスPWI <2 は除水量に対し循環血漿量が多い状態のためDWを下げる必要がある。2≦PWI≦4 はDWが適正範囲にある可能性が高い。PWI >4 は除水量に対し循環血漿量が不足している状態のためDWを上げる必要がある。)
+
+■2. シミュレーション条件
+・案：Qbを ${rv(qbNew)} ml/min、KoAを ${fmt(koaNew, 1)} に変更
+・予測Kt/V: ${fmt(ktvNew, 2)}
+
+■3. AIへの分析指示
+① 現在の透析効率（Kt/V）不足の原因は、血流量(Qb)不足、ダイアライザ性能(KoA)不足、透析時間のいずれにある可能性が高いか？
+② 実行効率係数が低い場合、シャント再循環や膜の目詰まりの可能性についてどう考えるか？
+③ シミュレーション案を適用した場合、循環動態（PWI）にどのような影響を及ぼすリスクがあるか？
+④ この患者に最適な『次回の処方変更案（優先順位）』を提示してください。`;
+
+    const promptD =
+`【透析処方シミュレーション・コンサルテーション】
+透析専門医として、以下のシミュレーション結果に対する見解と最適なアプローチを提案してください。
+
+■ 現在の状況
+・実測Kt/V: ${fmt(ktv, 2)} (目標1.2以上)
+・現在の処方: 時間 ${rv(t)}分, Qb ${rv(qb)}ml/min, 膜面積 ${rv(area)}㎡ (KoA ${fmt(koaCurrent, 1)})
+・実効効率係数: ${fmt(effCoef, 2)} (※1.0から離れるほど再循環等のロスあり)
+
+■ シミュレーション案
+以下の処方に変更した場合の予測値です。
+・変更後: 時間 ${rv(tNew)}分, Qb ${rv(qbNew)}ml/min, 膜面積 ${rv(areaNewVal)}㎡ (KoA ${fmt(koaNew, 1)})
+・予測Kt/V: ${fmt(ktvNew, 2)}
+
+■ 依頼事項
+1. 今回のKt/V改善において、「時間延長」「血流量(Qb)増加」「ダイアライザ(KoA)のスケールアップ」のうち、どれが最も理論的な効果が高いと推測されますか？
+2. 心機能や血行動態（除水負担）を考慮した場合、実臨床ではどの変数を優先して変更すべきか、専門的な見地からアドバイスをお願いします。`;
+
+    const promptE =
+`【透析総合カンファレンス 評価依頼】
+以下の5ドメインのデータから、患者の現在の状態と処方変更の最適解を専門医レベルで考察してください。
+
+■1. 透析効率・機器性能
+Kt/V: ${fmt(ktv, 2)} / 実行効率係数: ${fmt(effCoef, 2)}
+現在の血流量(Qb): ${rv(qb)}ml/min, ダイアライザKoA: ${fmt(koaCurrent, 1)}
+
+■2. 循環動態（プラズマリフィル）
+PWI: ${fmt(pwi, 2)} / mean Kr: ${fmt(meanKr, 3)}
+除水速度: ${fmt(ufr, 1)} ml/min
+
+■3. 貧血管理
+Hgb: ${rv(hgb)} g/dL / ESA投与量: ${rv(esa)} IU/週
+ERI (ESA抵抗性指数): ${fmt(eri, 1)}
+
+■4. 電解質・物質除去
+P除去率: ${fmt(prr, 1)}% (前 ${rv(pPre)} → 後 ${rv(pPost)})
+K除去率: ${fmt(krr, 1)}%
+
+■5. 心機能
+LVEF: ${rv(lvef)}% (${efClass || "未評価"} / 収縮能${systolicEval || "未評価"})
+WMSI: ${fmt(wmsi, 2)} / LVDd: ${rv(lvdd)}mm
+弁膜症: MR ${valveMR} / AR ${valveAR} / AS ${valveAS} / TR ${valveTR}
+
+■依頼事項
+1. 【総合評価】Kt/V、ERI、P除去率のバランスから、現在の透析量は質・量ともに十分ですか？（※Kt/Vは足りていても中分子/リン除去が不足していないか等）
+2. 【処方提案】血流量(Qb)アップ、ダイアライザの膜面積(KoA)拡大、透析時間の延長のうち、この患者のデータ（特にPWI等の循環動態負担や心機能(LVEF・弁膜症)を考慮）から最も安全で効果的な一手はどれですか？理由とともに提案してください。`;
+
+    document.getElementById("prompt-a").value = promptA;
+    document.getElementById("prompt-b").value = promptB;
+    document.getElementById("prompt-c").value = promptC;
+    document.getElementById("prompt-d").value = promptD;
+    document.getElementById("prompt-e").value = promptE;
+
+    lastResults = {
+      dBW: dBW, bwRate: bwRate, tpRate: tpRate, ufr: ufr, pwi: pwi, meanKr: meanKr,
+      urr: urr, ktv: ktv, koaCurrent: koaCurrent, kTheory: kTheory, kMeasured: kMeasured, effCoef: effCoef,
+      eri: eri, prr: prr, krr: krr, wmsi: wmsi, efClass: efClass
+    };
+  }
+
+  function save() {
+    const data = {};
+    ids.forEach(id => { data[id] = document.getElementById(id).value; });
+    try { localStorage.setItem(dataKey(), JSON.stringify(data)); } catch (e) {}
+  }
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(dataKey());
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      ids.forEach(id => {
+        if (data[id] !== undefined && data[id] !== "") {
+          document.getElementById(id).value = data[id];
+        }
+      });
+    } catch (e) {}
+  }
+
+  function clearForm() {
+    ids.forEach(function (id) {
+      document.getElementById(id).value = DEFAULTS[id];
+    });
+  }
+
+  function buildWallSegmentTable() {
+    const tbody = document.getElementById("wallSegmentBody");
+    tbody.innerHTML = WALL_SEGMENTS.map(function (seg, i) {
+      return '<tr><td>' + seg[0] + '</td><td><span class="territory-badge">' + seg[1] + '</span></td><td>' +
+        '<select id="seg' + (i + 1) + '">' +
+        '<option value="1">1点 Normal</option>' +
+        '<option value="2">2点 Hypokinesis</option>' +
+        '<option value="3">3点 Akinesis</option>' +
+        '<option value="4">4点 Dyskinesis</option>' +
+        '</select></td></tr>';
+    }).join("");
+  }
+
+  // --- PWI・mean Kr 経時グラフ ---
+  let trendLog = [];
+  function loadLog() {
+    try {
+      const raw = localStorage.getItem(logKeyName());
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) { return []; }
+  }
+  function saveLog() {
+    try { localStorage.setItem(logKeyName(), JSON.stringify(trendLog)); } catch (e) {}
+  }
+  function todayISO() {
+    const d = new Date();
+    const pad = n => String(n).padStart(2, "0");
+    return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+  }
+  function formatShortDate(iso) {
+    const parts = iso.split("-");
+    return parts.length === 3 ? parts[1] + "/" + parts[2] : iso;
+  }
+  function renderLogTable() {
+    const tbody = document.getElementById("logTableBody");
+    if (trendLog.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-sub);">記録がありません</td></tr>';
+      return;
+    }
+    tbody.innerHTML = trendLog.map(function (e) {
+      return '<tr><td>' + e.date + '</td>' +
+        '<td>' + (isFinite(e.pwi) ? e.pwi.toFixed(3) : "—") + '</td>' +
+        '<td>' + (isFinite(e.meanKr) ? e.meanKr.toFixed(3) : "—") + '</td>' +
+        '<td>' + (isFinite(e.ufr) ? e.ufr.toFixed(1) : "—") + '</td>' +
+        '<td class="no-print"><button type="button" class="btn-del" data-date="' + e.date + '">✕</button></td></tr>';
+    }).join("");
+  }
+  function buildLineChartSVG(points, opts) {
+    const w = 600, h = 220, ml = 40, mr = 12, mt = 12, mb = 30;
+    if (!points.length) {
+      return '<div class="chart-empty">記録がありません（上の「この結果を記録する」で追加してください）</div>';
+    }
+    const pw = w - ml - mr, ph = h - mt - mb;
+    const n = points.length;
+    const values = points.map(p => p.y);
+    const yMin = 0;
+    const yMax = Math.max(opts.refMax + 1, Math.ceil(Math.max.apply(null, values)) + 1);
+    function xAt(i) { return n === 1 ? ml + pw / 2 : ml + (pw * i) / (n - 1); }
+    function yAt(v) { return mt + ph - ((v - yMin) / (yMax - yMin)) * ph; }
+    const refTop = yAt(opts.refMax), refBottom = yAt(opts.refMin);
+    const polyPoints = points.map((p, i) => xAt(i) + "," + yAt(p.y)).join(" ");
+    const circles = points.map(function (p, i) {
+      const cx = xAt(i), cy = yAt(p.y);
+      return '<circle cx="' + cx + '" cy="' + cy + '" r="4" fill="' + opts.color + '" stroke="#fff" stroke-width="1.5"><title>' + p.x + ": " + p.y.toFixed(opts.digits) + '</title></circle>';
+    }).join("");
+    const labelStep = Math.max(1, Math.ceil(n / 7));
+    let xLabels = "";
+    points.forEach(function (p, i) {
+      if (i % labelStep === 0 || i === n - 1) {
+        xLabels += '<text x="' + xAt(i) + '" y="' + (h - 8) + '" font-size="9" text-anchor="middle" fill="#647089">' + formatShortDate(p.x) + '</text>';
+      }
+    });
+    const yTicks = [yMin, (yMin + yMax) / 2, yMax];
+    const yLabels = yTicks.map(function (v) {
+      return '<text x="' + (ml - 6) + '" y="' + (yAt(v) + 3) + '" font-size="9" text-anchor="end" fill="#647089">' + v.toFixed(1) + '</text>';
+    }).join("");
+    return '<svg viewBox="0 0 ' + w + ' ' + h + '" class="trend-chart" preserveAspectRatio="xMidYMid meet">' +
+      '<rect x="' + ml + '" y="' + refTop + '" width="' + pw + '" height="' + (refBottom - refTop) + '" fill="' + opts.color + '" opacity="0.12" rx="4" />' +
+      '<line x1="' + ml + '" y1="' + mt + '" x2="' + ml + '" y2="' + (mt + ph) + '" stroke="#dfe5ef" />' +
+      '<line x1="' + ml + '" y1="' + (mt + ph) + '" x2="' + (ml + pw) + '" y2="' + (mt + ph) + '" stroke="#dfe5ef" />' +
+      yLabels + xLabels +
+      '<polyline points="' + polyPoints + '" fill="none" stroke="' + opts.color + '" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />' +
+      circles +
+      '</svg>';
+  }
+  function renderCharts() {
+    const pwiPoints = trendLog.filter(e => isFinite(e.pwi)).map(e => ({ x: e.date, y: e.pwi }));
+    const krPoints = trendLog.filter(e => isFinite(e.meanKr)).map(e => ({ x: e.date, y: e.meanKr }));
+    document.getElementById("chart-pwi").innerHTML = buildLineChartSVG(pwiPoints, { refMin: 2, refMax: 4, color: "#2f6fed", digits: 3 });
+    document.getElementById("chart-kr").innerHTML = buildLineChartSVG(krPoints, { refMin: 1, refMax: 4, color: "#1d7a46", digits: 3 });
+  }
+  function addLogEntry() {
+    const dateEl = document.getElementById("logDate");
+    const date = dateEl.value || todayISO();
+    if (!isFinite(currentPWI) || !isFinite(currentMeanKr)) {
+      showToast("PWI・mean Krを計算できる入力が必要です");
+      return;
+    }
+    const entry = { date: date, pwi: currentPWI, meanKr: currentMeanKr, ufr: currentUFR };
+    const idx = trendLog.findIndex(e => e.date === date);
+    if (idx >= 0) trendLog[idx] = entry; else trendLog.push(entry);
+    trendLog.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+    saveLog();
+    renderLogTable();
+    renderCharts();
+    showToast("記録しました");
+  }
+
+  // --- CSVエクスポート ---
+  function csvEscape(v) {
+    const s = (v === null || v === undefined) ? "" : String(v);
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }
+  function csvRow(arr) { return arr.map(csvEscape).join(","); }
+  function downloadCSV(filename, csvText) {
+    const blob = new Blob(["﻿" + csvText], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+  function timestampForFilename() {
+    const d = new Date();
+    const pad = n => String(n).padStart(2, "0");
+    return d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + "_" + pad(d.getHours()) + pad(d.getMinutes());
+  }
+  function exportSnapshot() {
+    const r = lastResults;
+    const pairs = [
+      ["患者名", currentPatientName()],
+      ["出力日時", new Date().toLocaleString()],
+      ["透析時間(min)", document.getElementById("t").value],
+      ["総除水量(ml)", document.getElementById("ufTotal").value],
+      ["透析前体重(kg)", document.getElementById("bwPre").value],
+      ["透析後体重/DW(kg)", document.getElementById("bwPost").value],
+      ["透析前TP(g/dL)", document.getElementById("tp1").value],
+      ["透析後TP(g/dL)", document.getElementById("tp2").value],
+      ["透析前Ht(%)", document.getElementById("ht1").value],
+      ["透析前BUN(mg/dL)", document.getElementById("co").value],
+      ["透析後BUN(mg/dL)", document.getElementById("ct").value],
+      ["ΔBW(kg)", fmt(r.dBW, 2)],
+      ["体重変化率(%)", fmt(r.bwRate * 100, 2)],
+      ["TP濃縮率(%)", fmt(r.tpRate * 100, 2)],
+      ["UFR(ml/min)", fmt(r.ufr, 1)],
+      ["PWI", fmt(r.pwi, 3)],
+      ["mean Kr(ml/min/mmHg)", fmt(r.meanKr, 3)],
+      ["URR(%)", fmt(r.urr, 1)],
+      ["Kt/V(Daugirdas)", fmt(r.ktv, 2)],
+      ["Qb(ml/min)", document.getElementById("qb").value],
+      ["Qd(ml/min)", document.getElementById("qd").value],
+      ["表面積Area(㎡)", document.getElementById("area").value],
+      ["現在のKoA(ml/min)", fmt(r.koaCurrent, 1)],
+      ["理論クリアランスK(ml/min)", fmt(r.kTheory, 1)],
+      ["実測クリアランスK(ml/min)", fmt(r.kMeasured, 1)],
+      ["実効効率係数", fmt(r.effCoef, 2)],
+      ["Hgb(g/dL)", document.getElementById("hgb").value],
+      ["ESA投与量(IU/週)", document.getElementById("esa").value],
+      ["透析前リン(mg/dL)", document.getElementById("pPre").value],
+      ["透析後リン(mg/dL)", document.getElementById("pPost").value],
+      ["透析前カリウム(mEq/L)", document.getElementById("kPre").value],
+      ["透析後カリウム(mEq/L)", document.getElementById("kPost").value],
+      ["ERI", fmt(r.eri, 1)],
+      ["リン除去率PRR(%)", fmt(r.prr, 1)],
+      ["カリウム除去率KRR(%)", fmt(r.krr, 1)],
+      ["LVEF(%)", document.getElementById("lvef").value],
+      ["LVDd(mm)", document.getElementById("lvdd").value],
+      ["EF分類", r.efClass || ""],
+      ["WMSI", fmt(r.wmsi, 2)],
+      ["MR", document.getElementById("valveMR").value],
+      ["AR", document.getElementById("valveAR").value],
+      ["AS", document.getElementById("valveAS").value],
+      ["TR", document.getElementById("valveTR").value]
+    ];
+    const rows = [csvRow(["項目", "値"])].concat(pairs.map(csvRow));
+    downloadCSV("透析データ_" + sanitizeFilename(currentPatientName()) + "_" + timestampForFilename() + ".csv", rows.join("\r\n"));
+    showToast("CSVをダウンロードしました");
+  }
+  function exportLog() {
+    if (!trendLog.length) {
+      showToast("記録がありません");
+      return;
+    }
+    const rows = [csvRow(["日付", "PWI", "mean Kr", "UFR(ml/min)"])];
+    trendLog.forEach(function (e) {
+      rows.push(csvRow([
+        e.date,
+        isFinite(e.pwi) ? e.pwi.toFixed(3) : "",
+        isFinite(e.meanKr) ? e.meanKr.toFixed(3) : "",
+        isFinite(e.ufr) ? e.ufr.toFixed(1) : ""
+      ]));
+    });
+    downloadCSV("PWI_Kr経時記録_" + sanitizeFilename(currentPatientName()) + "_" + timestampForFilename() + ".csv", rows.join("\r\n"));
+    showToast("CSVをダウンロードしました");
+  }
+  document.getElementById("exportSnapshotBtn").addEventListener("click", exportSnapshot);
+  document.getElementById("exportLogBtn").addEventListener("click", exportLog);
+  document.getElementById("printBtn").addEventListener("click", function () {
+    const now = new Date();
+    const pad = n => String(n).padStart(2, "0");
+    document.getElementById("printTimestamp").textContent =
+      "患者: " + currentPatientName() + " ／ 出力日時: " + now.getFullYear() + "/" + pad(now.getMonth() + 1) + "/" + pad(now.getDate()) + " " + pad(now.getHours()) + ":" + pad(now.getMinutes());
+    window.print();
+  });
+
+  buildWallSegmentTable();
+
+  const DEFAULTS = {};
+  ids.forEach(function (id) { DEFAULTS[id] = document.getElementById(id).value; });
+
+  // --- 複数患者管理 ---
+  function loadPatients() {
+    try {
+      const raw = localStorage.getItem(PATIENTS_KEY);
+      patients = raw ? JSON.parse(raw) : [];
+    } catch (e) { patients = []; }
+  }
+  function savePatients() {
+    try { localStorage.setItem(PATIENTS_KEY, JSON.stringify(patients)); } catch (e) {}
+  }
+  function migrateLegacyIfNeeded() {
+    if (patients.length > 0) return;
+    const legacyData = localStorage.getItem(LEGACY_STORAGE_KEY);
+    const legacyLog = localStorage.getItem(LEGACY_LOG_KEY);
+    const id = "p" + Date.now();
+    patients = [{ id: id, name: "患者1" }];
+    if (legacyData) {
+      localStorage.setItem("dialysisCalc_v1_" + id, legacyData);
+      localStorage.removeItem(LEGACY_STORAGE_KEY);
+    }
+    if (legacyLog) {
+      localStorage.setItem("dialysisCalc_trend_v1_" + id, legacyLog);
+      localStorage.removeItem(LEGACY_LOG_KEY);
+    }
+    savePatients();
+  }
+  function ensureCurrentPatient() {
+    let saved = null;
+    try { saved = localStorage.getItem(CURRENT_PATIENT_KEY); } catch (e) {}
+    currentPatientId = (saved && patients.some(function (p) { return p.id === saved; }))
+      ? saved : patients[0].id;
+  }
+  function renderPatientSelect() {
+    const sel = document.getElementById("patientSelect");
+    sel.innerHTML = patients.map(function (p) {
+      return '<option value="' + p.id + '"' + (p.id === currentPatientId ? ' selected' : '') + '>' + escapeHtml(p.name) + '</option>';
+    }).join("");
+  }
+  function switchPatient(newId, isNew) {
+    save();
+    saveLog();
+    currentPatientId = newId;
+    try { localStorage.setItem(CURRENT_PATIENT_KEY, currentPatientId); } catch (e) {}
+    clearForm();
+    trendLog = [];
+    if (!isNew) {
+      load();
+      trendLog = loadLog();
+    }
+    save();
+    saveLog();
+    renderPatientSelect();
+    renderLogTable();
+    renderCharts();
+    recalc();
+  }
+
+  let patientPanelMode = null;
+  function openPatientPanel(mode) {
+    patientPanelMode = mode;
+    const panel = document.getElementById("patientPanel");
+    const msg = document.getElementById("patientPanelMsg");
+    const input = document.getElementById("patientPanelInput");
+    panel.style.display = "flex";
+    if (mode === "delete") {
+      msg.textContent = '「' + currentPatientName() + '」を削除しますか？記録データも削除されます。';
+      msg.style.display = "inline";
+      input.style.display = "none";
+    } else {
+      msg.style.display = "none";
+      input.style.display = "inline-block";
+      input.value = mode === "rename" ? currentPatientName() : "";
+      input.placeholder = mode === "rename" ? "患者名" : "新規患者名";
+      input.focus();
+    }
+  }
+  function closePatientPanel() {
+    patientPanelMode = null;
+    document.getElementById("patientPanel").style.display = "none";
+  }
+  function confirmPatientPanel() {
+    const input = document.getElementById("patientPanelInput");
+    if (patientPanelMode === "add") {
+      const name = input.value.trim();
+      if (!name) { showToast("患者名を入力してください"); return; }
+      const id = "p" + Date.now();
+      patients.push({ id: id, name: name });
+      savePatients();
+      switchPatient(id, true);
+      showToast("新規患者を追加しました");
+    } else if (patientPanelMode === "rename") {
+      const name = input.value.trim();
+      if (!name) { showToast("患者名を入力してください"); return; }
+      const cur = patients.find(function (p) { return p.id === currentPatientId; });
+      if (cur) {
+        cur.name = name;
+        savePatients();
+        renderPatientSelect();
+        showToast("名前を変更しました");
+      }
+    } else if (patientPanelMode === "delete") {
+      if (patients.length <= 1) {
+        showToast("最後の1人は削除できません");
+        closePatientPanel();
+        return;
+      }
+      const idx = patients.findIndex(function (p) { return p.id === currentPatientId; });
+      const removedId = currentPatientId;
+      patients.splice(idx, 1);
+      savePatients();
+      // switchPatient()'s own save()/saveLog() still targets removedId's key at first (currentPatientId
+      // hasn't changed yet), so it must run BEFORE removing the key or the key gets recreated.
+      switchPatient(patients[0].id, false);
+      try {
+        localStorage.removeItem("dialysisCalc_v1_" + removedId);
+        localStorage.removeItem("dialysisCalc_trend_v1_" + removedId);
+      } catch (e) {}
+      showToast("患者を削除しました");
+    }
+    closePatientPanel();
+  }
+  document.getElementById("patientAddBtn").addEventListener("click", function () { openPatientPanel("add"); });
+  document.getElementById("patientRenameBtn").addEventListener("click", function () { openPatientPanel("rename"); });
+  document.getElementById("patientDeleteBtn").addEventListener("click", function () { openPatientPanel("delete"); });
+  document.getElementById("patientPanelConfirm").addEventListener("click", confirmPatientPanel);
+  document.getElementById("patientPanelCancel").addEventListener("click", closePatientPanel);
+  document.getElementById("patientPanelInput").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") { e.preventDefault(); confirmPatientPanel(); }
+  });
+  document.getElementById("patientSelect").addEventListener("change", function (e) {
+    switchPatient(e.target.value, false);
+  });
+
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener("input", function () {
+      save();
+      recalc();
+    });
+    el.addEventListener("change", function () {
+      save();
+      recalc();
+    });
+  });
+
+  function fallbackCopy(ta) {
+    ta.select();
+    ta.setSelectionRange(0, ta.value.length);
+    try {
+      document.execCommand("copy");
+      showToast("コピーしました");
+    } catch (e) {
+      showToast("コピーに失敗しました");
+    }
+  }
+
+  document.querySelectorAll(".copy-btn").forEach(btn => {
+    btn.addEventListener("click", function () {
+      const ta = document.getElementById(btn.getAttribute("data-target"));
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(ta.value).then(function () {
+          showToast("コピーしました");
+        }).catch(function () {
+          fallbackCopy(ta);
+        });
+      } else {
+        fallbackCopy(ta);
+      }
+    });
+  });
+
+  document.getElementById("logAddBtn").addEventListener("click", addLogEntry);
+  document.getElementById("logTableBody").addEventListener("click", function (e) {
+    const btn = e.target.closest(".btn-del");
+    if (!btn) return;
+    const date = btn.getAttribute("data-date");
+    trendLog = trendLog.filter(entry => entry.date !== date);
+    saveLog();
+    renderLogTable();
+    renderCharts();
+  });
+  document.getElementById("logDate").value = todayISO();
+
+  document.querySelectorAll(".tab-btn").forEach(function (btn) {
+    btn.addEventListener("click", function () { setTab(btn.getAttribute("data-tab")); });
+  });
+  let savedTab = null;
+  try { savedTab = localStorage.getItem(TAB_KEY); } catch (e) {}
+  setTab(savedTab && document.querySelector('.tab-btn[data-tab="' + savedTab + '"]') ? savedTab : "input");
+
+  loadPatients();
+  migrateLegacyIfNeeded();
+  ensureCurrentPatient();
+  renderPatientSelect();
+
+  load();
+  trendLog = loadLog();
+  renderLogTable();
+  renderCharts();
+  recalc();
+})();
+</script>
+
+</body>
+</html>
