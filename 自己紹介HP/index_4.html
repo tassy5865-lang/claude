@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="page-title">Profile</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#F6F2EA;
+    --cream-soft:#FBF9F5;
+    --ink:#221D17;
+    --ink-soft:#6E6759;
+    --gold:#BD8B4C;
+    --gold-soft:#D8B784;
+    --green:#155841;
+    --green-light:#1E7A56;
+    --black:#17140F;
+    --line: rgba(34,29,23,0.13);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{ background:var(--cream); color:var(--ink); font-family:'Noto Sans JP',sans-serif; }
+  ::selection{background:var(--gold-soft); color:var(--black);}
+  a{color:inherit; text-decoration:none;}
+  h1,h2,h3{font-family:'Shippori Mincho',serif; font-weight:600; letter-spacing:0.01em;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+
+  .eyebrow{
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    font-family:'IBM Plex Mono',monospace; font-size:0.72rem; letter-spacing:0.22em;
+    color:var(--gold); text-transform:uppercase; font-weight:500; margin-bottom:1.1rem;
+  }
+  .eyebrow::after{ content:''; width:30px; height:1px; background:var(--gold); }
+  section{ padding:6.5rem 6vw; }
+  .wrap{ max-width:1180px; margin:0 auto; }
+  .center-text{ text-align:center; max-width:720px; margin:0 auto; }
+  .section-sub{ color:var(--ink-soft); font-size:0.98rem; line-height:1.85; margin-top:1.2rem; }
+
+  nav{
+    position:fixed; top:0; left:0; right:0; z-index:50;
+    display:flex; justify-content:space-between; align-items:center;
+    padding:20px 6vw; transition:background .3s ease, box-shadow .3s ease;
+  }
+  nav.scrolled{ background:rgba(246,242,234,0.92); backdrop-filter:blur(8px); box-shadow:0 1px 0 var(--line); }
+  .nav-name{ font-family:'Shippori Mincho',serif; font-size:1.05rem; font-weight:600; }
+  .nav-role{ font-family:'IBM Plex Mono',monospace; font-size:0.7rem; color:var(--gold); margin-left:0.6rem; letter-spacing:0.02em;}
+  .role-accent{ color:var(--green-light); font-weight:600; }
+  .nav-cta{ background:var(--green); color:#fff; padding:0.65rem 1.35rem; border-radius:6px; font-size:0.82rem; font-weight:500; transition:background .2s ease; }
+  .nav-cta:hover{ background:var(--green-light); }
+
+  #hero{ padding-top:11rem; padding-bottom:5rem; text-align:center; background:radial-gradient(circle at 50% 0%, #FDFBF7 0%, var(--cream) 60%); }
+  .badge{ display:inline-flex; align-items:center; gap:9px; background:#fff; border:1px solid var(--line); border-radius:100px; padding:0.55rem 1.2rem; font-size:0.82rem; color:var(--ink-soft); margin-bottom:2.4rem; }
+  .badge .dot{ width:7px; height:7px; border-radius:50%; background:var(--green-light); }
+  #hero h1{ font-size:clamp(2.2rem, 5vw, 3.4rem); line-height:1.4; color:var(--ink); max-width:780px; margin:0 auto; }
+  #hero h1 .accent{ color:var(--gold); }
+  #hero .lead{ max-width:640px; margin:1.8rem auto 0; color:var(--ink-soft); font-size:1rem; line-height:1.9; }
+  #hero .lead b{ color:var(--ink); font-weight:600; }
+  .hero-ctas{ display:flex; gap:1rem; justify-content:center; margin-top:2.6rem; flex-wrap:wrap; }
+  .btn-primary{ background:var(--green); color:#fff; padding:1rem 1.8rem; border-radius:8px; font-size:0.92rem; font-weight:600; transition:background .2s ease; display:inline-block;}
+  .btn-primary:hover{ background:var(--green-light); }
+  .btn-secondary{ background:#fff; border:1px solid var(--line); color:var(--ink); padding:1rem 1.8rem; border-radius:8px; font-size:0.92rem; font-weight:500; }
+  .hero-note{ margin-top:1.1rem; font-size:0.78rem; color:var(--ink-soft); }
+
+  .stat-row{ display:flex; justify-content:center; gap:4rem; margin-top:4.5rem; padding-top:3rem; border-top:1px solid var(--line); max-width:820px; margin-left:auto; margin-right:auto; flex-wrap:wrap; }
+  .stat{ text-align:center; }
+  .stat .num{ font-family:'Shippori Mincho',serif; font-size:2.2rem; color:var(--gold); font-weight:600;}
+  .stat .num span{ font-size:1.1rem; margin-left:2px; }
+  .stat .label{ font-size:0.78rem; color:var(--ink-soft); margin-top:0.4rem; }
+
+  .dark{ background:var(--black); color:#EDE8DE; }
+  .dark .eyebrow{ color:var(--gold-soft); }
+  .dark .eyebrow::after{ background:var(--gold-soft); }
+  .dark h2{ color:#F5F1E8; }
+  .dark .section-sub{ color:#B9B2A4; }
+
+  .card-grid{ display:grid; grid-template-columns:repeat(3, 1fr); gap:1.1rem; margin-top:3.2rem; }
+  .value-card{ background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:1.6rem; display:flex; gap:0.9rem; align-items:flex-start; }
+  .value-card .ico{ width:34px; height:34px; border-radius:8px; background:rgba(189,139,76,0.16); display:flex; align-items:center; justify-content:center; flex-shrink:0; color:var(--gold-soft); font-size:1rem; }
+  .value-card p{ font-size:0.9rem; line-height:1.65; color:#D8D2C4; }
+  .value-card div h3{ font-size:1rem; margin-bottom:0.4rem; color:#F5F1E8;}
+
+  .quote-box{ margin-top:2.6rem; border:1px solid rgba(255,255,255,0.1); border-radius:16px; padding:2.4rem 2.6rem; background:rgba(255,255,255,0.03); }
+  .quote-box p{ font-size:1.05rem; line-height:1.85; color:#EDE8DE; }
+  .quote-box p b{ color:var(--gold-soft); font-weight:600; }
+
+  #philosophy{ background:var(--cream-soft); }
+  .flow-pill{ display:flex; gap:0.6rem; justify-content:center; align-items:center; margin-top:2rem; flex-wrap:wrap; font-size:0.85rem; color:var(--ink-soft); }
+  .flow-pill .step{ padding:0.5rem 1rem; border:1px solid var(--line); border-radius:100px; background:#fff;}
+  .flow-pill .step.active{ background:var(--gold); color:#fff; border-color:var(--gold); font-weight:600;}
+  .light-quote{ background:#fff; border:1px solid var(--line); border-radius:16px; padding:2.6rem; margin-top:2.6rem; text-align:center; }
+  .light-quote p{ font-size:1.15rem; line-height:1.8; color:var(--ink);}
+  .light-quote p b{ color:var(--gold); }
+
+  .approach-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:1.3rem; margin-top:2.6rem; }
+  .approach-card{ background:#fff; border:1px solid var(--line); border-radius:14px; padding:1.8rem; }
+  .approach-card .num{ font-family:'IBM Plex Mono',monospace; font-size:0.75rem; color:var(--gold); margin-bottom:0.8rem;}
+  .approach-card h3{ font-size:1.05rem; margin-bottom:0.6rem; }
+  .approach-card p{ font-size:0.85rem; color:var(--ink-soft); line-height:1.65; }
+
+  #focus .value-card{ background:#fff; border:1px solid var(--line); }
+  #focus .value-card .ico{ background:rgba(189,139,76,0.12); color:var(--gold);}
+  #focus .value-card p{ color:var(--ink-soft); }
+  #focus .value-card h3{ font-size:1rem; margin-bottom:0.4rem; color:var(--ink);}
+
+  #process{ background:var(--cream-soft); }
+  .process-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:1.3rem; margin-top:3rem;}
+  .process-card{ background:#fff; border:1px solid var(--gold-soft); border-radius:14px; padding:1.9rem; }
+  .process-card .step-label{ font-family:'IBM Plex Mono',monospace; font-size:0.7rem; color:var(--gold); letter-spacing:0.1em; }
+  .process-card h3{ font-size:1.15rem; margin:0.5rem 0 1rem; }
+  .process-card ul{ list-style:none; }
+  .process-card li{ font-size:0.85rem; color:var(--ink-soft); margin-bottom:0.6rem; padding-left:1.1rem; position:relative; line-height:1.6;}
+  .process-card li::before{ content:'✓'; position:absolute; left:0; color:var(--green-light); font-weight:700;}
+
+  #record .stat-row{ border-top:none; padding-top:0; margin-top:2.6rem; gap:2.5rem;}
+  #record .stat .num{ color:var(--gold-soft); }
+  #record .stat .label{ color:#B9B2A4; }
+  .record-note{ text-align:center; font-size:0.75rem; color:#8A8375; margin-top:1rem;}
+  .record-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:1.1rem; margin-top:3rem;}
+  .record-card{ background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:1.7rem; transition:opacity .25s ease, transform .25s ease; }
+  .record-card.is-hidden{ display:none; }
+  .record-card .tag{ font-family:'IBM Plex Mono',monospace; font-size:0.68rem; color:var(--gold-soft); letter-spacing:0.06em; }
+  .tag-filter{ display:flex; gap:0.6rem; justify-content:center; flex-wrap:wrap; margin-top:2.6rem; }
+  .tag-filter button{
+    font-family:'IBM Plex Mono',monospace; font-size:0.72rem; letter-spacing:0.06em;
+    padding:0.5rem 1.1rem; border-radius:100px; border:1px solid rgba(255,255,255,0.18);
+    background:transparent; color:#B9B2A4; cursor:pointer; transition:background .2s ease, color .2s ease, border-color .2s ease;
+  }
+  .tag-filter button:hover{ border-color:var(--gold-soft); color:#F5F1E8; }
+  .tag-filter button.active{ background:var(--gold); border-color:var(--gold); color:var(--black); font-weight:600; }
+  .record-card h3{ font-size:1rem; margin:0.6rem 0 0.6rem; color:#F5F1E8; }
+  .record-card p{ font-size:0.83rem; color:#B9B2A4; line-height:1.6; }
+
+  .profile-grid{ display:grid; grid-template-columns:1.3fr 1fr; gap:1.6rem; margin-top:3rem; align-items:stretch; }
+  .profile-card{ background:#fff; border:1px solid var(--line); border-radius:16px; padding:2.4rem; }
+  .profile-head{ display:flex; gap:1.2rem; align-items:center; padding-bottom:1.4rem; border-bottom:1px solid var(--line); margin-bottom:1.4rem;}
+  .avatar{ width:64px; height:64px; border-radius:50%; background:linear-gradient(135deg, var(--gold-soft), var(--green-light)); flex-shrink:0; background-size:cover; background-position:center;}
+  .profile-head h3{ font-size:1.2rem; }
+  .profile-head .role{ font-size:0.8rem; color:var(--ink-soft); margin-top:0.3rem; }
+  .profile-card ul{ list-style:none; }
+  .profile-card li{ font-size:0.9rem; color:var(--ink-soft); line-height:1.7; margin-bottom:0.8rem; padding-left:1.3rem; position:relative;}
+  .profile-card li::before{ content:'✓'; position:absolute; left:0; color:var(--gold); font-weight:700;}
+  .side-stats{ display:flex; flex-direction:column; gap:1rem; }
+  .side-stat{ background:var(--black); color:#fff; border-radius:14px; padding:1.6rem; }
+  .side-stat .num{ font-family:'Shippori Mincho',serif; font-size:1.5rem; color:var(--gold-soft); }
+  .side-stat .label{ font-size:0.78rem; color:#B9B2A4; margin-top:0.4rem; }
+
+  #whynow{ padding-bottom:0; }
+  .whynow-card{ background:var(--black); border-radius:18px; padding:3rem; text-align:center; max-width:820px; margin:0 auto; }
+  .whynow-card h2{ color:#F5F1E8; font-size:1.6rem; margin-top:0.6rem; }
+  .whynow-card p{ color:#B9B2A4; font-size:0.9rem; margin-top:1rem; line-height:1.8; }
+
+  #cta{ background:linear-gradient(135deg, var(--green), #0F4633); text-align:center; color:#fff; padding:6rem 6vw; }
+  #cta h2{ color:#fff; font-size:clamp(1.7rem,4vw,2.5rem); }
+  #cta .btn-primary{ background:#fff; color:var(--green); margin-top:2.2rem; }
+  #cta .btn-primary:hover{ background:#F5F1E8; }
+  #cta .cta-note{ margin-top:1rem; font-size:0.8rem; color:rgba(255,255,255,0.75); }
+
+  footer{ background:var(--black); color:#8A8375; padding:2.6rem 6vw; text-align:center; font-size:0.8rem; }
+  footer .flinks{ margin-top:0.8rem; display:flex; gap:1.4rem; justify-content:center; }
+  footer .flinks a{ color:#B9B2A4; }
+  footer .flinks a:hover{ color:#fff; }
+
+  @media (max-width:860px){
+    .card-grid, .approach-grid, .process-grid, .record-grid{ grid-template-columns:1fr !important; }
+    .profile-grid{ grid-template-columns:1fr; }
+    .stat-row{ gap:2rem; }
+    section{ padding:4.5rem 6vw; }
+    .nav-role{ display:none; }
+  }
+</style>
+</head>
+<body>
+
+<nav id="nav">
+  <div><span class="nav-name" id="nav-name"></span><span class="nav-role" id="nav-role"></span></div>
+  <a class="nav-cta" id="nav-cta" href="#contact"></a>
+</nav>
+
+<section id="hero"><div class="wrap" id="hero-wrap"></div></section>
+<section id="values" class="dark"><div class="wrap" id="values-wrap"></div></section>
+<section id="philosophy"><div class="wrap" id="philosophy-wrap"></div></section>
+<section id="focus"><div class="wrap" id="focus-wrap"></div></section>
+<section id="process"><div class="wrap" id="process-wrap"></div></section>
+<section id="record" class="dark"><div class="wrap" id="record-wrap"></div></section>
+<section id="profile-sec"><div class="wrap" id="profile-wrap"></div></section>
+<section id="whynow"><div class="wrap" id="whynow-wrap"></div></section>
+<section id="cta"><div class="wrap" id="cta-wrap"></div></section>
+<footer id="footer-wrap"></footer>
+
+<script>
+/* ======================================================================
+   ▼▼▼ ここから下の SITE オブジェクトだけを書き換えれば、
+   職業・目的を問わずこのテンプレートを使い回せます。 ▼▼▼
+   (HTML/CSSは変更不要です)
+====================================================================== */
+const SITE = {
+  meta: { title: "田代 裕貴(AI・DXコンサル) | AI活用・業務改善" },
+
+  nav: {
+    name: "田代 裕貴<span class=\"role-accent\">(AI・DXコンサル)</span>",   // 空文字 "" にすると非表示(モバイルでは元々非表示)
+    role: "AI活用 / 業務改善",
+    ctaLabel: "お問い合わせ",
+    ctaHref: "#contact"
+  },
+
+  hero: {
+    badge: "ここまでご覧いただき、ありがとうございます",
+    titlePre: "現場の課題を、",
+    titleAccent: "AI",
+    titlePost: "で形にする。",
+    lead: "臨床工学技士として現場に立ちながら、AIツールを活用した<b>業務改善ツールの開発</b>、<b>AI研修</b>、<b>ホームページ・LP制作</b>にも取り組んでいます。現場を知っているからこそ、実際に使われる仕組みをつくれると考えています。",
+    ctaPrimary: { label: "お問い合わせ →", href: "#contact" },
+    ctaSecondary: { label: "取り組みを見る", href: "#focus" },
+    note: "プロフィールは随時更新しています。",
+    stats: [
+      { num:"開発中", unit:"", label:"業務改善ツール" },
+      { num:"対応可", unit:"", label:"AI研修・勉強会" },
+      { num:"制作", unit:"", label:"ホームページ・LP" }
+    ]
+  },
+
+  values: {
+    eyebrow: "focus",
+    title: "知っているだけでは、<br>現場は変わらない。",
+    sub: "AIは使えるだけでは意味がありません。現場の課題を理解した上で、実際に使える仕組みに落とし込むことを大切にしています。",
+    cards: [
+      { icon:"◎", text:"現場で本当に困っていることを起点に、<b>ツールの設計</b>を考える" },
+      { icon:"✎", text:"専門用語をそのまま渡さず、<b>現場で伝わる言葉</b>に置き換える資料設計" },
+      { icon:"⇄", text:"医師・看護師など、<b>多職種と連携</b>しながら情報を共有する動き方" },
+      { icon:"⚑", text:"導入して終わりにせず、<b>運用しながら改善</b>していく意識" }
+    ],
+    quote: "「使えるAI」は、現場の言葉で設計されて初めて機能します。だから、AIツールの導入や研修も、現場に即した形に落とし込むことを大切にしています。"
+  },
+
+  philosophy: {
+    eyebrow: "approach",
+    title: "教えて終わり、にしない。",
+    sub: "AI研修も業務改善ツールも、導入して終わりではなく、現場で実際に使われるところまで伴走することを意識しています。",
+    flow: ["ヒアリング", "設計・実装", "運用・改善"],
+    flowActiveIndex: 1,
+    quote: "「<b>知っている</b>」ことと「<b>現場で使える</b>」ことの間には距離があります。その距離を埋めるのが、ツールづくりや研修の役割だと考えています。",
+    cards: [
+      { num:"01", title:"現場に強い", text:"臨床工学技士として現場に立ってきた経験があるからこそ、実務に即したツール設計ができます。" },
+      { num:"02", title:"伝わる形にする", text:"難しい仕組みやAIの使い方も、専門用語をそのまま使わず、使う人に合わせてわかりやすく伝えます。" },
+      { num:"03", title:"運用しながら見直す", text:"作って終わりにせず、現場での運用を見ながら継続的に改善しています。" }
+    ]
+  },
+
+  focus: {
+    eyebrow: "fields",
+    title: "取り組んでいること",
+    sub: "臨床現場での知見を活かしながら、AIを使った新しい取り組みを広げています。",
+    cards: [
+      { icon:"⚙", title:"業務改善ツール開発(AI活用)", text:"AIを活用して、現場の業務を効率化するツールの開発に取り組んでいます。" },
+      { icon:"◈", title:"AI研修", text:"AIの使い方や業務への取り入れ方を、わかりやすく伝える研修・勉強会に対応しています。" },
+      { icon:"▣", title:"ホームページ・LP制作", text:"AIを活用しながら、ホームページやランディングページの制作にも取り組んでいます。" },
+      { icon:"◎", title:"臨床工学(血管アクセス管理)", text:"透析患者さんのシャント管理において、超音波を用いた評価と記録を担当しています。" },
+      { icon:"✎", title:"教育資料・手順書の作成", text:"スタッフ向けに、臨床の知識を分かりやすく伝える日本語資料やマニュアルを制作しています。" },
+      { icon:"＋", title:"これから広げたいこと", text:"臨床での経験とAI活用をつなげながら、新しい取り組みも少しずつ増やしていきたいと考えています。" }
+    ]
+  },
+
+  process: {
+    eyebrow: "process",
+    title: "ヒアリングから運用まで、<br>ひとつの流れで。",
+    sub: "ツールや研修が現場で実際に使われるところまでを、一連の流れとして考えています。",
+    steps: [
+      { label:"STEP 1", title:"ヒアリング・要件整理", items:["現場の課題や困りごとをヒアリング","優先順位と実現方法の整理","小さく始められる範囲の見極め"] },
+      { label:"STEP 2", title:"設計・実装", items:["AIツールを活用した設計・実装","専門用語をそのまま使わない資料化","研修・説明資料の準備"] },
+      { label:"STEP 3", title:"運用・改善", items:["現場での運用スタート","フィードバックの収集","使われ方を見ながらの継続的な改善"] }
+    ]
+  },
+
+  record: {
+    eyebrow: "now",
+    title: "今、取り組んでいること",
+    sub: "まだ形になったばかりのものも含めて、今の関心と取り組みをまとめています。",
+    stats: [],
+    note: "",
+    cards: [
+      { tag:"TOOL", title:"業務改善ツール(開発中)", text:"AIを活用して、現場の業務を効率化するツールを開発しています。" },
+      { tag:"TRAINING", title:"AI研修プログラム", text:"AIの使い方や業務への取り入れ方を伝える研修内容を準備しています。" },
+      { tag:"WEB", title:"ホームページ・LP制作", text:"AIを活用しながら、ホームページやランディングページの制作にも取り組んでいます。" }
+    ]
+  },
+
+  profile: {
+    eyebrow: "profile",
+    title: "プロフィール",
+    name: "田代 裕貴<span class=\"role-accent\">(AI・DXコンサル)</span>",
+    role: "臨床工学技士 / AI活用・業務改善",
+    avatarImage: "",   // 画像URLを入れると背景画像として表示(空ならグラデーションのまま)
+    bullets: [
+      "臨床工学技士として現場に立ちながら、AIを活用した業務改善に取り組み中",
+      "AIツールを使った業務改善ツールの開発",
+      "AI研修・勉強会にも対応可能",
+      "ホームページ・LP制作(AI活用)",
+      "シャントエコーなど臨床現場での検査・評価経験",
+      "スタッフ向け教育資料・手順書の作成経験"
+    ],
+    sideStats: [
+      { num:"AI活用", label:"業務改善ツール開発" },
+      { num:"研修", label:"AI研修・勉強会に対応" },
+      { num:"制作", label:"ホームページ・LP制作" }
+    ]
+  },
+
+  note: {
+    eyebrow: "note",
+    title: "取り組みは、少しずつ広げています。",
+    text: "臨床の仕事と並行して、AIを活用した取り組みを積み重ねているところです。新しく形になったものがあれば、また追記していきます。"
+  },
+
+  contact: {
+    eyebrow: "contact",
+    title: "お気軽にご連絡ください",
+    linkLabel: "Email →",
+    linkHref: "mailto:hello@example.com",
+    note: "ご連絡はメールまたはSNSにて承っています。"
+  },
+
+  footer: {
+    left: "田代 裕貴<span class=\"role-accent\">(AI・DXコンサル)</span> | AI活用・業務改善 / 臨床工学技士",
+    links: [
+      { label:"Email", href:"mailto:hello@example.com" },
+      { label:"X (Twitter)", href:"#" },
+      { label:"Note", href:"#" }
+    ],
+    copyright: "© 2026 田代 裕貴<span class=\"role-accent\">(AI・DXコンサル)</span>"
+  }
+};
+/* ▲▲▲ 編集はここまで。以下は描画ロジックなので触る必要はありません ▲▲▲ */
+
+document.getElementById('page-title').textContent = SITE.meta.title;
+
+document.getElementById('nav-name').innerHTML = SITE.nav.name;
+document.getElementById('nav-role').textContent = SITE.nav.role;
+const navCta = document.getElementById('nav-cta');
+navCta.textContent = SITE.nav.ctaLabel;
+navCta.href = SITE.nav.ctaHref;
+
+document.getElementById('hero-wrap').innerHTML = `
+  <div class="badge"><span class="dot"></span>${SITE.hero.badge}</div>
+  <h1>${SITE.hero.titlePre}<br><span class="accent">${SITE.hero.titleAccent}</span>${SITE.hero.titlePost}</h1>
+  <p class="lead">${SITE.hero.lead}</p>
+  <div class="hero-ctas">
+    <a class="btn-primary" href="${SITE.hero.ctaPrimary.href}">${SITE.hero.ctaPrimary.label}</a>
+    <a class="btn-secondary" href="${SITE.hero.ctaSecondary.href}">${SITE.hero.ctaSecondary.label}</a>
+  </div>
+  <div class="hero-note">${SITE.hero.note}</div>
+  <div class="stat-row">
+    ${SITE.hero.stats.map(s => `<div class="stat"><div class="num">${s.num}<span>${s.unit}</span></div><div class="label">${s.label}</div></div>`).join('')}
+  </div>
+`;
+
+document.getElementById('values-wrap').innerHTML = `
+  <div class="eyebrow center">${SITE.values.eyebrow}</div>
+  <div class="center-text"><h2>${SITE.values.title}</h2><p class="section-sub">${SITE.values.sub}</p></div>
+  <div class="card-grid">
+    ${SITE.values.cards.map(c => `<div class="value-card"><div class="ico">${c.icon}</div><p>${c.text}</p></div>`).join('')}
+  </div>
+  <div class="quote-box"><p>${SITE.values.quote}</p></div>
+`;
+
+document.getElementById('philosophy-wrap').innerHTML = `
+  <div class="eyebrow center">${SITE.philosophy.eyebrow}</div>
+  <div class="center-text"><h2>${SITE.philosophy.title}</h2><p class="section-sub">${SITE.philosophy.sub}</p></div>
+  <div class="flow-pill">
+    ${SITE.philosophy.flow.map((f,i) => `<span class="step ${i===SITE.philosophy.flowActiveIndex?'active':''}">${f}</span>${i<SITE.philosophy.flow.length-1?' → ':''}`).join('')}
+  </div>
+  <div class="light-quote"><p>${SITE.philosophy.quote}</p></div>
+  <div class="approach-grid">
+    ${SITE.philosophy.cards.map(c => `<div class="approach-card"><div class="num">${c.num}</div><h3>${c.title}</h3><p>${c.text}</p></div>`).join('')}
+  </div>
+`;
+
+document.getElementById('focus-wrap').innerHTML = `
+  <div class="eyebrow center">${SITE.focus.eyebrow}</div>
+  <div class="center-text"><h2>${SITE.focus.title}</h2><p class="section-sub">${SITE.focus.sub}</p></div>
+  <div class="card-grid">
+    ${SITE.focus.cards.map(c => `<div class="value-card"><div class="ico">${c.icon}</div><div><h3>${c.title}</h3><p>${c.text}</p></div></div>`).join('')}
+  </div>
+`;
+
+document.getElementById('process-wrap').innerHTML = `
+  <div class="eyebrow center">${SITE.process.eyebrow}</div>
+  <div class="center-text"><h2>${SITE.process.title}</h2><p class="section-sub">${SITE.process.sub}</p></div>
+  <div class="process-grid">
+    ${SITE.process.steps.map(s => `
+      <div class="process-card">
+        <div class="step-label">${s.label}</div>
+        <h3>${s.title}</h3>
+        <ul>${s.items.map(i => `<li>${i}</li>`).join('')}</ul>
+      </div>
+    `).join('')}
+  </div>
+`;
+
+const recordTags = ['ALL', ...new Set(SITE.record.cards.map(c => c.tag))];
+document.getElementById('record-wrap').innerHTML = `
+  <div class="eyebrow center">${SITE.record.eyebrow}</div>
+  <div class="center-text"><h2>${SITE.record.title}</h2><p class="section-sub">${SITE.record.sub}</p></div>
+  ${SITE.record.stats.length ? `
+  <div class="stat-row">
+    ${SITE.record.stats.map(s => `<div class="stat"><div class="num">${s.num}<span>${s.unit}</span></div><div class="label">${s.label}</div></div>`).join('')}
+  </div>` : ''}
+  ${SITE.record.note ? `<div class="record-note">${SITE.record.note}</div>` : ''}
+  <div class="tag-filter">
+    ${recordTags.map((t,i) => `<button type="button" data-filter="${t}" class="${i===0?'active':''}">${t}</button>`).join('')}
+  </div>
+  <div class="record-grid">
+    ${SITE.record.cards.map(c => `<div class="record-card" data-tag="${c.tag}"><div class="tag">${c.tag}</div><h3>${c.title}</h3><p>${c.text}</p></div>`).join('')}
+  </div>
+`;
+
+// タグフィルターの動作
+const filterButtons = document.querySelectorAll('.tag-filter button');
+const recordCards = document.querySelectorAll('.record-card');
+filterButtons.forEach(btn => {
+  btn.addEventListener('click', () => {
+    filterButtons.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const target = btn.dataset.filter;
+    recordCards.forEach(card => {
+      const show = (target === 'ALL' || card.dataset.tag === target);
+      card.classList.toggle('is-hidden', !show);
+    });
+  });
+});
+
+document.getElementById('profile-wrap').innerHTML = `
+  <div class="eyebrow center">${SITE.profile.eyebrow}</div>
+  <div class="center-text"><h2>${SITE.profile.title}</h2></div>
+  <div class="profile-grid">
+    <div class="profile-card">
+      <div class="profile-head">
+        <div class="avatar" style="${SITE.profile.avatarImage ? `background-image:url('${SITE.profile.avatarImage}')` : ''}"></div>
+        <div><h3>${SITE.profile.name}</h3><div class="role">${SITE.profile.role}</div></div>
+      </div>
+      <ul>${SITE.profile.bullets.map(b => `<li>${b}</li>`).join('')}</ul>
+    </div>
+    <div class="side-stats">
+      ${SITE.profile.sideStats.map(s => `<div class="side-stat"><div class="num">${s.num}</div><div class="label">${s.label}</div></div>`).join('')}
+    </div>
+  </div>
+`;
+
+document.getElementById('whynow-wrap').innerHTML = `
+  <div class="whynow-card">
+    <div class="eyebrow center">${SITE.note.eyebrow}</div>
+    <h2>${SITE.note.title}</h2>
+    <p>${SITE.note.text}</p>
+  </div>
+`;
+
+document.getElementById('cta-wrap').innerHTML = `
+  <div class="eyebrow center" style="color:rgba(255,255,255,0.85);">${SITE.contact.eyebrow}</div>
+  <h2 id="contact">${SITE.contact.title}</h2>
+  <a class="btn-primary" href="${SITE.contact.linkHref}">${SITE.contact.linkLabel}</a>
+  <div class="cta-note">${SITE.contact.note}</div>
+`;
+
+document.getElementById('footer-wrap').innerHTML = `
+  <div>${SITE.footer.left}</div>
+  <div class="flinks">${SITE.footer.links.map(l => `<a href="${l.href}">${l.label}</a>`).join('')}</div>
+  <div style="margin-top:0.8rem;">${SITE.footer.copyright}</div>
+`;
+
+const nav = document.getElementById('nav');
+window.addEventListener('scroll', () => {
+  nav.classList.toggle('scrolled', window.scrollY > 40);
+});
+</script>
+
+</body>
+</html>
