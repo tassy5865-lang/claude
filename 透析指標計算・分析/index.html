@@ -20,11 +20,58 @@
     --warn-text: #b3401f;
     --caution-bg: #fff6e0;
     --caution-text: #96700a;
+    --toast-bg: #1a2436;
+    --toast-text: #ffffff;
     --radius-sm: 8px;
     --radius-md: 12px;
     --radius-lg: 18px;
     --shadow-sm: 0 1px 2px rgba(26, 36, 54, 0.05);
     --shadow-md: 0 8px 24px rgba(26, 36, 54, 0.08);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #10151f;
+      --card-bg: #1a2130;
+      --border: #2c3648;
+      --text: #e8edf7;
+      --text-sub: #93a1ba;
+      --accent: #5b93ff;
+      --accent-hover: #7ea6ff;
+      --accent-soft: #1f2c47;
+      --ok-bg: #123324;
+      --ok-text: #6fd6a2;
+      --warn-bg: #3a1f1c;
+      --warn-text: #ff9a7a;
+      --caution-bg: #3a300f;
+      --caution-text: #ffcf5c;
+      --toast-bg: #33415c;
+      --toast-text: #ffffff;
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+      --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #10151f;
+    --card-bg: #1a2130;
+    --border: #2c3648;
+    --text: #e8edf7;
+    --text-sub: #93a1ba;
+    --accent: #5b93ff;
+    --accent-hover: #7ea6ff;
+    --accent-soft: #1f2c47;
+    --ok-bg: #123324;
+    --ok-text: #6fd6a2;
+    --warn-bg: #3a1f1c;
+    --warn-text: #ff9a7a;
+    --caution-bg: #3a300f;
+    --caution-text: #ffcf5c;
+    --toast-bg: #33415c;
+    --toast-text: #ffffff;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5);
   }
   * { box-sizing: border-box; }
   body {
@@ -33,6 +80,7 @@
     background: var(--bg);
     color: var(--text);
     padding: 28px 16px 60px;
+    transition: background 0.2s ease, color 0.2s ease;
   }
   h1 {
     text-align: center;
@@ -250,7 +298,7 @@
     padding: 10px 12px;
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
-    background: #fafcff;
+    background: var(--bg);
     color: var(--text);
     resize: vertical;
   }
@@ -258,8 +306,8 @@
     position: fixed;
     bottom: 22px;
     right: 22px;
-    background: #1a2436;
-    color: #fff;
+    background: var(--toast-bg);
+    color: var(--toast-text);
     padding: 10px 18px;
     border-radius: var(--radius-sm);
     font-size: 0.85rem;
@@ -276,6 +324,15 @@
   .mini-table th, .mini-table td { padding: 7px 8px; border-bottom: 1px solid var(--border); text-align: left; }
   .mini-table th { color: var(--text-sub); font-weight: 600; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.03em; }
   .mini-table tbody tr:hover { background: var(--accent-soft); }
+  .log-table-wrap { overflow-x: auto; }
+  .log-table th:first-child, .log-table td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--card-bg);
+    box-shadow: 2px 0 4px rgba(26, 36, 54, 0.06);
+  }
+  .log-table tbody tr:hover td:first-child { background: var(--accent-soft); }
   .mini-table select {
     padding: 5px 7px;
     border: 1px solid var(--border);
@@ -451,6 +508,24 @@
 
   .print-header { display: none; }
   @media print {
+    :root {
+      --bg: #ffffff;
+      --card-bg: #ffffff;
+      --border: #999999;
+      --text: #1a2436;
+      --text-sub: #647089;
+      --accent: #2f6fed;
+      --accent-hover: #2457c4;
+      --accent-soft: #eaf1ff;
+      --ok-bg: #e5f6ec;
+      --ok-text: #1d7a46;
+      --warn-bg: #fdeeea;
+      --warn-text: #b3401f;
+      --caution-bg: #fff6e0;
+      --caution-text: #96700a;
+      --shadow-sm: none;
+      --shadow-md: none;
+    }
     body { background: #fff; color: #1a2436; padding: 0 12px; }
     .no-print { display: none !important; }
     .print-header {
@@ -471,9 +546,41 @@
     .badge { border: 1px solid currentColor; }
     details.section-details:not([open]) > *:not(summary) { display: block !important; }
   }
+
+  .theme-toggle {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--card-bg);
+    color: var(--text);
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-sm);
+    z-index: 60;
+    transition: background 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+  }
+  .theme-toggle:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
 </style>
+<script>
+(function () {
+  try {
+    var t = localStorage.getItem("dialysisCalc_theme_v1");
+    if (t === "dark" || t === "light") { document.documentElement.setAttribute("data-theme", t); }
+  } catch (e) {}
+})();
+</script>
 </head>
 <body>
+
+<button type="button" class="theme-toggle no-print" id="themeToggleBtn" aria-label="ダークモード切替" title="ダークモード切替">🌙</button>
 
 <h1>透析指標計算・分析ツール</h1>
 <p class="subtitle">除水・循環動態・透析効率・貧血/電解質の指標を自動計算します（入力するとリアルタイムに更新）</p>
@@ -501,6 +608,7 @@
   <button type="button" class="tab-btn active" data-tab="input">💧 除水・循環動態</button>
   <button type="button" class="tab-btn" data-tab="efficiency">⚙️ 透析効率・処方</button>
   <button type="button" class="tab-btn" data-tab="anemia">🩸 貧血・電解質</button>
+  <button type="button" class="tab-btn" data-tab="mbd">🦴 骨・ミネラル代謝</button>
   <button type="button" class="tab-btn" data-tab="heart">❤️ 心不全管理</button>
   <button type="button" class="tab-btn" data-tab="trend">📈 経時グラフ</button>
   <button type="button" class="tab-btn" data-tab="ai">🤖 AIプロンプト</button>
@@ -597,6 +705,9 @@
       <div>
         <div class="field-row"><label for="hgb">ヘモグロビン (Hgb)</label><input type="number" id="hgb" value="" step="0.1"><span class="unit">g/dL</span></div>
         <div class="field-row"><label for="esa">ESA投与量/週</label><input type="number" id="esa" value="" step="1"><span class="unit">IU/週</span></div>
+        <div class="field-row"><label for="fe">血清鉄 (Fe)</label><input type="number" id="fe" value="" step="1"><span class="unit">μg/dL</span></div>
+        <div class="field-row"><label for="tibc">TIBC (総鉄結合能)</label><input type="number" id="tibc" value="" step="1"><span class="unit">μg/dL</span></div>
+        <div class="field-row"><label for="ferritin">フェリチン</label><input type="number" id="ferritin" value="" step="1"><span class="unit">ng/mL</span></div>
       </div>
       <div>
         <div class="field-row"><label for="pPre">透析前 リン</label><input type="number" id="pPre" value="" step="0.1"><span class="unit">mg/dL</span></div>
@@ -609,15 +720,68 @@
       <span class="label">ERI (ESA抵抗性指数)<span class="note">目安10〜15以上でESA低反応性 / ESA÷体重(DW)÷Hgb</span></span>
       <span class="value" id="out-eri">—</span>
     </div>
+    <div class="out-row">
+      <span class="label">TSAT (トランスフェリン飽和度)<span class="note">Fe÷TIBC×100 / 目安20%以下で鉄欠乏を疑う</span></span>
+      <span class="value" id="out-tsat">—</span>
+    </div>
     <div class="out-row"><span class="label">リン除去率 (PRR)<span class="note">通常50〜60%程度</span></span><span class="value" id="out-prr">—</span></div>
     <div class="out-row"><span class="label">カリウム除去率 (KRR)</span><span class="value" id="out-krr">—</span></div>
     <div class="action-box" style="margin-top:10px;">
-      <div class="title">貧血管理アラート</div>
+      <div class="title">貧血管理アラート（日本透析医学会 腎性貧血ガイドライン 2015年版）</div>
       <div id="out-anemia-alert">—</div>
+    </div>
+    <div class="action-box" style="margin-top:8px;">
+      <div class="title">鉄補充適応アラート（TSAT・フェリチン基準）</div>
+      <div id="out-iron-alert">—</div>
     </div>
     <div class="action-box" style="margin-top:8px;">
       <div class="title">リン除去アラート</div>
       <div id="out-p-alert">—</div>
+    </div>
+  </section>
+
+  <section class="card full" data-tab="mbd">
+    <h2>骨・ミネラル代謝管理（CKD-MBD）</h2>
+    <p style="font-size:0.8rem; color:var(--text-sub); margin-top:-6px;">P（血液データの「透析前 リン」を使用）・Ca・PTHを評価します。P→Ca→PTHの順に管理するのが基本方針です。</p>
+    <div class="two-col-grid">
+      <div>
+        <div class="field-row"><label for="caRaw">実測 Ca</label><input type="number" id="caRaw" value="" step="0.1"><span class="unit">mg/dL</span></div>
+        <div class="field-row"><label for="alb">アルブミン (Alb)</label><input type="number" id="alb" value="" step="0.1"><span class="unit">g/dL</span></div>
+      </div>
+      <div>
+        <div class="field-row"><label for="pth">intact PTH</label><input type="number" id="pth" value="" step="1"><span class="unit">pg/mL</span></div>
+      </div>
+    </div>
+    <div class="out-row">
+      <span class="label">P（リン、透析前値）<span class="note">目標 3.5〜6.0 mg/dL</span></span>
+      <span class="value"><span id="out-mbd-p">—</span><br><span class="badge" id="badge-mbd-p"></span></span>
+    </div>
+    <div class="out-row">
+      <span class="label">補正Ca<span class="note">目標 8.4〜10.0 mg/dL / Alb&lt;4のときPayne式で補正</span></span>
+      <span class="value"><span id="out-ca-corrected">—</span><br><span class="badge" id="badge-ca"></span></span>
+    </div>
+    <div class="out-row">
+      <span class="label">intact PTH<span class="note">目標 60〜240 pg/mL</span></span>
+      <span class="value"><span id="out-pth">—</span><br><span class="badge" id="badge-pth"></span></span>
+    </div>
+    <div class="action-box" style="margin-top:10px;">
+      <div class="title">CKD-MBD管理アラート（日本透析医学会 CKD-MBDガイドライン 2012年版）</div>
+      <div id="out-mbd-alert">—</div>
+    </div>
+
+    <h3 style="font-size:0.9rem; margin:18px 0 8px;">薬剤投与量の記録</h3>
+    <div class="two-col-grid">
+      <div>
+        <div class="field-row"><label for="doseParsabiv">パーサビブ（1回投与量）</label><input type="number" id="doseParsabiv" value="" step="0.5"><span class="unit">mg</span></div>
+        <div class="field-row"><label for="doseUpacita">ウパシタ（1回投与量）</label><input type="number" id="doseUpacita" value="" step="1"><span class="unit">μg</span></div>
+      </div>
+      <div>
+        <div class="field-row"><label for="doseOxarol">オキサロール（1回投与量）</label><input type="number" id="doseOxarol" value="" step="0.5"><span class="unit">μg</span></div>
+      </div>
+    </div>
+    <div class="action-box" style="margin-top:8px;">
+      <div class="title">薬剤投与状況と検査値の照らし合わせ</div>
+      <div id="out-mbd-drug-summary">—</div>
     </div>
   </section>
 
@@ -672,26 +836,44 @@
   </section>
 
   <section class="card full" data-tab="trend">
-    <h2>PWI・mean Kr 経時グラフ</h2>
-    <p style="font-size:0.8rem; color:var(--text-sub); margin-top:-6px;">現在の計算結果を日付付きで記録し、経時変化をグラフ化します。</p>
+    <h2>経時グラフ</h2>
+    <p style="font-size:0.8rem; color:var(--text-sub); margin-top:-6px;">現在の計算結果を日付付きで記録し、PWI・mean Kr・Kt/V・URR・ERI・体重(DW)の経時変化をグラフ化します。</p>
     <div class="log-controls no-print">
       <label for="logDate" style="font-size:0.85rem; color:var(--text-sub);">記録日</label>
       <input type="date" id="logDate">
       <button type="button" class="btn-primary" id="logAddBtn">この結果を記録する</button>
       <button type="button" class="btn-secondary" id="exportLogBtn">📤 記録をCSVダウンロード</button>
     </div>
-    <table class="mini-table">
-      <thead><tr><th>日付</th><th>PWI</th><th>mean Kr</th><th>UFR</th><th class="no-print"></th></tr></thead>
-      <tbody id="logTableBody"></tbody>
-    </table>
+    <div class="log-table-wrap">
+      <table class="mini-table log-table">
+        <thead><tr><th>日付</th><th>PWI</th><th>mean Kr</th><th>UFR</th><th>Kt/V</th><th>URR</th><th>ERI</th><th>体重(DW)</th><th class="no-print"></th></tr></thead>
+        <tbody id="logTableBody"></tbody>
+      </table>
+    </div>
 
     <div class="chart-wrap">
       <h3>PWI の推移（適正範囲 2〜4 を網掛け表示）</h3>
       <div id="chart-pwi"></div>
     </div>
-    <div class="chart-wrap" style="margin-bottom:0;">
+    <div class="chart-wrap">
       <h3>mean Kr の推移（適正範囲 1〜4 を網掛け表示）</h3>
       <div id="chart-kr"></div>
+    </div>
+    <div class="chart-wrap">
+      <h3>Kt/V の推移（目標 1.2以上）</h3>
+      <div id="chart-ktv"></div>
+    </div>
+    <div class="chart-wrap">
+      <h3>URR の推移（目標 65%以上）</h3>
+      <div id="chart-urr"></div>
+    </div>
+    <div class="chart-wrap">
+      <h3>ERI の推移（目安 15未満を網掛け表示）</h3>
+      <div id="chart-eri"></div>
+    </div>
+    <div class="chart-wrap" style="margin-bottom:0;">
+      <h3>体重(DW) の推移</h3>
+      <div id="chart-bw"></div>
     </div>
   </section>
 
@@ -777,7 +959,8 @@
   const ids = [
     "t","ufTotal","bwPre","bwPost","tp1","tp2","ht1","co","ct",
     "qb","qd","area","qbNew","tNew","koaNew","areaNew",
-    "hgb","esa","pPre","pPost","kPre","kPost",
+    "hgb","esa","fe","tibc","ferritin","pPre","pPost","kPre","kPost",
+    "caRaw","alb","pth","doseParsabiv","doseUpacita","doseOxarol",
     "lvef","lvdd"
   ].concat(valveIds).concat(segIds);
   const LEGACY_STORAGE_KEY = "dialysisCalc_v1";
@@ -785,6 +968,7 @@
   const PATIENTS_KEY = "dialysisCalc_patients_v1";
   const CURRENT_PATIENT_KEY = "dialysisCalc_currentPatientId_v1";
   const TAB_KEY = "dialysisCalc_tab";
+  const THEME_KEY = "dialysisCalc_theme_v1";
 
   let patients = [];
   let currentPatientId = null;
@@ -803,6 +987,23 @@
     return String(s).replace(/[\\/:*?"<>|]/g, "_");
   }
 
+  function isDarkActive() {
+    const explicit = document.documentElement.getAttribute("data-theme");
+    if (explicit === "dark") return true;
+    if (explicit === "light") return false;
+    return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  }
+  function updateThemeToggleIcon() {
+    document.getElementById("themeToggleBtn").textContent = isDarkActive() ? "☀️" : "🌙";
+  }
+  document.getElementById("themeToggleBtn").addEventListener("click", function () {
+    const next = isDarkActive() ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next);
+    try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+    updateThemeToggleIcon();
+  });
+  updateThemeToggleIcon();
+
   function setTab(tab) {
     document.querySelectorAll(".tab-btn").forEach(function (btn) {
       btn.classList.toggle("active", btn.getAttribute("data-tab") === tab);
@@ -813,7 +1014,7 @@
     try { localStorage.setItem(TAB_KEY, tab); } catch (e) {}
   }
 
-  let currentPWI = NaN, currentMeanKr = NaN, currentUFR = NaN;
+  let currentPWI = NaN, currentMeanKr = NaN, currentUFR = NaN, currentKtv = NaN, currentUrr = NaN, currentEri = NaN, currentBwPost = NaN;
   let lastResults = {};
 
   function num(id) {
@@ -845,17 +1046,26 @@
     el.textContent = text;
   }
 
-  function pwiJudge(pwi) {
+  function pwiJudge(pwi, weightAnomaly) {
     if (!isFinite(pwi)) return { cls: "caution", text: "入力不足" };
+    if (weightAnomaly) return { cls: "warn", text: "透析後体重が透析前体重を上回っています（入力値を確認してください）" };
     if (pwi < 2) return { cls: "warn", text: "DWを下げる必要がある（循環血漿量が多い）" };
     if (pwi > 4) return { cls: "warn", text: "DWを上げる必要がある（循環血漿量が不足）" };
     return { cls: "ok", text: "適正範囲" };
   }
 
-  function krJudge(kr) {
+  function krJudge(kr, weightAnomaly) {
     if (!isFinite(kr)) return { cls: "caution", text: "入力不足" };
+    if (weightAnomaly) return { cls: "warn", text: "透析後体重が透析前体重を上回っています（入力値を確認してください）" };
     if (kr < 1) return { cls: "warn", text: "DWを上げる必要がある" };
     if (kr > 4) return { cls: "warn", text: "DWを下げる必要がある" };
+    return { cls: "ok", text: "適正範囲" };
+  }
+
+  function rangeJudge(v, lo, hi, lowText, highText) {
+    if (!isFinite(v)) return { cls: "caution", text: "入力不足" };
+    if (v < lo) return { cls: "warn", text: lowText };
+    if (v > hi) return { cls: "warn", text: highText };
     return { cls: "ok", text: "適正範囲" };
   }
 
@@ -899,6 +1109,7 @@
     currentPWI = pwi;
     currentMeanKr = meanKr;
     currentUFR = ufr;
+    currentBwPost = bwPost;
 
     document.getElementById("out-dbw").textContent = fmt(dBW, 2, " kg");
     document.getElementById("out-bwr").textContent = fmt(bwRate * 100, 2, " %");
@@ -912,9 +1123,10 @@
     document.getElementById("out-pwi").textContent = fmt(pwi, 3, "");
     document.getElementById("out-kr").textContent = fmt(meanKr, 3, " ml/min/mmHg");
 
-    const pwiJ = pwiJudge(pwi);
+    const weightAnomaly = isFinite(dBW) && dBW < 0;
+    const pwiJ = pwiJudge(pwi, weightAnomaly);
     setBadge(document.getElementById("badge-pwi"), pwiJ.cls, pwiJ.text);
-    const krJ = krJudge(meanKr);
+    const krJ = krJudge(meanKr, weightAnomaly);
     setBadge(document.getElementById("badge-kr"), krJ.cls, krJ.text);
 
     // --- 透析効率 ---
@@ -924,6 +1136,8 @@
       ? -Math.log(ktRatio - 0.008 * (t / 60)) + (4 - 3.5 * ktRatio) * (dBW / bwPost)
       : NaN;
 
+    currentUrr = urr;
+    currentKtv = ktv;
     document.getElementById("out-urr").textContent = fmt(urr, 1, " %");
     document.getElementById("out-ktv").textContent = fmt(ktv, 2, "");
     if (!isFinite(urr)) {
@@ -978,36 +1192,66 @@
     }
     document.getElementById("out-action").textContent = action;
 
-    const riskJ = pwiJudge(pwi);
+    const riskJ = pwiJudge(pwi, weightAnomaly);
     document.getElementById("out-risk").textContent = riskJ.text;
 
     // --- 貧血・電解質 ---
     const hgb = num("hgb");
     const esa = num("esa");
+    const fe = num("fe");
+    const tibc = num("tibc");
+    const ferritin = num("ferritin");
     const pPre = num("pPre");
     const pPost = num("pPost");
     const kPre = num("kPre");
     const kPost = num("kPost");
 
     const eri = (bwPost && hgb) ? esa / bwPost / hgb : NaN;
+    currentEri = eri;
+    const tsat = tibc ? (fe / tibc) * 100 : NaN;
     const prr = pPre ? ((pPre - pPost) / pPre) * 100 : NaN;
     const krr = kPre ? ((kPre - kPost) / kPre) * 100 : NaN;
 
     document.getElementById("out-eri").textContent = fmt(eri, 1, "");
+    document.getElementById("out-tsat").textContent = fmt(tsat, 1, " %");
     document.getElementById("out-prr").textContent = fmt(prr, 1, " %");
     document.getElementById("out-krr").textContent = fmt(krr, 1, " %");
 
-    let anemiaAlert;
-    if (!isFinite(eri) && !isFinite(hgb)) {
-      anemiaAlert = "入力不足のため判定できません。";
-    } else if (isFinite(eri) && eri > 15) {
-      anemiaAlert = "【警告】ESA低反応性（透析量不足/鉄欠乏/炎症を評価）";
-    } else if (isFinite(hgb) && hgb < 10) {
-      anemiaAlert = "Hgb低下（ESA増量検討）";
+    // 日本透析医学会「2015年版 慢性腎臓病患者における腎性貧血治療のガイドライン」に基づく評価
+    // HD患者Hgb目標: 10≦Hgb<12 g/dL（Hgb<10で支持療法開始・Hgb≧12で減量/中止を検討）
+    let anemiaMsgs = [];
+    if (!isFinite(hgb) && !isFinite(eri)) {
+      anemiaMsgs.push("入力不足のため判定できません。");
     } else {
-      anemiaAlert = "貧血管理 良好";
+      if (isFinite(hgb)) {
+        if (hgb < 10) {
+          anemiaMsgs.push("Hgbが目標下限（10 g/dL）未満です。ESA投与の開始・増量を検討してください。");
+        } else if (hgb >= 12) {
+          anemiaMsgs.push("Hgbが目標上限（12 g/dL）以上です。ESA減量・休薬を検討してください。");
+        } else {
+          anemiaMsgs.push("Hgbは目標範囲内（10≦Hgb<12 g/dL）です。");
+        }
+      }
+      if (isFinite(eri) && eri > 15) {
+        anemiaMsgs.push("【警告】ERI高値でESA低反応性が疑われます（鉄欠乏・炎症・透析量不足などの原因評価を推奨）。");
+      }
     }
-    document.getElementById("out-anemia-alert").textContent = anemiaAlert;
+    document.getElementById("out-anemia-alert").textContent = anemiaMsgs.join(" ");
+
+    // 鉄補充適応: TSAT≦20%かつフェリチン≦100 ng/mL / 鉄過剰リスク: フェリチン>300 ng/mL
+    let ironAlert;
+    if (!isFinite(tsat) && !isFinite(ferritin)) {
+      ironAlert = "入力不足のため判定できません。";
+    } else if (isFinite(ferritin) && ferritin > 300) {
+      ironAlert = "【注意】フェリチンが300 ng/mLを超えており鉄過剰のリスクがあるため、鉄補充は避けるべきです。";
+    } else if (isFinite(tsat) && isFinite(ferritin) && tsat <= 20 && ferritin <= 100) {
+      ironAlert = "TSAT≦20%かつフェリチン≦100 ng/mLのため、鉄補充の適応があります。";
+    } else if (isFinite(tsat) && isFinite(ferritin)) {
+      ironAlert = "鉄補充適応の基準（TSAT≦20%かつフェリチン≦100 ng/mL）は満たしていません。現状で鉄代謝は概ね良好です。";
+    } else {
+      ironAlert = "TSAT・フェリチンの一方が未入力のため、鉄補充適応の判定は保留です（両方の入力を推奨）。";
+    }
+    document.getElementById("out-iron-alert").textContent = ironAlert;
 
     let pAlert;
     if (!isFinite(prr)) {
@@ -1018,6 +1262,65 @@
       pAlert = "リン除去 良好";
     }
     document.getElementById("out-p-alert").textContent = pAlert;
+
+    // --- 骨・ミネラル代謝 (CKD-MBD) ---
+    const caRaw = num("caRaw");
+    const alb = num("alb");
+    const pth = num("pth");
+    const correctedCa = (isFinite(caRaw) && isFinite(alb))
+      ? (alb < 4 ? caRaw + (4 - alb) : caRaw)
+      : caRaw;
+    const mbdP = pPre;
+
+    document.getElementById("out-mbd-p").textContent = fmt(mbdP, 1, " mg/dL");
+    document.getElementById("out-ca-corrected").textContent = fmt(correctedCa, 1, " mg/dL");
+    document.getElementById("out-pth").textContent = fmt(pth, 0, " pg/mL");
+
+    const pJ = rangeJudge(mbdP, 3.5, 6.0, "低リン血症", "高リン血症");
+    setBadge(document.getElementById("badge-mbd-p"), pJ.cls, pJ.text);
+    const caJ = rangeJudge(correctedCa, 8.4, 10.0, "低カルシウム血症", "高カルシウム血症");
+    setBadge(document.getElementById("badge-ca"), caJ.cls, caJ.text);
+    const pthJ = rangeJudge(pth, 60, 240, "PTH低値（過剰抑制の可能性）", "PTH高値（二次性副甲状腺機能亢進症を疑う）");
+    setBadge(document.getElementById("badge-pth"), pthJ.cls, pthJ.text);
+
+    // 日本透析医学会「2012年版 慢性腎臓病に伴う骨・ミネラル代謝異常の診療ガイドライン」P→Ca→PTHの優先順位で評価
+    let mbdMsgs = [];
+    if (!isFinite(mbdP) && !isFinite(correctedCa) && !isFinite(pth)) {
+      mbdMsgs.push("入力不足のため判定できません。");
+    } else {
+      if (isFinite(mbdP) && (mbdP < 3.5 || mbdP > 6.0)) {
+        mbdMsgs.push("Pが目標範囲外です（" + pJ.text + "）。管理の優先順位はP→Ca→PTHのため、まずPのコントロールを優先してください。");
+      }
+      if (isFinite(correctedCa) && (correctedCa < 8.4 || correctedCa > 10.0)) {
+        mbdMsgs.push("補正Caが目標範囲外です（" + caJ.text + "）。");
+      }
+      if (isFinite(pth) && (pth < 60 || pth > 240)) {
+        mbdMsgs.push("PTHが目標範囲外です（" + pthJ.text + "）。");
+      }
+      if (mbdMsgs.length === 0) {
+        mbdMsgs.push("P・Ca・PTHはいずれも目標範囲内です。");
+      }
+    }
+    document.getElementById("out-mbd-alert").textContent = mbdMsgs.join(" ");
+
+    // 薬剤投与量の記録とP/Ca/PTHとの照らし合わせ（具体的な増減量は提示せず、薬理学的な一般原則の提示に留める）
+    const doseParsabiv = num("doseParsabiv");
+    const doseUpacita = num("doseUpacita");
+    const doseOxarol = num("doseOxarol");
+    let drugMsgs = [];
+    if (isFinite(doseParsabiv) && doseParsabiv > 0) {
+      drugMsgs.push("パーサビブ " + doseParsabiv + "mg/回投与中。カルシミメティクスはPTH・Caをともに低下させるため、Caが低値の場合は減量・休薬を、PTHが高値でCaに問題なければ増量を検討してください。");
+    }
+    if (isFinite(doseUpacita) && doseUpacita > 0) {
+      drugMsgs.push("ウパシタ " + doseUpacita + "μg/回投与中。カルシミメティクスはPTH・Caをともに低下させるため、Caが低値の場合は減量・休薬を検討してください。");
+    }
+    if (isFinite(doseOxarol) && doseOxarol > 0) {
+      drugMsgs.push("オキサロール " + doseOxarol + "μg/回投与中。活性型ビタミンD3製剤はPTHを低下させる一方でCa・Pを上昇させうるため、Pまたは補正Caが高値の場合は増量を避け、減量・休薬を検討してください。");
+    }
+    if (drugMsgs.length === 0) {
+      drugMsgs.push("投与中の薬剤量が入力されていません。");
+    }
+    document.getElementById("out-mbd-drug-summary").textContent = drugMsgs.join(" ");
 
     // --- 心不全管理 ---
     const lvef = num("lvef");
@@ -1153,7 +1456,7 @@ BUN: ${rv(co)}→${rv(ct)}, 除水: ${rv(ufTotal)}ml
 
     const promptE =
 `【透析総合カンファレンス 評価依頼】
-以下の5ドメインのデータから、患者の現在の状態と処方変更の最適解を専門医レベルで考察してください。
+以下の6ドメインのデータから、患者の現在の状態と処方変更の最適解を専門医レベルで考察してください。
 
 ■1. 透析効率・機器性能
 Kt/V: ${fmt(ktv, 2)} / 実行効率係数: ${fmt(effCoef, 2)}
@@ -1166,6 +1469,7 @@ PWI: ${fmt(pwi, 2)} / mean Kr: ${fmt(meanKr, 3)}
 ■3. 貧血管理
 Hgb: ${rv(hgb)} g/dL / ESA投与量: ${rv(esa)} IU/週
 ERI (ESA抵抗性指数): ${fmt(eri, 1)}
+TSAT: ${fmt(tsat, 1)}% / フェリチン: ${rv(ferritin)} ng/mL
 
 ■4. 電解質・物質除去
 P除去率: ${fmt(prr, 1)}% (前 ${rv(pPre)} → 後 ${rv(pPost)})
@@ -1175,6 +1479,10 @@ K除去率: ${fmt(krr, 1)}%
 LVEF: ${rv(lvef)}% (${efClass || "未評価"} / 収縮能${systolicEval || "未評価"})
 WMSI: ${fmt(wmsi, 2)} / LVDd: ${rv(lvdd)}mm
 弁膜症: MR ${valveMR} / AR ${valveAR} / AS ${valveAS} / TR ${valveTR}
+
+■6. 骨・ミネラル代謝(CKD-MBD)
+P: ${fmt(mbdP, 1)} mg/dL (目標3.5〜6.0) / 補正Ca: ${fmt(correctedCa, 1)} mg/dL (目標8.4〜10.0) / intact PTH: ${rv(pth)} pg/mL (目標60〜240)
+投与中の薬剤: パーサビブ ${rv(doseParsabiv)}mg/回 / ウパシタ ${rv(doseUpacita)}μg/回 / オキサロール ${rv(doseOxarol)}μg/回
 
 ■依頼事項
 1. 【総合評価】Kt/V、ERI、P除去率のバランスから、現在の透析量は質・量ともに十分ですか？（※Kt/Vは足りていても中分子/リン除去が不足していないか等）
@@ -1189,7 +1497,8 @@ WMSI: ${fmt(wmsi, 2)} / LVDd: ${rv(lvdd)}mm
     lastResults = {
       dBW: dBW, bwRate: bwRate, tpRate: tpRate, ufr: ufr, pwi: pwi, meanKr: meanKr,
       urr: urr, ktv: ktv, koaCurrent: koaCurrent, kTheory: kTheory, kMeasured: kMeasured, effCoef: effCoef,
-      eri: eri, prr: prr, krr: krr, wmsi: wmsi, efClass: efClass
+      eri: eri, tsat: tsat, prr: prr, krr: krr, wmsi: wmsi, efClass: efClass,
+      mbdP: mbdP, correctedCa: correctedCa
     };
   }
 
@@ -1254,7 +1563,7 @@ WMSI: ${fmt(wmsi, 2)} / LVDd: ${rv(lvdd)}mm
   function renderLogTable() {
     const tbody = document.getElementById("logTableBody");
     if (trendLog.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-sub);">記録がありません</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--text-sub);">記録がありません</td></tr>';
       return;
     }
     tbody.innerHTML = trendLog.map(function (e) {
@@ -1262,6 +1571,10 @@ WMSI: ${fmt(wmsi, 2)} / LVDd: ${rv(lvdd)}mm
         '<td>' + (isFinite(e.pwi) ? e.pwi.toFixed(3) : "—") + '</td>' +
         '<td>' + (isFinite(e.meanKr) ? e.meanKr.toFixed(3) : "—") + '</td>' +
         '<td>' + (isFinite(e.ufr) ? e.ufr.toFixed(1) : "—") + '</td>' +
+        '<td>' + (isFinite(e.ktv) ? e.ktv.toFixed(2) : "—") + '</td>' +
+        '<td>' + (isFinite(e.urr) ? e.urr.toFixed(1) : "—") + '</td>' +
+        '<td>' + (isFinite(e.eri) ? e.eri.toFixed(1) : "—") + '</td>' +
+        '<td>' + (isFinite(e.bwPost) ? e.bwPost.toFixed(1) : "—") + '</td>' +
         '<td class="no-print"><button type="button" class="btn-del" data-date="' + e.date + '">✕</button></td></tr>';
     }).join("");
   }
@@ -1273,50 +1586,70 @@ WMSI: ${fmt(wmsi, 2)} / LVDd: ${rv(lvdd)}mm
     const pw = w - ml - mr, ph = h - mt - mb;
     const n = points.length;
     const values = points.map(p => p.y);
-    const yMin = 0;
-    const yMax = Math.max(opts.refMax + 1, Math.ceil(Math.max.apply(null, values)) + 1);
+    const hasBand = isFinite(opts.refMin) && isFinite(opts.refMax);
+    const hasLine = isFinite(opts.refLine);
+    const yMin = (opts.zeroBase === false)
+      ? Math.floor(Math.min.apply(null, values)) - 1
+      : Math.min(0, Math.floor(Math.min.apply(null, values)) - 1);
+    const upperCandidates = [Math.ceil(Math.max.apply(null, values)) + 1];
+    if (hasBand) upperCandidates.push(opts.refMax + 1);
+    if (hasLine) upperCandidates.push(opts.refLine + 1);
+    const yMax = Math.max.apply(null, upperCandidates);
     function xAt(i) { return n === 1 ? ml + pw / 2 : ml + (pw * i) / (n - 1); }
     function yAt(v) { return mt + ph - ((v - yMin) / (yMax - yMin)) * ph; }
-    const refTop = yAt(opts.refMax), refBottom = yAt(opts.refMin);
+    const bandRect = hasBand
+      ? '<rect x="' + ml + '" y="' + yAt(opts.refMax) + '" width="' + pw + '" height="' + (yAt(opts.refMin) - yAt(opts.refMax)) + '" fill="' + opts.color + '" opacity="0.12" rx="4" />'
+      : '';
+    const refLineEl = hasLine
+      ? '<line x1="' + ml + '" y1="' + yAt(opts.refLine) + '" x2="' + (ml + pw) + '" y2="' + yAt(opts.refLine) + '" stroke="' + opts.color + '" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.6" />' +
+        '<text x="' + (ml + pw - 4) + '" y="' + (yAt(opts.refLine) - 4) + '" font-size="9" text-anchor="end" fill="' + opts.color + '">' + (opts.refLineLabel || ("目標 " + opts.refLine)) + '</text>'
+      : '';
     const polyPoints = points.map((p, i) => xAt(i) + "," + yAt(p.y)).join(" ");
     const circles = points.map(function (p, i) {
       const cx = xAt(i), cy = yAt(p.y);
-      return '<circle cx="' + cx + '" cy="' + cy + '" r="4" fill="' + opts.color + '" stroke="#fff" stroke-width="1.5"><title>' + p.x + ": " + p.y.toFixed(opts.digits) + '</title></circle>';
+      return '<circle cx="' + cx + '" cy="' + cy + '" r="4" fill="' + opts.color + '" stroke="var(--card-bg)" stroke-width="1.5"><title>' + p.x + ": " + p.y.toFixed(opts.digits) + '</title></circle>';
     }).join("");
     const labelStep = Math.max(1, Math.ceil(n / 7));
     let xLabels = "";
     points.forEach(function (p, i) {
       if (i % labelStep === 0 || i === n - 1) {
-        xLabels += '<text x="' + xAt(i) + '" y="' + (h - 8) + '" font-size="9" text-anchor="middle" fill="#647089">' + formatShortDate(p.x) + '</text>';
+        xLabels += '<text x="' + xAt(i) + '" y="' + (h - 8) + '" font-size="9" text-anchor="middle" fill="var(--text-sub)">' + formatShortDate(p.x) + '</text>';
       }
     });
     const yTicks = [yMin, (yMin + yMax) / 2, yMax];
     const yLabels = yTicks.map(function (v) {
-      return '<text x="' + (ml - 6) + '" y="' + (yAt(v) + 3) + '" font-size="9" text-anchor="end" fill="#647089">' + v.toFixed(1) + '</text>';
+      return '<text x="' + (ml - 6) + '" y="' + (yAt(v) + 3) + '" font-size="9" text-anchor="end" fill="var(--text-sub)">' + v.toFixed(1) + '</text>';
     }).join("");
     return '<svg viewBox="0 0 ' + w + ' ' + h + '" class="trend-chart" preserveAspectRatio="xMidYMid meet">' +
-      '<rect x="' + ml + '" y="' + refTop + '" width="' + pw + '" height="' + (refBottom - refTop) + '" fill="' + opts.color + '" opacity="0.12" rx="4" />' +
-      '<line x1="' + ml + '" y1="' + mt + '" x2="' + ml + '" y2="' + (mt + ph) + '" stroke="#dfe5ef" />' +
-      '<line x1="' + ml + '" y1="' + (mt + ph) + '" x2="' + (ml + pw) + '" y2="' + (mt + ph) + '" stroke="#dfe5ef" />' +
-      yLabels + xLabels +
+      bandRect +
+      '<line x1="' + ml + '" y1="' + mt + '" x2="' + ml + '" y2="' + (mt + ph) + '" stroke="var(--border)" />' +
+      '<line x1="' + ml + '" y1="' + (mt + ph) + '" x2="' + (ml + pw) + '" y2="' + (mt + ph) + '" stroke="var(--border)" />' +
+      yLabels + xLabels + refLineEl +
       '<polyline points="' + polyPoints + '" fill="none" stroke="' + opts.color + '" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />' +
       circles +
       '</svg>';
   }
   function renderCharts() {
-    const pwiPoints = trendLog.filter(e => isFinite(e.pwi)).map(e => ({ x: e.date, y: e.pwi }));
-    const krPoints = trendLog.filter(e => isFinite(e.meanKr)).map(e => ({ x: e.date, y: e.meanKr }));
-    document.getElementById("chart-pwi").innerHTML = buildLineChartSVG(pwiPoints, { refMin: 2, refMax: 4, color: "#2f6fed", digits: 3 });
-    document.getElementById("chart-kr").innerHTML = buildLineChartSVG(krPoints, { refMin: 1, refMax: 4, color: "#1d7a46", digits: 3 });
+    const mk = (key) => trendLog.filter(e => isFinite(e[key])).map(e => ({ x: e.date, y: e[key] }));
+    document.getElementById("chart-pwi").innerHTML = buildLineChartSVG(mk("pwi"), { refMin: 2, refMax: 4, color: "#2f6fed", digits: 3 });
+    document.getElementById("chart-kr").innerHTML = buildLineChartSVG(mk("meanKr"), { refMin: 1, refMax: 4, color: "#1d7a46", digits: 3 });
+    document.getElementById("chart-ktv").innerHTML = buildLineChartSVG(mk("ktv"), { refLine: 1.2, refLineLabel: "目標1.2", color: "#b3401f", digits: 2 });
+    document.getElementById("chart-urr").innerHTML = buildLineChartSVG(mk("urr"), { refLine: 65, refLineLabel: "目標65%", color: "#96700a", digits: 1 });
+    document.getElementById("chart-eri").innerHTML = buildLineChartSVG(mk("eri"), { refMin: 0, refMax: 15, color: "#7a4fd6", digits: 1 });
+    document.getElementById("chart-bw").innerHTML = buildLineChartSVG(mk("bwPost"), { color: "#2f6fed", digits: 1, zeroBase: false });
   }
   function addLogEntry() {
     const dateEl = document.getElementById("logDate");
     const date = dateEl.value || todayISO();
-    if (!isFinite(currentPWI) || !isFinite(currentMeanKr)) {
-      showToast("PWI・mean Krを計算できる入力が必要です");
+    const values = [currentPWI, currentMeanKr, currentUFR, currentKtv, currentUrr, currentEri, currentBwPost];
+    if (!values.some(isFinite)) {
+      showToast("記録できる指標がありません（入力を確認してください）");
       return;
     }
-    const entry = { date: date, pwi: currentPWI, meanKr: currentMeanKr, ufr: currentUFR };
+    const entry = {
+      date: date, pwi: currentPWI, meanKr: currentMeanKr, ufr: currentUFR,
+      ktv: currentKtv, urr: currentUrr, eri: currentEri, bwPost: currentBwPost
+    };
     const idx = trendLog.findIndex(e => e.date === date);
     if (idx >= 0) trendLog[idx] = entry; else trendLog.push(entry);
     trendLog.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
@@ -1379,13 +1712,25 @@ WMSI: ${fmt(wmsi, 2)} / LVDd: ${rv(lvdd)}mm
       ["実効効率係数", fmt(r.effCoef, 2)],
       ["Hgb(g/dL)", document.getElementById("hgb").value],
       ["ESA投与量(IU/週)", document.getElementById("esa").value],
+      ["血清鉄Fe(μg/dL)", document.getElementById("fe").value],
+      ["TIBC(μg/dL)", document.getElementById("tibc").value],
+      ["フェリチン(ng/mL)", document.getElementById("ferritin").value],
       ["透析前リン(mg/dL)", document.getElementById("pPre").value],
       ["透析後リン(mg/dL)", document.getElementById("pPost").value],
       ["透析前カリウム(mEq/L)", document.getElementById("kPre").value],
       ["透析後カリウム(mEq/L)", document.getElementById("kPost").value],
       ["ERI", fmt(r.eri, 1)],
+      ["TSAT(%)", fmt(r.tsat, 1)],
       ["リン除去率PRR(%)", fmt(r.prr, 1)],
       ["カリウム除去率KRR(%)", fmt(r.krr, 1)],
+      ["P(mg/dL、透析前値)", fmt(r.mbdP, 1)],
+      ["実測Ca(mg/dL)", document.getElementById("caRaw").value],
+      ["アルブミン(g/dL)", document.getElementById("alb").value],
+      ["補正Ca(mg/dL)", fmt(r.correctedCa, 1)],
+      ["intact PTH(pg/mL)", document.getElementById("pth").value],
+      ["パーサビブ(mg/回)", document.getElementById("doseParsabiv").value],
+      ["ウパシタ(μg/回)", document.getElementById("doseUpacita").value],
+      ["オキサロール(μg/回)", document.getElementById("doseOxarol").value],
       ["LVEF(%)", document.getElementById("lvef").value],
       ["LVDd(mm)", document.getElementById("lvdd").value],
       ["EF分類", r.efClass || ""],
@@ -1404,16 +1749,20 @@ WMSI: ${fmt(wmsi, 2)} / LVDd: ${rv(lvdd)}mm
       showToast("記録がありません");
       return;
     }
-    const rows = [csvRow(["日付", "PWI", "mean Kr", "UFR(ml/min)"])];
+    const rows = [csvRow(["日付", "PWI", "mean Kr", "UFR(ml/min)", "Kt/V", "URR(%)", "ERI", "体重/DW(kg)"])];
     trendLog.forEach(function (e) {
       rows.push(csvRow([
         e.date,
         isFinite(e.pwi) ? e.pwi.toFixed(3) : "",
         isFinite(e.meanKr) ? e.meanKr.toFixed(3) : "",
-        isFinite(e.ufr) ? e.ufr.toFixed(1) : ""
+        isFinite(e.ufr) ? e.ufr.toFixed(1) : "",
+        isFinite(e.ktv) ? e.ktv.toFixed(2) : "",
+        isFinite(e.urr) ? e.urr.toFixed(1) : "",
+        isFinite(e.eri) ? e.eri.toFixed(1) : "",
+        isFinite(e.bwPost) ? e.bwPost.toFixed(1) : ""
       ]));
     });
-    downloadCSV("PWI_Kr経時記録_" + sanitizeFilename(currentPatientName()) + "_" + timestampForFilename() + ".csv", rows.join("\r\n"));
+    downloadCSV("経時記録_" + sanitizeFilename(currentPatientName()) + "_" + timestampForFilename() + ".csv", rows.join("\r\n"));
     showToast("CSVをダウンロードしました");
   }
   document.getElementById("exportSnapshotBtn").addEventListener("click", exportSnapshot);
