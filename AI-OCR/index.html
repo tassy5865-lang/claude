@@ -48,7 +48,7 @@
             if (!apiKey) {
                 throw new Error("Gemini APIキーが設定されていません。画面右上の設定アイコンから入力してください。");
             }
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
             const delays = [1000, 2000, 4000, 8000, 16000];
 
             const images = Array.isArray(imageBase64s) ? imageBase64s : [imageBase64s];
