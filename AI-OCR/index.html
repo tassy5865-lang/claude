@@ -1,0 +1,1343 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-OCR文字起こしツール</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone@7.23.9/babel.min.js"></script>
+    <!-- PDF.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        body { font-family: 'Inter', 'Noto Sans JP', sans-serif; background-color: #f3f4f6; margin: 0; overflow: hidden; }
+        .canvas-container { position: relative; display: inline-block; user-select: none; margin-bottom: 24px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); }
+        .region-box { position: absolute; border: 2px solid #3b82f6; background-color: rgba(59, 130, 246, 0.2); cursor: move; }
+        .region-box.selected { border-color: #ef4444; background-color: rgba(239, 68, 68, 0.2); z-index: 10; }
+        .resize-handle { position: absolute; width: 10px; height: 10px; background-color: #fff; border: 2px solid #3b82f6; right: -6px; bottom: -6px; cursor: se-resize; }
+        .selected .resize-handle { border-color: #ef4444; }
+        .region-label { position: absolute; top: -24px; left: -2px; background: #3b82f6; color: white; padding: 2px 6px; font-size: 12px; border-radius: 4px; white-space: nowrap; }
+        .selected .region-label { background: #ef4444; }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        /** @jsx React.createElement */
+        /** @jsxFrag React.Fragment */
+
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        const { useState, useEffect, useRef, useCallback } = React;
+
+        const callGeminiAPI = async (apiKey, prompt, imageBase64s, schema, maxRetries = 5) => {
+            if (!apiKey) {
+                throw new Error("Gemini APIキーが設定されていません。画面右上の設定アイコンから入力してください。");
+            }
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            const delays = [1000, 2000, 4000, 8000, 16000];
+
+            const images = Array.isArray(imageBase64s) ? imageBase64s : [imageBase64s];
+            const imageParts = images.map(img => ({ inlineData: { mimeType: "image/png", data: img.split(',')[1] } }));
+
+            const payload = {
+                contents: [
+                    {
+                        role: "user",
+                        parts: [
+                            { text: prompt },
+                            ...imageParts
+                        ]
+                    }
+                ],
+                generationConfig: {
+                    temperature: 0.1,
+                    responseMimeType: "application/json",
+                    responseSchema: schema
+                }
+            };
+
+            for (let i = 0; i <= maxRetries; i++) {
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        if (response.status === 400 || response.status === 403) {
+                            const errBody = await response.text();
+                            throw new Error(`APIキーが無効か、権限がありません。設定を確認してください。(${response.status})`);
+                        }
+                        throw new Error(`API Error: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    if (!data.candidates || data.candidates.length === 0) throw new Error("No candidates returned.");
+
+                    const text = data.candidates[0].content.parts[0].text;
+                    return JSON.parse(text);
+                } catch (error) {
+                    if (i === maxRetries) throw error;
+                    await new Promise(res => setTimeout(res, delays[i]));
+                }
+            }
+        };
+
+        const callGasAPI = async (gasUrl, action, payload = null) => {
+            if (!gasUrl) throw new Error("GAS URL is not defined");
+
+            try {
+                if (action === 'getTemplates') {
+                    const res = await fetch(gasUrl);
+                    if (!res.ok) throw new Error(`GAS GET Error: ${res.status}`);
+                    return await res.json();
+                } else if (action === 'saveTemplate') {
+                    const res = await fetch(gasUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'text/plain' },
+                        body: JSON.stringify({ action: 'saveTemplate', ...payload })
+                    });
+                    if (!res.ok) throw new Error(`GAS POST Error: ${res.status}`);
+                    return await res.json();
+                }
+            } catch (e) {
+                console.error("GAS API Error:", e);
+                throw e;
+            }
+        };
+
+        const Icon = ({ name, className }) => {
+            const ref = useRef(null);
+            useEffect(() => {
+                if (ref.current) {
+                    ref.current.innerHTML = `<i data-lucide="${name}" class="${className || ''}"></i>`;
+                    lucide.createIcons({
+                        root: ref.current
+                    });
+                }
+            }, [name, className]);
+            return <span ref={ref} className="contents"></span>;
+        };
+
+        const Modal = ({ isOpen, title, message, onClose }) => {
+            if (!isOpen) return null;
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]">
+                    <div className="bg-white rounded-lg p-6 max-w-sm w-full shadow-xl">
+                        <h3 className="text-lg font-bold mb-2 text-gray-800">{title}</h3>
+                        <p className="text-gray-600 mb-6 whitespace-pre-wrap">{message}</p>
+                        <div className="flex justify-end">
+                            <button onClick={onClose} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
+                                OK
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const App = () => {
+            const [pdfFile, setPdfFile] = useState(null);
+            const [pdfDoc, setPdfDoc] = useState(null); // null の場合は画像ファイルとして扱う
+            const [numPages, setNumPages] = useState(0);
+
+            const [pagesPerSet, setPagesPerSet] = useState(1);
+            const [currentSet, setCurrentSet] = useState(1);
+            const [setImages, setSetImages] = useState([]);
+
+            const [regions, setRegions] = useState([]);
+            const [selectedRegionId, setSelectedRegionId] = useState(null);
+            const [focusedRegionName, setFocusedRegionName] = useState(null);
+            const [ocrResults, setOcrResults] = useState(null);
+
+            const [isLoading, setIsLoading] = useState(false);
+            const [loadingText, setLoadingText] = useState("");
+            const [modal, setModal] = useState({ isOpen: false, title: "", message: "" });
+            const [logs, setLogs] = useState([]);
+            const [showLabels, setShowLabels] = useState(true);
+
+            const [apiKey, setApiKey] = useState("");
+            const [apiKeyInput, setApiKeyInput] = useState("");
+            const [showApiKey, setShowApiKey] = useState(false);
+
+            const [gasUrl, setGasUrl] = useState("");
+            const [showGasSettings, setShowGasSettings] = useState(false);
+            const [gasUrlInput, setGasUrlInput] = useState("");
+            const [templates, setTemplates] = useState([]);
+            const [selectedTemplateIndex, setSelectedTemplateIndex] = useState("");
+
+            // Template Saving States
+            const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
+            const [newTemplateName, setNewTemplateName] = useState("");
+            const [activeTemplateName, setActiveTemplateName] = useState(null);
+
+            // Interaction & Drag States
+            const containerRefs = useRef([]);
+            const [interaction, setInteraction] = useState({ type: 'idle', id: null, pageOffset: 0, startX: 0, startY: 0, initialRect: null });
+            const dragItemRef = useRef(null);
+            const dragOverItemRef = useRef(null);
+
+            const showMessage = (title, message) => setModal({ isOpen: true, title, message });
+
+            const addLog = useCallback((msg, type = 'info') => {
+                setLogs(prev => [...prev, { time: new Date().toLocaleTimeString('ja-JP', { hour12: false }), msg, type }]);
+            }, []);
+
+            useEffect(() => {
+                try {
+                    const savedApiKey = localStorage.getItem('geminiApiKey');
+                    if (savedApiKey) {
+                        setApiKey(savedApiKey);
+                    }
+                    const savedUrl = localStorage.getItem('gasWebhookUrl');
+                    if (savedUrl) {
+                        setGasUrl(savedUrl);
+                        fetchTemplates(savedUrl);
+                    }
+                } catch (e) {
+                    console.error("localStorage access error:", e);
+                }
+            }, []);
+
+            const openSettings = () => {
+                setApiKeyInput(apiKey);
+                setGasUrlInput(gasUrl);
+                setShowGasSettings(true);
+            };
+
+            const handleSaveSettings = () => {
+                const key = apiKeyInput.trim();
+                const url = gasUrlInput.trim();
+
+                if (!key) {
+                    showMessage("エラー", "Gemini APIキーを入力してください。");
+                    return;
+                }
+
+                try {
+                    localStorage.setItem('geminiApiKey', key);
+                } catch (e) {
+                    console.error("Failed to save API key to localStorage:", e);
+                }
+                setApiKey(key);
+                addLog(`Gemini APIキーを設定しました。`, 'success');
+
+                if (url) {
+                    if (!url.startsWith('http')) {
+                        showMessage("エラー", "GAS WebアプリURLの形式が正しくありません。");
+                        return;
+                    }
+                    try {
+                        localStorage.setItem('gasWebhookUrl', url);
+                    } catch (e) {
+                        console.error("Failed to save to localStorage:", e);
+                    }
+                    setGasUrl(url);
+                    addLog(`GAS Webhook URLを設定しました。`, 'success');
+                    fetchTemplates(url);
+                }
+
+                setShowGasSettings(false);
+            };
+
+            const fetchTemplates = async (url) => {
+                addLog("GASからテンプレート一覧を取得しています...", "info");
+                try {
+                    const data = await callGasAPI(url, 'getTemplates');
+                    setTemplates(data || []);
+                    addLog(`テンプレートを ${data.length} 件取得しました。`, 'success');
+                } catch (e) {
+                    addLog(`テンプレートの取得に失敗しました。URLが正しいか確認してください。`, 'error');
+                }
+            };
+
+            const handleApplyTemplate = () => {
+                if (selectedTemplateIndex === "") return;
+                const template = templates[selectedTemplateIndex];
+                if (template && template.regions) {
+                    const newRegions = template.regions.map((r, idx) => ({
+                        ...r,
+                        id: `region_${Date.now()}_${idx}`
+                    }));
+                    setRegions(newRegions);
+                    setActiveTemplateName(template.name);
+                    addLog(`テンプレート「${template.name}」を適用しました。`, 'success');
+                }
+            };
+
+            const handleSaveTemplate = async (isUpdate = false) => {
+                const saveName = isUpdate ? activeTemplateName : newTemplateName.trim();
+                if (!saveName || regions.length === 0) return;
+
+                setIsLoading(true);
+                setLoadingText(isUpdate ? "テンプレートを上書き保存中..." : "新規テンプレートを保存中...");
+
+                try {
+                    const regionsToSave = regions.map(r => ({
+                        name: r.name,
+                        type: r.type,
+                        x: r.x,
+                        y: r.y,
+                        w: r.w,
+                        h: r.h,
+                        pageOffset: r.pageOffset
+                    }));
+
+                    await callGasAPI(gasUrl, 'saveTemplate', {
+                        name: saveName,
+                        regions: regionsToSave,
+                        isUpdate: isUpdate,
+                        originalName: isUpdate ? activeTemplateName : null
+                    });
+
+                    addLog(`テンプレート「${saveName}」を${isUpdate ? '上書き' : '新規'}保存しました。`, 'success');
+
+                    setShowSaveTemplateModal(false);
+                    if (!isUpdate) {
+                        setNewTemplateName("");
+                    }
+                    setActiveTemplateName(saveName);
+
+                    fetchTemplates(gasUrl);
+                } catch (e) {
+                    addLog(`テンプレートの保存に失敗しました。`, 'error');
+                    showMessage("エラー", "テンプレートの保存に失敗しました。");
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+
+            const renderPageToBase64 = async (pdf, pageNum) => {
+                const page = await pdf.getPage(pageNum);
+                const scale = 2.0;
+                const viewport = page.getViewport({ scale });
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                await page.render({ canvasContext: ctx, viewport }).promise;
+                return canvas.toDataURL('image/png');
+            };
+
+            const loadSetImages = async (pdf, setIdx, perSet) => {
+                if (!pdf) return; // PDFがない(画像)場合はスキップ
+
+                setIsLoading(true);
+                setLoadingText(`プレビュー画像を生成中...`);
+                try {
+                    const imgs = [];
+                    const startPage = (setIdx - 1) * perSet + 1;
+                    for (let i = 0; i < perSet; i++) {
+                        const pageNum = startPage + i;
+                        if (pageNum <= pdf.numPages) {
+                            imgs.push(await renderPageToBase64(pdf, pageNum));
+                        }
+                    }
+                    setSetImages(imgs);
+                    setCurrentSet(setIdx);
+                } catch (error) {
+                    console.error(error);
+                    showMessage("エラー", "画像の読み込みに失敗しました。");
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+
+            const handleFileUpload = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const isPDF = file.type === 'application/pdf';
+                const isImage = file.type.startsWith('image/');
+
+                if (!isPDF && !isImage) {
+                    showMessage("エラー", "有効なPDFまたは画像ファイルを選択してください。");
+                    return;
+                }
+
+                setIsLoading(true);
+                setLoadingText("ファイルを読み込んでいます...");
+                setPdfFile(file);
+                setRegions([]);
+                setOcrResults(null);
+                setPagesPerSet(1);
+                setCurrentSet(1);
+                setLogs([]);
+                setActiveTemplateName(null);
+                addLog(`ファイル「${file.name}」の読み込みを開始しました。`);
+
+                try {
+                    if (isPDF) {
+                        const fileReader = new FileReader();
+                        fileReader.onload = async function() {
+                            const typedarray = new Uint8Array(this.result);
+                            const pdf = await pdfjsLib.getDocument(typedarray).promise;
+                            setPdfDoc(pdf);
+                            setNumPages(pdf.numPages);
+                            addLog(`PDFの解析完了: 全 ${pdf.numPages} ページを認識しました。`);
+
+                            let detectedPagesPerSet = 1;
+
+                            if (pdf.numPages > 1 && apiKey) {
+                                addLog("AIによるセット構成（ページ数）の自動判定を実行中...", "info");
+                                setLoadingText("AIがPDFの構成を自動分析しています...");
+                                try {
+                                    const testPagesCount = Math.min(4, pdf.numPages);
+                                    const testImages = [];
+                                    for(let i=1; i<=testPagesCount; i++) {
+                                        const page = await pdf.getPage(i);
+                                        const viewport = page.getViewport({ scale: 0.5 });
+                                        const canvas = document.createElement('canvas');
+                                        canvas.width = viewport.width; canvas.height = viewport.height;
+                                        await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+                                        testImages.push(canvas.toDataURL('image/png'));
+                                    }
+
+                                    const prompt = `提供された複数の画像は、ある帳票PDFの先頭から順番のページです。
+このPDFは、Nページで1つの書類のセット（1レコード）を構成し、それが繰り返される構造になっている可能性があります。
+各ページの内容、見出し、フォーマットの連続性を分析し、「1つのセットが何ページで構成されているか」を推測してください。
+例えば、1ページ目が基本情報、2ページ目が明細なら「2」です。すべてのページが独立しているなら「1」です。
+結果は以下のJSONスキーマに従って出力してください。`;
+
+                                    const schema = {
+                                        type: "OBJECT",
+                                        properties: {
+                                            pages_per_set: { type: "INTEGER", description: "推測される1セットあたりのページ数 (1以上の整数)" }
+                                        },
+                                        required: ["pages_per_set"]
+                                    };
+
+                                    const data = await callGeminiAPI(apiKey, prompt, testImages, schema);
+                                    if (data.pages_per_set >= 1 && data.pages_per_set <= pdf.numPages) {
+                                        detectedPagesPerSet = data.pages_per_set;
+                                        addLog(`自動判定完了: 1セット ${detectedPagesPerSet} ページと推測しました。`, "success");
+                                    }
+                                } catch (err) {
+                                    console.error(err);
+                                    addLog("セット構成の自動判定に失敗しました。デフォルトの1ページ構成で表示します。", "warning");
+                                }
+                            } else if (pdf.numPages > 1) {
+                                addLog("Gemini APIキー未設定のため、セット構成の自動判定をスキップしました。", "warning");
+                            }
+
+                            setPagesPerSet(detectedPagesPerSet);
+                            await loadSetImages(pdf, 1, detectedPagesPerSet);
+                            addLog(`初期表示が完了しました。`, 'success');
+                            setIsLoading(false);
+                        };
+                        fileReader.readAsArrayBuffer(file);
+                    } else if (isImage) {
+                        const fileReader = new FileReader();
+                        fileReader.onload = (event) => {
+                            const dataUrl = event.target.result;
+                            setPdfDoc(null); // 画像ファイルであることを示す
+                            setNumPages(1);
+                            setPagesPerSet(1);
+                            setSetImages([dataUrl]);
+                            setCurrentSet(1);
+                            addLog(`画像の解析完了: 1ページとして認識しました。`);
+                            addLog(`初期表示が完了しました。`, 'success');
+                            setIsLoading(false);
+                        };
+                        fileReader.onerror = () => {
+                            addLog(`エラー: 画像の読み込みに失敗しました。`, 'error');
+                            showMessage("エラー", "画像の読み込みに失敗しました。");
+                            setIsLoading(false);
+                        };
+                        fileReader.readAsDataURL(file);
+                    }
+                } catch (error) {
+                    console.error(error);
+                    addLog(`エラー: ファイルの読み込みに失敗しました。`, 'error');
+                    showMessage("エラー", "ファイルの読み込みに失敗しました。");
+                    setIsLoading(false);
+                }
+            };
+
+            const handlePagesPerSetChange = async (newVal) => {
+                const val = parseInt(newVal, 10);
+                if (val >= 1 && val <= 10) {
+                    setPagesPerSet(val);
+                    setRegions([]);
+                    setActiveTemplateName(null);
+                    if (pdfDoc) {
+                        await loadSetImages(pdfDoc, 1, val);
+                    }
+                }
+            };
+
+            const handleAutoDetectRegions = async () => {
+                if (setImages.length === 0) return;
+                if (!apiKey) {
+                    showMessage("APIキー未設定", "Gemini APIキーが設定されていません。画面右上の設定アイコンから入力してください。");
+                    return;
+                }
+                setIsLoading(true);
+                setLoadingText("AIがドキュメントを解析し、抽出領域を特定しています...");
+                addLog("AIによる抽出領域の自動特定を開始します...", "info");
+                setActiveTemplateName(null);
+
+                try {
+                    const newRegions = [];
+                    for (let offset = 0; offset < setImages.length; offset++) {
+                        addLog(`構成ページ ${offset + 1}/${setImages.length} を分析中...`);
+
+                        const prompt = `あなたは高度なAI-OCRアシスタントです。提供された帳票・ドキュメントの画像から、システムで抽出・データ化すべき「入力値が記載される領域」を自動的に特定してください。
+【重要: 傾き補正】スキャンされたPDFや画像の場合、傾きや歪みがある可能性があります。その場合は、画像の傾きを補正したと仮定して、実際の文字が書かれている領域を正確に囲んでください。
+各領域について、その項目の論理的な名前（例：「請求日」「会社名」など）と、バウンディングボックス（0〜1000正規化座標: [ymin, xmin, ymax, xmax]）、項目の種類（type）をJSON形式で返してください。`;
+
+                        const schema = {
+                            type: "ARRAY",
+                            items: {
+                                type: "OBJECT",
+                                properties: {
+                                    name: { type: "STRING", description: "抽出項目の名称" },
+                                    type: { type: "STRING", description: "項目の種類 ('text': 通常の文字, 'checkbox': チェックボックス, 'circle': 丸囲み選択)" },
+                                    box: {
+                                        type: "ARRAY",
+                                        items: { type: "INTEGER" },
+                                        description: "[ymin, xmin, ymax, xmax] Normalized 0-1000"
+                                    }
+                                },
+                                required: ["name", "type", "box"]
+                            }
+                        };
+
+                        const data = await callGeminiAPI(apiKey, prompt, setImages[offset], schema);
+
+                        data.forEach((item, idx) => {
+                            const [ymin, xmin, ymax, xmax] = item.box;
+                            const validTypes = ['text', 'checkbox', 'circle'];
+                            const itemType = validTypes.includes(item.type) ? item.type : 'text';
+
+                            newRegions.push({
+                                id: `region_${Date.now()}_${offset}_${idx}`,
+                                name: item.name,
+                                type: itemType,
+                                x: xmin / 1000,
+                                y: ymin / 1000,
+                                w: (xmax - xmin) / 1000,
+                                h: (ymax - ymin) / 1000,
+                                pageOffset: offset
+                            });
+                        });
+                    }
+
+                    setRegions(newRegions);
+                    addLog(`自動特定完了: 合計 ${newRegions.length} 件の領域を検出しました。`, "success");
+                    showMessage("完了", `${newRegions.length}件の抽出領域を自動特定しました。必要に応じて微調整してください。`);
+                } catch (error) {
+                    console.error(error);
+                    addLog(`エラー: 領域の自動特定に失敗しました。(${error.message})`, "error");
+                    showMessage("エラー", `領域の自動特定に失敗しました。${error.message || '時間をおいて再試行してください。'}`);
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+
+            const handleRunOCR = async () => {
+                if ((!pdfDoc && setImages.length === 0) || regions.length === 0) {
+                    showMessage("確認", "ドキュメントが読み込まれていないか、抽出領域が設定されていません。");
+                    return;
+                }
+                if (!apiKey) {
+                    showMessage("APIキー未設定", "Gemini APIキーが設定されていません。画面右上の設定アイコンから入力してください。");
+                    return;
+                }
+
+                setIsLoading(true);
+                setOcrResults(null);
+                const results = [];
+                let hasError = false;
+
+                const numSets = Math.ceil(numPages / pagesPerSet);
+                addLog(`全 ${numSets} レコード（セット）のOCR解析を開始します...`, "info");
+
+                const schema = {
+                    type: "ARRAY",
+                    items: {
+                        type: "OBJECT",
+                        properties: {
+                            name: { type: "STRING" },
+                            value: { type: "STRING", description: "抽出されたテキスト。見つからない場合は'不明'" },
+                            box: {
+                                type: "ARRAY",
+                                items: { type: "INTEGER" },
+                                description: "実際に抽出した領域の[ymin, xmin, ymax, xmax] (0-1000)。見つからない場合は空配列"
+                            }
+                        },
+                        required: ["name", "value"]
+                    }
+                };
+
+                try {
+                    for (let setIdx = 0; setIdx < numSets; setIdx++) {
+                        const setRecordData = {};
+                        let setHasError = false;
+
+                        addLog(`[レコード ${setIdx + 1}/${numSets}] 処理を開始...`);
+
+                        for (let offset = 0; offset < pagesPerSet; offset++) {
+                            const pageNum = setIdx * pagesPerSet + offset + 1;
+                            if (pdfDoc && pageNum > numPages) break;
+
+                            const targetRegionsForPage = regions.filter(r => r.pageOffset === offset);
+                            if (targetRegionsForPage.length === 0) continue;
+
+                            const targetRegionsData = targetRegionsForPage.map(r => ({
+                                name: r.name,
+                                type: r.type || 'text',
+                                box: [
+                                    Math.round(r.y * 1000),
+                                    Math.round(r.x * 1000),
+                                    Math.round((r.y + r.h) * 1000),
+                                    Math.round((r.x + r.w) * 1000)
+                                ]
+                            }));
+
+                            setLoadingText(`レコード ${setIdx + 1}/${numSets} (構成ページ ${offset + 1}) を処理中...`);
+
+                            // PDFか画像かで画像データの取得元を切り替え
+                            let pageImgData;
+                            if (pdfDoc) {
+                                pageImgData = await renderPageToBase64(pdfDoc, pageNum);
+                            } else {
+                                pageImgData = setImages[offset]; // 画像の場合はすでにBase64がある
+                            }
+
+                            const prompt = `あなたは高度なAI-OCRアシスタントです。提供された画像から、以下のJSONで指定された各項目のテキストや状態を抽出してください。
+
+【重要: レイアウト変更への追従と視覚化】
+提供されたバウンディングボックス（0〜1000正規化座標: [ymin, xmin, ymax, xmax]）は「目安位置」です。
+ページによってレイアウトが変わっている場合でも、指定された項目名（name）の意味を理解し、画像全体を探索して実際の値を見つけ出してください。
+
+【重要: 入力形式（type）に基づく厳格な読み取り】
+各項目には \`type\` （テキスト、チェックボックス、丸囲み）が指定されています。推測せず、必ず指定された \`type\` に従って判定してください。
+1. type が "text" の場合: 書かれている内容をそのまま抽出してください。改行は維持してください。
+2. type が "checkbox" の場合: 対象がチェック（✓、✔、×、塗りつぶし等）されている場合は "TRUE"、空欄の場合は "FALSE" と出力してください。
+3. type が "circle" の場合: 対象が丸（〇）などで囲まれている場合は、囲まれているテキスト（例："1. 有"）を出力してください。
+
+【重要: 出力形式の厳守】
+1. 実際に抽出した正確な位置座標を \`box\` に返してください。
+2. どうしても該当項目が見つからない場合や判定できない場合は、\`value\` を "不明" とし、\`box\` を空配列 \`[]\` にしてください。
+
+抽出対象の領域情報:
+${JSON.stringify(targetRegionsData)}`;
+
+                            try {
+                                const pageData = await callGeminiAPI(apiKey, prompt, pageImgData, schema);
+
+                                pageData.forEach(item => {
+                                    setRecordData[item.name] = {
+                                        value: item.value,
+                                        box: item.box && item.box.length === 4 ? item.box : null
+                                    };
+                                });
+                            } catch (pageError) {
+                                console.error(`Set ${setIdx+1} Page ${offset+1} error:`, pageError);
+                                addLog(`[レコード ${setIdx + 1}] のページ抽出でエラー発生。`, "error");
+                                setHasError = true;
+                                hasError = true;
+                            }
+
+                            if (setIdx < numSets - 1 || offset < pagesPerSet - 1) {
+                                await new Promise(res => setTimeout(res, 3500));
+                            }
+                        }
+
+                        regions.forEach(r => {
+                            if (!setRecordData[r.name]) {
+                                setRecordData[r.name] = { value: setHasError ? '解析エラー' : '不明', box: null };
+                            }
+                        });
+
+                        results.push({ setIndex: setIdx + 1, data: setRecordData });
+                        addLog(`[レコード ${setIdx + 1}/${numSets}] 完了`, "success");
+
+                    }
+
+                    if (results.length > 0) {
+                        setOcrResults(results);
+                        if (pdfDoc) await loadSetImages(pdfDoc, 1, pagesPerSet);
+
+                        if (hasError) {
+                            addLog(`処理が完了しましたが、一部でエラーが発生しました。`, "warning");
+                            showMessage("完了 (一部エラー)", "解析処理が終了しましたが、一部でエラーが発生しました。\n取得できた部分までの結果を表示します。");
+                        } else {
+                            addLog(`すべてのレコードのOCR処理が正常に完了しました！`, "success");
+                            showMessage("完了", "すべてのレコードのOCR処理が完了しました。右パネルで結果を確認してください。");
+                        }
+                    } else {
+                        throw new Error("すべての解析に失敗しました。");
+                    }
+                } catch (error) {
+                    console.error(error);
+                    addLog(`エラー: 処理中に致命的な問題が発生しました。(${error.message})`, "error");
+                    showMessage("エラー", "OCR処理中に致命的なエラーが発生しました。");
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+
+            const getRelativeCoords = (e, pageOffset) => {
+                const container = containerRefs.current[pageOffset];
+                if (!container) return { x: 0, y: 0 };
+                const rect = container.getBoundingClientRect();
+                return {
+                    x: Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)),
+                    y: Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height))
+                };
+            };
+
+            const onPointerDownContainer = (e, pageOffset) => {
+                if (e.target !== containerRefs.current[pageOffset] && e.target.tagName !== 'IMG') return;
+                const { x, y } = getRelativeCoords(e, pageOffset);
+                const id = `region_${Date.now()}`;
+                const newRegion = { id, name: "新規項目", type: "text", x, y, w: 0, h: 0, pageOffset };
+
+                setRegions([...regions, newRegion]);
+                setSelectedRegionId(id);
+                setInteraction({ type: 'draw', id, pageOffset, startX: x, startY: y, initialRect: newRegion });
+            };
+
+            const onPointerDownRegion = (e, id, pageOffset) => {
+                e.stopPropagation();
+                setSelectedRegionId(id);
+                const { x, y } = getRelativeCoords(e, pageOffset);
+                const region = regions.find(r => r.id === id);
+                setInteraction({ type: 'move', id, pageOffset, startX: x, startY: y, initialRect: { ...region } });
+            };
+
+            const onPointerDownResize = (e, id, pageOffset) => {
+                e.stopPropagation();
+                setSelectedRegionId(id);
+                const { x, y } = getRelativeCoords(e, pageOffset);
+                const region = regions.find(r => r.id === id);
+                setInteraction({ type: 'resize', id, pageOffset, startX: x, startY: y, initialRect: { ...region } });
+            };
+
+            const onPointerMove = (e) => {
+                if (interaction.type === 'idle') return;
+
+                const { type, id, pageOffset, startX, startY, initialRect } = interaction;
+                const { x, y } = getRelativeCoords(e, pageOffset);
+
+                setRegions(prev => prev.map(r => {
+                    if (r.id !== id) return r;
+
+                    let newR = { ...r };
+                    if (type === 'draw') {
+                        newR.x = Math.min(startX, x);
+                        newR.y = Math.min(startY, y);
+                        newR.w = Math.abs(x - startX);
+                        newR.h = Math.abs(y - startY);
+                    } else if (type === 'move') {
+                        const dx = x - startX;
+                        const dy = y - startY;
+                        newR.x = Math.max(0, Math.min(1 - newR.w, initialRect.x + dx));
+                        newR.y = Math.max(0, Math.min(1 - newR.h, initialRect.y + dy));
+                    } else if (type === 'resize') {
+                        const dx = x - startX;
+                        const dy = y - startY;
+                        newR.w = Math.max(0.01, Math.min(1 - newR.x, initialRect.w + dx));
+                        newR.h = Math.max(0.01, Math.min(1 - newR.y, initialRect.h + dy));
+                    }
+                    return newR;
+                }));
+            };
+
+            const onPointerUp = () => {
+                if (interaction.type === 'draw') {
+                    const drawnRegion = regions.find(r => r.id === interaction.id);
+                    if (drawnRegion && (drawnRegion.w < 0.02 || drawnRegion.h < 0.02)) {
+                        setRegions(prev => prev.filter(r => r.id !== interaction.id));
+                    }
+                }
+                setInteraction({ type: 'idle', id: null, pageOffset: 0 });
+            };
+
+            const deleteRegion = (id) => {
+                setRegions(regions.filter(r => r.id !== id));
+                if (selectedRegionId === id) setSelectedRegionId(null);
+            };
+
+            const updateRegionName = (id, newName) => {
+                setRegions(regions.map(r => r.id === id ? { ...r, name: newName } : r));
+            };
+
+            const updateRegionType = (id, newType) => {
+                setRegions(regions.map(r => r.id === id ? { ...r, type: newType } : r));
+            };
+
+            const handleSortDragStart = (e, index) => {
+                dragItemRef.current = index;
+                if (e.dataTransfer) e.dataTransfer.setData('text/plain', '');
+                setTimeout(() => {
+                    if (e.target && e.target.style) e.target.style.opacity = '0.4';
+                }, 0);
+            };
+
+            const handleSortDragEnter = (e, index) => {
+                e.preventDefault();
+                dragOverItemRef.current = index;
+                if (dragItemRef.current !== null && dragItemRef.current !== index) {
+                    const newRegions = [...regions];
+                    const draggedRegion = newRegions[dragItemRef.current];
+                    newRegions.splice(dragItemRef.current, 1);
+                    newRegions.splice(index, 0, draggedRegion);
+                    setRegions(newRegions);
+                    dragItemRef.current = index;
+                }
+            };
+
+            const handleSortDragOver = (e) => {
+                e.preventDefault();
+            };
+
+            const handleSortDragEnd = (e) => {
+                dragItemRef.current = null;
+                dragOverItemRef.current = null;
+                if (e.target && e.target.style) e.target.style.opacity = '1';
+            };
+
+            const handleExportCSV = () => {
+                if (!ocrResults) return;
+
+                const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+                const headerRow = ["レコードNo.", ...regions.map(r => `"${r.name.replace(/"/g, '""')}"`)].join(",");
+
+                let csvContent = headerRow + "\n";
+
+                ocrResults.forEach(res => {
+                    const row = [res.setIndex];
+                    regions.forEach(r => {
+                        const data = res.data[r.name];
+                        const val = data ? data.value : "";
+                        row.push(`"${String(val).replace(/"/g, '""')}"`);
+                    });
+                    csvContent += row.join(",") + "\n";
+                });
+
+                const blob = new Blob([bom, csvContent], { type: "text/csv;charset=utf-8;" });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.setAttribute("href", url);
+                link.setAttribute("download", `ocr_records_${Date.now()}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            };
+
+            const updateOcrResult = (setIdx, key, newValue) => {
+                const newResults = [...ocrResults];
+                if (newResults[setIdx] && newResults[setIdx].data[key]) {
+                    newResults[setIdx].data[key].value = newValue;
+                    setOcrResults(newResults);
+                }
+            };
+
+            const totalSets = Math.ceil(numPages / pagesPerSet);
+
+            return (
+                <div className="flex flex-col h-screen bg-gray-50 text-gray-800 font-sans">
+                    {/* Header */}
+                    <header className="bg-white border-b px-6 py-4 flex items-center justify-between shadow-sm z-10">
+                        <div className="flex items-center gap-3">
+                            <div className="bg-blue-600 p-2 rounded-lg shadow-inner">
+                                <Icon name="scan-line" className="text-white w-6 h-6" />
+                            </div>
+                            <div>
+                                <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 leading-tight">
+                                    AI-OCR文字起こしツール
+                                </h1>
+                                <p className="text-[10px] font-medium text-gray-400 uppercase tracking-widest">Region-based Extraction Edition</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={() => setShowLabels(!showLabels)}
+                                className={`p-2 rounded-full transition-colors ${showLabels ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-400'}`}
+                                title="ラベル表示ON/OFF"
+                            >
+                                <Icon name={showLabels ? "eye" : "eye-off"} className="w-5 h-5" />
+                            </button>
+                            <button
+                                onClick={openSettings}
+                                className="relative p-2 text-gray-500 hover:bg-gray-100 rounded-full transition"
+                                title="API設定"
+                            >
+                                <Icon name="settings" className="w-5 h-5" />
+                                {!apiKey && (
+                                    <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
+                                )}
+                            </button>
+                        </div>
+                    </header>
+
+                    {/* Main Workspace */}
+                    <div className="flex flex-1 overflow-hidden" onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerLeave={onPointerUp}>
+
+                        {/* Left: Document Viewer */}
+                        <div className="flex-1 relative flex flex-col bg-gray-200">
+                            <div className="flex-1 overflow-auto p-8 flex flex-col items-center justify-start gap-8">
+                                {!setImages.length ? (
+                                    <div className="m-auto flex flex-col items-center justify-center text-gray-400">
+                                        <Icon name="file-text" className="w-20 h-20 mb-6 opacity-30" />
+                                        <p className="font-medium text-lg text-gray-500">PDFや画像ファイルをアップロードするとここに表示されます</p>
+                                    </div>
+                                ) : (
+                                    setImages.map((img, pageOffset) => (
+                                        <div key={`page_${pageOffset}`} className="relative">
+                                            <div className="absolute -left-12 top-0 bg-gray-800 text-white text-xs font-bold py-1 px-3 rounded-full shadow-md z-10">
+                                                P.{pageOffset + 1}
+                                            </div>
+
+                                            <div
+                                                ref={el => containerRefs.current[pageOffset] = el}
+                                                className="canvas-container bg-white"
+                                                onPointerDown={(e) => onPointerDownContainer(e, pageOffset)}
+                                            >
+                                                <img src={img} alt={`Document Page ${pageOffset + 1}`} className="block max-w-[800px] w-full h-auto pointer-events-none" draggable="false" />
+
+                                                {/* ステップ1: 領域設定モード */}
+                                                {!ocrResults && regions.filter(r => r.pageOffset === pageOffset).map(region => (
+                                                    <div
+                                                        key={region.id}
+                                                        className={`region-box ${selectedRegionId === region.id ? 'selected' : ''}`}
+                                                        style={{
+                                                            left: `${region.x * 100}%`,
+                                                            top: `${region.y * 100}%`,
+                                                            width: `${region.w * 100}%`,
+                                                            height: `${region.h * 100}%`
+                                                        }}
+                                                        onPointerDown={(e) => onPointerDownRegion(e, region.id, pageOffset)}
+                                                    >
+                                                        {showLabels && (
+                                                            <div className="region-label shadow-sm flex items-center gap-1 transition-opacity">
+                                                                {region.type === 'checkbox' && <Icon name="check-square" className="w-3 h-3" />}
+                                                                {region.type === 'circle' && <Icon name="circle" className="w-3 h-3" />}
+                                                                {region.name}
+                                                            </div>
+                                                        )}
+                                                        {selectedRegionId === region.id && (
+                                                            <div
+                                                                className="resize-handle"
+                                                                onPointerDown={(e) => onPointerDownResize(e, region.id, pageOffset)}
+                                                            ></div>
+                                                        )}
+                                                    </div>
+                                                ))}
+
+                                                {/* ステップ3: 結果確認モード */}
+                                                {ocrResults && regions.filter(r => r.pageOffset === pageOffset).map(region => {
+                                                    const currentSetResult = ocrResults.find(res => res.setIndex === currentSet);
+                                                    const data = currentSetResult ? currentSetResult.data[region.name] : null;
+
+                                                    if (!data || !data.box) return null;
+
+                                                    const [ymin, xmin, ymax, xmax] = data.box;
+                                                    const isFocused = focusedRegionName === region.name;
+                                                    const borderColor = isFocused ? 'border-pink-500' : 'border-green-500';
+                                                    const bgColor = isFocused ? 'bg-pink-500' : 'bg-green-500';
+                                                    const bgOpacity = isFocused ? 'bg-opacity-30' : 'bg-opacity-10';
+                                                    const zIndex = isFocused ? 'z-20 shadow-[0_0_15px_rgba(236,72,153,0.5)]' : 'z-10';
+
+                                                    return (
+                                                        <div
+                                                            key={`res_${region.id}`}
+                                                            className={`absolute border-2 ${borderColor} ${bgColor} ${bgOpacity} pointer-events-none ${zIndex} transition-all duration-300`}
+                                                            style={{
+                                                                left: `${(xmin / 1000) * 100}%`,
+                                                                top: `${(ymin / 1000) * 100}%`,
+                                                                width: `${((xmax - xmin) / 1000) * 100}%`,
+                                                                height: `${((ymax - ymin) / 1000) * 100}%`
+                                                            }}
+                                                        >
+                                                            {showLabels && (
+                                                                <div className={`absolute -top-6 -left-[2px] ${bgColor} text-white px-2 py-0.5 text-[11px] font-medium rounded-sm shadow-sm whitespace-nowrap transition-all duration-300`}>
+                                                                    {region.name}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+
+                            {/* Loading Overlay */}
+                            {isLoading && (
+                                <div className="absolute inset-0 bg-white bg-opacity-70 backdrop-blur-[2px] flex flex-col items-center justify-center z-40">
+                                    <Icon name="loader-2" className="w-12 h-12 text-blue-600 animate-spin mb-4" />
+                                    <div className="bg-white px-6 py-3 rounded-lg shadow-lg border border-gray-100 flex items-center gap-3">
+                                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                                        <p className="text-md font-bold text-gray-800">{loadingText}</p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Right: Sidebar Panel */}
+                        <div className="w-[450px] bg-white border-l flex flex-col shadow-xl z-10">
+
+                            {/* グローバルコントロールパネル */}
+                            <div className="p-4 border-b bg-white flex flex-col gap-3 flex-shrink-0 z-20 shadow-sm">
+                                <label className="cursor-pointer bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2 transition text-sm font-bold shadow-sm">
+                                    <Icon name="file-plus-2" className="w-5 h-5" />
+                                    ファイル (PDF / 画像) を読み込む
+                                    <input type="file" accept="application/pdf, image/png, image/jpeg, image/jpg, image/webp" className="hidden" onChange={handleFileUpload} />
+                                </label>
+                                {setImages.length > 0 && pdfDoc && (
+                                    <div className="flex items-center justify-between bg-gray-50 rounded-md p-2 border border-gray-200">
+                                        <span className="text-xs font-bold text-gray-600 pl-1">1レコード構成:</span>
+                                        <div className="flex items-center gap-1">
+                                            <input
+                                                type="number" min="1" max="10"
+                                                value={pagesPerSet}
+                                                onChange={(e) => handlePagesPerSetChange(e.target.value)}
+                                                disabled={ocrResults !== null}
+                                                className="w-12 h-7 pl-2 py-1 border border-gray-300 rounded text-sm font-bold text-blue-600 focus:ring-blue-500 bg-white"
+                                            />
+                                            <span className="text-xs font-medium text-gray-500 pr-1">ページ</span>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {!ocrResults ? (
+                                <>
+                                    {/* テンプレート読み込みセクション */}
+                                    <div className="p-4 border-b bg-indigo-50/50 flex flex-col gap-2">
+                                        <h2 className="text-xs font-bold text-indigo-800 flex items-center gap-1">
+                                            <Icon name="database" className="w-4 h-4" /> テンプレート読込
+                                        </h2>
+                                        <div className="flex gap-2">
+                                            <select
+                                                value={selectedTemplateIndex}
+                                                onChange={(e) => setSelectedTemplateIndex(e.target.value)}
+                                                className="flex-1 text-sm border-gray-300 rounded px-2 py-1.5 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none bg-white"
+                                            >
+                                                <option value="">-- 保存済み設定を選択 --</option>
+                                                {templates.map((tpl, idx) => (
+                                                    <option key={idx} value={idx}>{tpl.name} ({tpl.regions.length}項目)</option>
+                                                ))}
+                                            </select>
+                                            <button
+                                                onClick={handleApplyTemplate}
+                                                disabled={selectedTemplateIndex === "" || setImages.length === 0}
+                                                className="bg-indigo-600 text-white px-3 py-1.5 rounded text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition shadow-sm"
+                                            >
+                                                適用
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* AI自動特定セクション */}
+                                    <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
+                                        <h2 className="text-sm font-bold text-gray-600 uppercase tracking-wider">抽出領域の設定</h2>
+                                        <button
+                                            onClick={handleAutoDetectRegions}
+                                            disabled={setImages.length === 0 || isLoading}
+                                            className="text-xs bg-white border border-indigo-200 text-indigo-600 px-2 py-1 rounded hover:bg-indigo-50 flex items-center gap-1 font-bold shadow-sm transition"
+                                        >
+                                            <Icon name="sparkles" className="w-3 h-3" />
+                                            AI自動特定
+                                        </button>
+                                    </div>
+
+                                    {/* 領域リスト */}
+                                    <div className="flex-1 overflow-y-auto p-4">
+                                        {regions.length === 0 ? (
+                                            <div className="text-center text-gray-400 py-8 text-sm">
+                                                プレビューをドラッグして領域を作成するか、<br/>テンプレート・自動特定を利用してください。
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-2">
+                                                {regions.map((region, index) => (
+                                                    <div
+                                                        key={region.id}
+                                                        draggable
+                                                        onDragStart={(e) => handleSortDragStart(e, index)}
+                                                        onDragEnter={(e) => handleSortDragEnter(e, index)}
+                                                        onDragOver={handleSortDragOver}
+                                                        onDragEnd={handleSortDragEnd}
+                                                        className={`flex items-start p-2.5 border rounded transition bg-white ${selectedRegionId === region.id ? 'border-blue-500 ring-1 ring-blue-500 shadow-md z-10 relative' : 'border-gray-200 hover:border-gray-300'}`}
+                                                        onClick={() => setSelectedRegionId(region.id)}
+                                                    >
+                                                        {/* ドラッグハンドル */}
+                                                        <div className="flex items-center justify-center mr-2 cursor-grab active:cursor-grabbing text-gray-400 hover:text-blue-500 mt-2">
+                                                            <Icon name="grip-vertical" className="w-5 h-5" />
+                                                        </div>
+                                                        {/* 項目名と種類 */}
+                                                        <div className="flex flex-col flex-1 gap-1.5 mt-0.5">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-[9px] font-bold text-gray-400 bg-gray-100 px-1 rounded pointer-events-none">P.{region.pageOffset + 1}</span>
+                                                                <input
+                                                                    type="text" value={region.name} onChange={(e) => updateRegionName(region.id, e.target.value)}
+                                                                    onDragStart={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                                                                    className="w-full bg-transparent border-none outline-none text-sm font-bold text-gray-800" placeholder="項目名"
+                                                                />
+                                                            </div>
+                                                            <select
+                                                                value={region.type || 'text'} onChange={(e) => updateRegionType(region.id, e.target.value)}
+                                                                className="text-[11px] font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded px-1.5 py-1 outline-none focus:border-blue-400 w-fit cursor-pointer"
+                                                            >
+                                                                <option value="text">📄 テキスト</option>
+                                                                <option value="checkbox">☑️ チェックボックス</option>
+                                                                <option value="circle">⭕ 丸囲み</option>
+                                                            </select>
+                                                        </div>
+                                                        <button onClick={(e) => { e.stopPropagation(); deleteRegion(region.id); }} className="text-gray-400 hover:text-red-500 p-1 rounded transition ml-1"><Icon name="x" className="w-4 h-4" /></button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* テンプレート保存ボタン */}
+                                    {regions.length > 0 && (
+                                        <div className="p-3 border-t border-b bg-gray-50 flex justify-end">
+                                            <button
+                                                onClick={() => setShowSaveTemplateModal(true)}
+                                                className="text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-200 px-3 py-1.5 rounded hover:bg-indigo-100 transition shadow-sm flex items-center gap-1"
+                                            >
+                                                <Icon name="save" className="w-3 h-3" />
+                                                現在の設定を保存
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {/* 実行ボタン */}
+                                    <div className="p-4 bg-white flex-shrink-0">
+                                        <button
+                                            onClick={handleRunOCR} disabled={regions.length === 0 || isLoading}
+                                            className="w-full bg-blue-600 text-white px-4 py-3.5 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 flex items-center justify-center gap-2 transition font-bold shadow-md text-base"
+                                        >
+                                            <Icon name="play-circle" className="w-5 h-5" />
+                                            解析実行
+                                        </button>
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    {/* 結果確認ヘッダー */}
+                                    <div className="p-4 border-b bg-blue-50 flex justify-between items-center flex-shrink-0">
+                                        <h2 className="text-sm font-bold text-blue-800 flex items-center gap-2">
+                                            <Icon name="check-square" className="w-4 h-4" />
+                                            OCR抽出結果
+                                        </h2>
+                                        <button
+                                            onClick={() => { setOcrResults(null); if(pdfDoc) loadSetImages(pdfDoc, 1, pagesPerSet); }}
+                                            className="text-xs text-blue-600 hover:text-blue-800 font-bold bg-white px-2 py-1 rounded shadow-sm border border-blue-200"
+                                        >
+                                            再設定に戻る
+                                        </button>
+                                    </div>
+
+                                    {/* セット切り替え */}
+                                    {pdfDoc && totalSets > 1 && (
+                                        <div className="bg-white border-b px-4 py-2 flex items-center justify-between shadow-sm flex-shrink-0">
+                                            <button disabled={currentSet === 1 || isLoading} onClick={() => loadSetImages(pdfDoc, currentSet - 1, pagesPerSet)} className="p-1 rounded border bg-white hover:bg-gray-50 disabled:opacity-30"><Icon name="chevron-left" className="w-5 h-5" /></button>
+                                            <span className="text-sm font-bold text-gray-800">レコード {currentSet} <span className="text-gray-400">/ {totalSets}</span></span>
+                                            <button disabled={currentSet === totalSets || isLoading} onClick={() => loadSetImages(pdfDoc, currentSet + 1, pagesPerSet)} className="p-1 rounded border bg-white hover:bg-gray-50 disabled:opacity-30"><Icon name="chevron-right" className="w-5 h-5" /></button>
+                                        </div>
+                                    )}
+
+                                    {/* 抽出値リスト */}
+                                    <div className="flex-1 overflow-y-auto p-4 bg-gray-50 space-y-3">
+                                        {regions.map(r => {
+                                            const currentSetResult = ocrResults.find(res => res.setIndex === currentSet);
+                                            const data = currentSetResult ? currentSetResult.data[r.name] : null;
+                                            const value = data ? data.value : '';
+                                            const isUnknown = value === '不明' || value === '解析エラー';
+                                            const isLargeText = value.includes('\n') || value.length > 40;
+                                            const isFocused = focusedRegionName === r.name;
+
+                                            return (
+                                                <div key={r.id} className={`bg-white p-3 rounded-lg border shadow-sm relative overflow-hidden transition-colors ${isUnknown ? 'opacity-70 border-gray-300' : isFocused ? 'border-pink-300 ring-1 ring-pink-200' : 'border-blue-100'}`}>
+                                                    <div className={`absolute left-0 top-0 bottom-0 w-1 ${isUnknown ? 'bg-gray-400' : isFocused ? 'bg-pink-500' : 'bg-blue-500'}`}></div>
+                                                    <label className="flex items-center gap-1.5 text-[11px] font-bold text-gray-500 mb-1 ml-2">
+                                                        <span className="text-[9px] bg-gray-100 px-1 rounded">P.{r.pageOffset + 1}</span>
+                                                        {r.name}
+                                                    </label>
+                                                    {isLargeText ? (
+                                                        <textarea
+                                                            value={value} onChange={(e) => updateOcrResult(currentSet - 1, r.name, e.target.value)}
+                                                            onFocus={() => setFocusedRegionName(r.name)} onBlur={() => setFocusedRegionName(null)}
+                                                            className={`w-full p-2 ml-1 text-sm bg-transparent border-b outline-none resize-y ${isUnknown ? 'text-gray-400' : 'text-gray-800 focus:border-pink-500 font-medium'}`}
+                                                            rows={Math.max(2, value.split('\n').length)}
+                                                        />
+                                                    ) : (
+                                                        <input
+                                                            type="text" value={value} onChange={(e) => updateOcrResult(currentSet - 1, r.name, e.target.value)}
+                                                            onFocus={() => setFocusedRegionName(r.name)} onBlur={() => setFocusedRegionName(null)}
+                                                            className={`w-full p-2 ml-1 text-sm bg-transparent border-b outline-none ${isUnknown ? 'text-gray-400' : 'text-gray-800 focus:border-pink-500 font-medium'}`}
+                                                        />
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {/* CSV出力ボタン */}
+                                    <div className="p-4 bg-white flex-shrink-0">
+                                        <button onClick={handleExportCSV} className="w-full bg-green-600 text-white px-4 py-3.5 rounded-lg hover:bg-green-700 flex items-center justify-center gap-2 font-bold shadow-md text-base">
+                                            <Icon name="download" className="w-5 h-5" /> 全レコードをCSV出力
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+
+                            {/* Console Region */}
+                            <div className="h-48 bg-gray-900 border-t border-gray-700 flex flex-col flex-shrink-0">
+                                <div className="px-4 py-1.5 bg-gray-800 flex justify-between items-center shadow-inner">
+                                    <span className="text-[10px] font-bold text-gray-300 flex items-center gap-1.5"><Icon name="terminal" className="w-3 h-3 text-green-400" /> System Console</span>
+                                    <button onClick={() => setLogs([])} className="text-gray-500 hover:text-gray-300 text-[10px]">Clear</button>
+                                </div>
+                                <div className="flex-1 overflow-y-auto p-2 font-mono text-[10px] leading-relaxed flex flex-col gap-1" ref={(el) => { if(el) el.scrollTop = el.scrollHeight; }}>
+                                    {logs.map((log, idx) => (
+                                        <div key={idx} className={`${log.type === 'error' ? 'text-red-400' : log.type === 'warning' ? 'text-yellow-400' : log.type === 'success' ? 'text-green-400' : 'text-gray-300'} break-all`}>
+                                            <span className="text-gray-500 mr-1.5">[{log.time}]</span>{log.msg}
+                                        </div>
+                                    ))}
+                                    {logs.length === 0 && <div className="text-gray-600 italic">Waiting for execution...</div>}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Modals */}
+                    <Modal isOpen={modal.isOpen} title={modal.title} message={modal.message} onClose={() => setModal({ ...modal, isOpen: false })} />
+
+                    {/* Settings Modal */}
+                    {showGasSettings && (
+                        <div className="fixed inset-0 bg-gray-900 bg-opacity-80 backdrop-blur-sm flex items-center justify-center z-[100]">
+                            <div className="bg-white rounded-xl p-8 max-w-lg w-full shadow-2xl">
+                                <div className="flex items-center gap-3 mb-2">
+                                    <div className="bg-blue-100 p-2 rounded-full"><Icon name="settings" className="text-blue-600 w-6 h-6" /></div>
+                                    <h3 className="text-xl font-bold text-gray-800">API設定</h3>
+                                </div>
+
+                                <p className="text-sm text-gray-600 mt-4 mb-2 leading-relaxed">
+                                    OCR解析にはGoogleの <span className="font-bold">Gemini APIキー</span> が必要です。<a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">Google AI Studio</a> で無料発行できます。このキーはブラウザ内（localStorage）にのみ保存され、外部送信はGoogleへの直接通信のみです。
+                                </p>
+                                <div className="relative mb-6">
+                                    <input
+                                        type={showApiKey ? "text" : "password"} value={apiKeyInput} onChange={e => setApiKeyInput(e.target.value)}
+                                        placeholder="AIzaSy..."
+                                        className="w-full border border-gray-300 p-3 rounded-lg outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 font-mono text-sm pr-10"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowApiKey(!showApiKey)}
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+                                    >
+                                        <Icon name={showApiKey ? "eye-off" : "eye"} className="w-4 h-4" />
+                                    </button>
+                                </div>
+
+                                <p className="text-sm text-gray-600 mb-2 leading-relaxed">
+                                    テンプレートをクラウドに保存する場合は、Google Apps Script (GAS) の「ウェブアプリURL」を入力してください（任意）。
+                                </p>
+                                <input
+                                    type="text" value={gasUrlInput} onChange={e => setGasUrlInput(e.target.value)}
+                                    placeholder="https://script.google.com/macros/s/... （任意）"
+                                    className="w-full border border-gray-300 p-3 rounded-lg outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 mb-6 font-mono text-sm"
+                                />
+                                <div className="flex justify-end gap-3">
+                                    <button onClick={() => { setShowGasSettings(false); setGasUrlInput(gasUrl); setApiKeyInput(apiKey); }} className="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded font-medium">キャンセル</button>
+                                    <button onClick={handleSaveSettings} className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 font-bold shadow-md">保存</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Save Template Modal */}
+                    {showSaveTemplateModal && (
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]">
+                            <div className="bg-white rounded-lg p-6 max-w-sm w-full shadow-xl">
+                                <h3 className="text-lg font-bold mb-4 text-gray-800">テンプレートの保存</h3>
+
+                                {!gasUrl ? (
+                                    <p className="text-sm text-gray-600 mb-6">
+                                        テンプレートの保存にはGAS WebアプリURLの設定が必要です。設定アイコンから入力してください。
+                                    </p>
+                                ) : activeTemplateName ? (
+                                    <div className="mb-6">
+                                        <p className="text-sm text-gray-600 mb-4">現在「<span className="font-bold text-gray-900">{activeTemplateName}</span>」を編集中です。どう保存しますか？</p>
+
+                                        <div className="flex flex-col gap-3">
+                                            <button
+                                                onClick={() => handleSaveTemplate(true)}
+                                                className="w-full bg-indigo-600 text-white px-4 py-2.5 rounded hover:bg-indigo-700 text-sm font-bold shadow-sm flex items-center justify-center gap-2"
+                                            >
+                                                <Icon name="save" className="w-4 h-4" /> 現在の設定に上書き保存
+                                            </button>
+
+                                            <div className="relative flex py-2 items-center">
+                                                <div className="flex-grow border-t border-gray-300"></div>
+                                                <span className="flex-shrink-0 mx-4 text-gray-400 text-xs">または別名で保存</span>
+                                                <div className="flex-grow border-t border-gray-300"></div>
+                                            </div>
+
+                                            <input
+                                                type="text" value={newTemplateName} onChange={e => setNewTemplateName(e.target.value)}
+                                                placeholder="新しいテンプレート名"
+                                                className="w-full border border-gray-300 p-2.5 rounded outline-none focus:border-indigo-500 text-sm"
+                                            />
+                                            <button
+                                                onClick={() => handleSaveTemplate(false)}
+                                                disabled={!newTemplateName.trim()}
+                                                className="w-full bg-white border border-indigo-600 text-indigo-600 px-4 py-2 rounded hover:bg-indigo-50 disabled:opacity-50 disabled:border-gray-300 disabled:text-gray-400 text-sm font-bold shadow-sm"
+                                            >
+                                                新規として保存
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="mb-6">
+                                        <input
+                                            type="text" value={newTemplateName} onChange={e => setNewTemplateName(e.target.value)}
+                                            placeholder="例: 株式会社A 請求書フォーマット"
+                                            className="w-full border border-gray-300 p-2.5 rounded outline-none focus:border-indigo-500 text-sm"
+                                        />
+                                    </div>
+                                )}
+
+                                <div className="flex justify-end gap-2 mt-2">
+                                    <button onClick={() => setShowSaveTemplateModal(false)} className="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded text-sm font-medium">キャンセル</button>
+                                    {gasUrl && !activeTemplateName && (
+                                        <button onClick={() => handleSaveTemplate(false)} disabled={!newTemplateName.trim()} className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 disabled:bg-gray-300 text-sm font-bold shadow-sm">保存</button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
