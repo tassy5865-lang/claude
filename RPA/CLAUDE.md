@@ -12,6 +12,10 @@ RPA（業務自動化）関連ツールを置くフォルダ。1つ目のツー�
 
 Gemini APIキーはlocalStorageのキー`geminiApiKey`に保存（AI-OCRツールと共通。GitHub Pagesは同一オリジンのためキーが自動で共有される）。
 
+## 公開URL
+
+https://tassy5865-lang.github.io/claude/RPA/index.html （GitHub Pages、claudeリポジトリのmainにpush済み、2026-08-05）
+
 ## 現在の状態（index.html: RPA(CSV→Excel)）
 
 - 既存Excel台帳（.xlsx、1行目=ヘッダー、以降=1行1レコード）をアップロードして読み込み
