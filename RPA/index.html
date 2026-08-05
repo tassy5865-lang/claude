@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RPA(CSV→Excel)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone@7.23.9/babel.min.js"></script>
+    <!-- SheetJS (Excel読み書き) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- PapaParse (CSV解析) -->
+    <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        body { font-family: 'Inter', 'Noto Sans JP', sans-serif; background-color: #05070c; margin: 0; }
+        .workspace-bg {
+            background-color: #05070c;
+            background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.07) 1px, transparent 0);
+            background-size: 28px 28px;
+        }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #3f4759; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #565f75; }
+        .cell-input {
+            background: transparent; width: 100%; color: #e2e8f0; font-size: 13px;
+            padding: 6px 8px; border: 1px solid transparent; border-radius: 6px;
+        }
+        .cell-input:focus { outline: none; background: rgba(139,92,246,0.12); border-color: rgba(139,92,246,0.5); }
+        .cell-input.empty { background: rgba(244,63,94,0.08); }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        /** @jsx React.createElement */
+        /** @jsxFrag React.Fragment */
+
+        const { useState, useEffect, useRef } = React;
+
+        const Icon = ({ name, className }) => {
+            const ref = useRef(null);
+            useEffect(() => {
+                if (ref.current) {
+                    ref.current.innerHTML = `<i data-lucide="${name}" class="${className || ''}"></i>`;
+                    lucide.createIcons({ root: ref.current });
+                }
+            }, [name, className]);
+            return <span ref={ref} className="contents"></span>;
+        };
+
+        const callGeminiAPI = async (apiKey, prompt, schema, maxRetries = 5) => {
+            if (!apiKey) {
+                throw new Error("Gemini APIキーが設定されていません。画面右上の設定アイコンから入力してください。");
+            }
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
+            const delays = [1000, 2000, 4000, 8000, 16000];
+
+            const payload = {
+                contents: [{ role: "user", parts: [{ text: prompt }] }],
+                generationConfig: {
+                    temperature: 0.1,
+                    responseMimeType: "application/json",
+                    responseSchema: schema
+                }
+            };
+
+            for (let i = 0; i <= maxRetries; i++) {
+                let retryable = true;
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        const errBody = await response.text();
+                        let detail = errBody;
+                        try { detail = JSON.parse(errBody).error?.message || errBody; } catch (e) {}
+
+                        if (response.status === 403) {
+                            retryable = false;
+                            throw new Error(`APIキーに権限がありません。(403) ${detail}`);
+                        }
+                        if (response.status === 400) {
+                            retryable = false;
+                            throw new Error(`リクエストが不正です。(400) ${detail}`);
+                        }
+                        if (response.status === 429 || response.status >= 500) {
+                            throw new Error(`API混雑中: ${response.status} ${detail}`);
+                        }
+                        retryable = false;
+                        throw new Error(`API Error: ${response.status} ${detail}`);
+                    }
+
+                    const data = await response.json();
+                    if (!data.candidates || data.candidates.length === 0) throw new Error("No candidates returned.");
+                    const text = data.candidates[0].content.parts[0].text;
+                    return JSON.parse(text);
+                } catch (error) {
+                    if (i === maxRetries || !retryable) throw error;
+                    await new Promise(res => setTimeout(res, delays[i]));
+                }
+            }
+        };
+
+        const App = () => {
+            const [apiKey, setApiKey] = useState('');
+            const [showSettings, setShowSettings] = useState(false);
+            const [apiKeyInput, setApiKeyInput] = useState('');
+
+            const [excelFileName, setExcelFileName] = useState('');
+            const [excelHeaders, setExcelHeaders] = useState([]);
+            const [excelRows, setExcelRows] = useState([]); // array of arrays (existing data)
+            const [sheetName, setSheetName] = useState('');
+
+            const [csvFileName, setCsvFileName] = useState('');
+            const [csvHeaders, setCsvHeaders] = useState([]);
+            const [csvRows, setCsvRows] = useState([]); // array of objects
+
+            const [mappedRows, setMappedRows] = useState([]); // array of objects keyed by columnKeys (col1, col2, ...)
+            const [isProcessing, setIsProcessing] = useState(false);
+            const [logs, setLogs] = useState([]);
+            const [reflected, setReflected] = useState(false);
+
+            const excelInputRef = useRef(null);
+            const csvInputRef = useRef(null);
+
+            // 列名の空欄・重複に依存しない、位置ベースの安定キー(col1, col2, ...)
+            const columnKeys = excelHeaders.map((_, i) => `col${i + 1}`);
+
+            useEffect(() => {
+                try {
+                    const saved = localStorage.getItem('geminiApiKey');
+                    if (saved) { setApiKey(saved); setApiKeyInput(saved); }
+                } catch (e) { console.error("localStorage access error:", e); }
+            }, []);
+
+            const addLog = (message, type = 'info') => {
+                setLogs(prev => [{ id: Date.now() + Math.random(), message, type, time: new Date().toLocaleTimeString('ja-JP') }, ...prev].slice(0, 100));
+            };
+
+            const saveApiKey = () => {
+                const key = apiKeyInput.trim();
+                try {
+                    localStorage.setItem('geminiApiKey', key);
+                    setApiKey(key);
+                    addLog('Gemini APIキーを設定しました。', 'success');
+                } catch (e) {
+                    addLog('APIキーの保存に失敗しました。', 'error');
+                }
+                setShowSettings(false);
+            };
+
+            const handleExcelUpload = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    try {
+                        const data = new Uint8Array(evt.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const firstSheetName = workbook.SheetNames[0];
+                        const sheet = workbook.Sheets[firstSheetName];
+                        const aoa = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+                        if (aoa.length === 0) {
+                            addLog('Excelファイルにデータが見つかりません。', 'error');
+                            return;
+                        }
+                        const headers = aoa[0].map(h => String(h));
+                        const rows = aoa.slice(1).filter(r => r.some(c => String(c).trim() !== ''));
+                        setExcelHeaders(headers);
+                        setExcelRows(rows);
+                        setSheetName(firstSheetName);
+                        setExcelFileName(file.name);
+                        setMappedRows([]);
+                        setReflected(false);
+                        addLog(`Excel「${file.name}」を読み込みました。シート「${firstSheetName}」/ 列${headers.length} / 既存${rows.length}行`, 'success');
+                    } catch (err) {
+                        addLog(`Excel読み込みエラー: ${err.message}`, 'error');
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+                e.target.value = '';
+            };
+
+            const handleCsvUpload = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                Papa.parse(file, {
+                    header: true,
+                    skipEmptyLines: true,
+                    encoding: 'UTF-8',
+                    complete: (result) => {
+                        if (result.errors && result.errors.length > 0) {
+                            addLog(`CSV解析で警告: ${result.errors[0].message}`, 'warning');
+                        }
+                        const headers = result.meta.fields || [];
+                        setCsvHeaders(headers);
+                        setCsvRows(result.data);
+                        setCsvFileName(file.name);
+                        setMappedRows([]);
+                        setReflected(false);
+                        addLog(`CSV「${file.name}」を読み込みました。列${headers.length} / ${result.data.length}件`, 'success');
+                    },
+                    error: (err) => {
+                        addLog(`CSV読み込みエラー: ${err.message}`, 'error');
+                    }
+                });
+                e.target.value = '';
+            };
+
+            const runAiMapping = async () => {
+                if (!apiKey) {
+                    addLog('Gemini APIキーが設定されていません。画面右上の設定アイコンから入力してください。', 'error');
+                    setShowSettings(true);
+                    return;
+                }
+                if (excelHeaders.length === 0) {
+                    addLog('先にExcelファイルをアップロードしてください。', 'error');
+                    return;
+                }
+                if (csvRows.length === 0) {
+                    addLog('先にCSVファイルをアップロードしてください。', 'error');
+                    return;
+                }
+
+                setIsProcessing(true);
+                addLog(`AIによる項目振り分けを開始します...(${csvRows.length}件)`, 'info');
+
+                try {
+                    const sampleExisting = excelRows.slice(-5).map(r => {
+                        const obj = {};
+                        excelHeaders.forEach((h, i) => { obj[h || `(列名なし${i + 1})`] = r[i] !== undefined ? r[i] : ''; });
+                        return obj;
+                    });
+
+                    const columnLegend = excelHeaders.map((h, i) => `${columnKeys[i]}: ${h || '(列名なし)'}`).join('\n');
+
+                    const prompt = `あなたはExcel台帳へのデータ入力を支援するアシスタントです。
+以下の「Excel列一覧」と「Excel既存データのサンプル」を参考にしながら、「CSV新規データ」の各レコードを、Excel側のどの列に入力すべきか意味内容から判断して振り分けてください。
+
+【Excel列一覧（出力時のキーは必ずこのcolN形式を使うこと。列名が同じ/空でも位置(N)で別々の列として区別すること）】
+${columnLegend}
+
+【Excel既存データのサンプル（列名: 値の形。表記ゆれ・日付形式などの参考用）】
+${JSON.stringify(sampleExisting, null, 2)}
+
+【CSV新規データ（列名: ${JSON.stringify(csvHeaders)}）】
+${JSON.stringify(csvRows, null, 2)}
+
+指示:
+- 出力する各オブジェクトのキーは必ず上記のcol1, col2, ...形式（Excel列一覧のキー）と完全一致させること。
+- CSV側の項目名がExcel列名と表記が異なっていても、意味内容が対応していれば値を入れること（例: CSV「会社名」→Excel「取引先名」など）。
+- 値は既存データのサンプルの書式（日付形式・全角半角など）にできるだけ合わせて整形すること。
+- 対応するCSVデータが存在しない、または該当項目が無いExcel列は空文字列にすること。
+- 重要: 1つのCSVレコードの中に、製造番号・専用番号・シリアル番号など「同種の値が複数まとまって1つのセルに入っている」項目がある場合、それは複数件のデータが1レコードにまとめられているとみなし、Excel出力では項目数の分だけ行を分割すること。区切り文字は改行・カンマ・スペース・読点など不定のためOCRの原文から意味的に個々の値を判別すること。複数の項目列（例: 製造番号と専用番号）が両方とも複数値を持つ場合は、各セル内での出現順序で対応付けること（1番目の製造番号と1番目の専用番号が同じ行、2番目同士が次の行、というように）。分割後の各行では、それ以外の共通項目（取引先名・担当者・日付など）は元のCSVレコードの値をそのまま複製すること。
+- 分割が不要なレコードはそのまま1レコード=1行として出力すること。CSVレコードの元の順序はできる限り保つこと。
+- 出力件数はCSVレコード数と一致しなくてよい（分割により増える場合がある）。`;
+
+                    const schema = {
+                        type: "ARRAY",
+                        items: {
+                            type: "OBJECT",
+                            properties: Object.fromEntries(columnKeys.map(k => [k, { type: "STRING" }])),
+                            required: columnKeys
+                        }
+                    };
+
+                    const result = await callGeminiAPI(apiKey, prompt, schema);
+                    if (!Array.isArray(result)) throw new Error('AIの応答が配列形式ではありません。');
+                    setMappedRows(result);
+                    setReflected(false);
+                    addLog(`AIによる振り分けが完了しました。(${result.length}件) 内容を確認・修正してください。`, 'success');
+                } catch (err) {
+                    addLog(`AI振り分けエラー: ${err.message}`, 'error');
+                } finally {
+                    setIsProcessing(false);
+                }
+            };
+
+            const updateMappedCell = (rowIdx, header, value) => {
+                setMappedRows(prev => {
+                    const next = [...prev];
+                    next[rowIdx] = { ...next[rowIdx], [header]: value };
+                    return next;
+                });
+            };
+
+            const removeMappedRow = (rowIdx) => {
+                setMappedRows(prev => prev.filter((_, i) => i !== rowIdx));
+            };
+
+            const reflectToExcel = () => {
+                if (mappedRows.length === 0) return;
+                const newAoaRows = mappedRows.map(row => columnKeys.map(k => row[k] !== undefined ? row[k] : ''));
+                setExcelRows(prev => [...prev, ...newAoaRows]);
+                setMappedRows([]);
+                setReflected(true);
+                addLog(`${newAoaRows.length}件をExcelデータに反映しました。ダウンロードして保存してください。`, 'success');
+            };
+
+            const downloadExcel = () => {
+                if (excelHeaders.length === 0) return;
+                const aoa = [excelHeaders, ...excelRows];
+                const ws = XLSX.utils.aoa_to_sheet(aoa);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, sheetName || 'Sheet1');
+                const baseName = excelFileName ? excelFileName.replace(/\.[^/.]+$/, '') : 'data';
+                XLSX.writeFile(wb, `${baseName}_updated.xlsx`);
+                addLog('更新済みExcelファイルをダウンロードしました。', 'success');
+            };
+
+            return (
+                <div className="min-h-screen bg-[#05070c] text-slate-200 font-sans workspace-bg">
+                    {/* Header */}
+                    <header className="bg-slate-900/70 backdrop-blur-xl border-b border-white/10 px-6 py-4 flex items-center justify-between sticky top-0 z-20">
+                        <div className="flex items-center gap-3">
+                            <div className="bg-gradient-to-br from-violet-500 to-blue-500 p-2.5 rounded-xl shadow-lg shadow-violet-500/30">
+                                <Icon name="table-properties" className="text-white w-6 h-6" />
+                            </div>
+                            <div>
+                                <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-violet-400 via-fuchsia-400 to-blue-400 leading-tight">
+                                    RPA(CSV→Excel)
+                                </h1>
+                                <p className="text-[10px] font-medium text-slate-500 uppercase tracking-widest">AI-assisted Ledger Entry</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => { setApiKeyInput(apiKey); setShowSettings(true); }}
+                            className="relative p-2 text-slate-400 hover:bg-white/10 hover:text-white rounded-full transition-all duration-200"
+                            title="API設定"
+                        >
+                            <Icon name="settings" className="w-5 h-5" />
+                            {!apiKey && <span className="absolute top-1 right-1 w-2 h-2 bg-rose-500 rounded-full border border-slate-900"></span>}
+                        </button>
+                    </header>
+
+                    <main className="max-w-7xl mx-auto p-6 space-y-6">
+                        {/* Step 1 & 2: Uploads */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Excel Upload */}
+                            <div className="bg-slate-900/60 border border-white/10 rounded-2xl p-5">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <div className="bg-emerald-500/15 text-emerald-400 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">1</div>
+                                    <h2 className="font-bold text-slate-200">既存Excel台帳をアップロード</h2>
+                                </div>
+                                <input ref={excelInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleExcelUpload} />
+                                <button
+                                    onClick={() => excelInputRef.current.click()}
+                                    className="w-full border-2 border-dashed border-white/15 hover:border-emerald-400/50 rounded-xl py-6 flex flex-col items-center justify-center gap-2 text-slate-500 hover:text-emerald-300 transition-all"
+                                >
+                                    <Icon name="file-spreadsheet" className="w-8 h-8" />
+                                    <span className="text-sm font-medium">{excelFileName || 'クリックしてExcelファイルを選択 (.xlsx)'}</span>
+                                </button>
+                                {excelHeaders.length > 0 && (
+                                    <div className="mt-3 text-xs text-slate-400 space-y-1">
+                                        <p>シート: <span className="text-slate-300 font-medium">{sheetName}</span> / 列: {excelHeaders.length} / 既存行: {excelRows.length}</p>
+                                        <div className="flex flex-wrap gap-1 mt-2">
+                                            {excelHeaders.map((h, i) => (
+                                                <span key={i} className="bg-white/5 border border-white/10 px-2 py-0.5 rounded-full text-[11px] text-slate-300">{h}</span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* CSV Upload */}
+                            <div className="bg-slate-900/60 border border-white/10 rounded-2xl p-5">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <div className="bg-blue-500/15 text-blue-400 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">2</div>
+                                    <h2 className="font-bold text-slate-200">OCR結果CSVをアップロード</h2>
+                                </div>
+                                <input ref={csvInputRef} type="file" accept=".csv" className="hidden" onChange={handleCsvUpload} />
+                                <button
+                                    onClick={() => csvInputRef.current.click()}
+                                    className="w-full border-2 border-dashed border-white/15 hover:border-blue-400/50 rounded-xl py-6 flex flex-col items-center justify-center gap-2 text-slate-500 hover:text-blue-300 transition-all"
+                                >
+                                    <Icon name="file-text" className="w-8 h-8" />
+                                    <span className="text-sm font-medium">{csvFileName || 'クリックしてCSVファイルを選択 (.csv)'}</span>
+                                </button>
+                                {csvHeaders.length > 0 && (
+                                    <div className="mt-3 text-xs text-slate-400 space-y-1">
+                                        <p>列: {csvHeaders.length} / 件数: {csvRows.length}</p>
+                                        <div className="flex flex-wrap gap-1 mt-2">
+                                            {csvHeaders.map((h, i) => (
+                                                <span key={i} className="bg-white/5 border border-white/10 px-2 py-0.5 rounded-full text-[11px] text-slate-300">{h}</span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Step 3: AI Mapping */}
+                        <div className="bg-slate-900/60 border border-white/10 rounded-2xl p-5">
+                            <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+                                <div className="flex items-center gap-2">
+                                    <div className="bg-violet-500/15 text-violet-400 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">3</div>
+                                    <h2 className="font-bold text-slate-200">AIによる項目振り分け・確認</h2>
+                                </div>
+                                <button
+                                    onClick={runAiMapping}
+                                    disabled={isProcessing || excelHeaders.length === 0 || csvRows.length === 0}
+                                    className="bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-500 hover:to-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-xl flex items-center gap-2 font-bold shadow-lg shadow-violet-900/30 text-sm transition-all duration-200"
+                                >
+                                    {isProcessing ? (
+                                        <React.Fragment>
+                                            <Icon name="loader-2" className="w-4 h-4 animate-spin" /> 振り分け中...
+                                        </React.Fragment>
+                                    ) : (
+                                        <React.Fragment>
+                                            <Icon name="sparkles" className="w-4 h-4" /> AIで振り分け実行
+                                        </React.Fragment>
+                                    )}
+                                </button>
+                            </div>
+
+                            {mappedRows.length === 0 ? (
+                                <div className="text-center py-10 text-slate-600 text-sm">
+                                    Excel台帳とCSVをアップロードし、「AIで振り分け実行」を押してください。
+                                </div>
+                            ) : (
+                                <React.Fragment>
+                                    <p className="text-xs text-slate-500 mb-3">セルをクリックして内容を修正できます。赤い背景のセルは空欄です。確認後「Excelに反映」を押してください。</p>
+                                    <div className="overflow-x-auto rounded-xl border border-white/10">
+                                        <table className="w-full text-left border-collapse">
+                                            <thead>
+                                                <tr className="bg-white/5">
+                                                    <th className="px-3 py-2 text-[11px] font-bold text-slate-500 uppercase w-10">#</th>
+                                                    {excelHeaders.map((h, i) => (
+                                                        <th key={i} className="px-2 py-2 text-[11px] font-bold text-slate-400 uppercase whitespace-nowrap">{h || <span className="italic text-slate-600">(列名なし)</span>}</th>
+                                                    ))}
+                                                    <th className="px-2 py-2 w-10"></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {mappedRows.map((row, rIdx) => (
+                                                    <tr key={rIdx} className="border-t border-white/5 hover:bg-white/[0.03]">
+                                                        <td className="px-3 py-1 text-xs text-slate-600">{rIdx + 1}</td>
+                                                        {columnKeys.map((k, cIdx) => {
+                                                            const val = row[k] !== undefined ? row[k] : '';
+                                                            const isEmpty = String(val).trim() === '';
+                                                            return (
+                                                                <td key={cIdx} className="px-1 py-1">
+                                                                    <input
+                                                                        className={`cell-input ${isEmpty ? 'empty' : ''}`}
+                                                                        value={val}
+                                                                        onChange={(e) => updateMappedCell(rIdx, k, e.target.value)}
+                                                                    />
+                                                                </td>
+                                                            );
+                                                        })}
+                                                        <td className="px-2 py-1">
+                                                            <button onClick={() => removeMappedRow(rIdx)} className="text-slate-600 hover:text-rose-400 transition-colors" title="この行を除外">
+                                                                <Icon name="x" className="w-4 h-4" />
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div className="flex justify-end mt-4">
+                                        <button
+                                            onClick={reflectToExcel}
+                                            className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 font-bold shadow-lg shadow-emerald-900/30 text-sm transition-all duration-200"
+                                        >
+                                            <Icon name="check" className="w-4 h-4" /> Excelデータに反映 ({mappedRows.length}件)
+                                        </button>
+                                    </div>
+                                </React.Fragment>
+                            )}
+                        </div>
+
+                        {/* Step 4: Download */}
+                        <div className="bg-slate-900/60 border border-white/10 rounded-2xl p-5">
+                            <div className="flex items-center justify-between flex-wrap gap-3">
+                                <div className="flex items-center gap-2">
+                                    <div className="bg-amber-500/15 text-amber-400 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">4</div>
+                                    <div>
+                                        <h2 className="font-bold text-slate-200">更新済みExcelをダウンロード</h2>
+                                        <p className="text-xs text-slate-500 mt-0.5">現在の台帳データ: {excelRows.length}行 {reflected && <span className="text-emerald-400">(反映済み)</span>}</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={downloadExcel}
+                                    disabled={excelHeaders.length === 0}
+                                    className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 disabled:opacity-40 disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-xl flex items-center gap-2 font-bold shadow-lg shadow-amber-900/30 text-sm transition-all duration-200"
+                                >
+                                    <Icon name="download" className="w-4 h-4" /> Excelファイルをダウンロード
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Logs */}
+                        <div className="bg-slate-900/40 border border-white/10 rounded-2xl p-5">
+                            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">ログ</h3>
+                            <div className="space-y-1 max-h-48 overflow-y-auto text-xs">
+                                {logs.length === 0 && <p className="text-slate-700">まだ操作はありません。</p>}
+                                {logs.map(log => (
+                                    <div key={log.id} className={`flex gap-2 px-2 py-1 rounded ${
+                                        log.type === 'error' ? 'text-rose-400' :
+                                        log.type === 'success' ? 'text-emerald-400' :
+                                        log.type === 'warning' ? 'text-amber-400' : 'text-slate-400'
+                                    }`}>
+                                        <span className="text-slate-600 shrink-0">{log.time}</span>
+                                        <span>{log.message}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </main>
+
+                    {/* Settings Modal */}
+                    {showSettings && (
+                        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowSettings(false)}>
+                            <div className="bg-slate-900 border border-white/10 rounded-2xl p-6 max-w-md w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                                <h3 className="text-xl font-bold text-white mb-3">API設定</h3>
+                                <p className="text-sm text-slate-400 mb-4">
+                                    振り分けにはGoogleの <span className="font-bold text-slate-200">Gemini APIキー</span> が必要です。<a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="text-violet-400 hover:text-violet-300 underline">Google AI Studio</a> で無料発行できます。このキーはブラウザ内（localStorage）にのみ保存され、外部送信はGoogleへの直接通信のみです。
+                                </p>
+                                <input
+                                    type="password"
+                                    value={apiKeyInput}
+                                    onChange={(e) => setApiKeyInput(e.target.value)}
+                                    placeholder="AIzaSy..."
+                                    className="w-full bg-slate-800 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white mb-4 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                                />
+                                <div className="flex gap-2 justify-end">
+                                    <button onClick={() => setShowSettings(false)} className="px-4 py-2 text-sm text-slate-400 hover:text-white rounded-lg transition-colors">キャンセル</button>
+                                    <button onClick={saveApiKey} className="px-4 py-2 text-sm bg-violet-600 hover:bg-violet-500 text-white rounded-lg font-bold transition-colors">保存</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
+</body>
+</html>
