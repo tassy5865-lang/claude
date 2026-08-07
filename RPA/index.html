@@ -183,6 +183,66 @@
             );
         };
 
+        const TemplateRow = ({ template, ledgerExists, ledgerHeaders, expanded, onToggleExpand, onDelete, onFieldChange }) => {
+            const colKeys = ledgerHeaders.map((_, i) => `col${i + 1}`);
+            const savedDate = new Date(template.savedAt).toLocaleString('ja-JP');
+            return (
+                <div className="border border-white/10 bg-white/5 rounded-xl overflow-hidden">
+                    <div className="flex items-center gap-2 p-3">
+                        <button onClick={onToggleExpand} className="text-slate-500 hover:text-white p-1 shrink-0" title={expanded ? '閉じる' : '詳細を表示'}>
+                            <Icon name={expanded ? 'chevron-down' : 'chevron-right'} className="w-4 h-4" />
+                        </button>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold text-slate-200 truncate">
+                                {template.ledgerName || '(不明な台帳)'}
+                                {!ledgerExists && <span className="ml-2 text-[11px] font-normal text-rose-400">台帳削除済み</span>}
+                            </p>
+                            <p className="text-[11px] text-slate-500 truncate">CSV列: {template.csvHeaders.join('、')}</p>
+                            <p className="text-[10px] text-slate-600 mt-0.5">保存日時: {savedDate}</p>
+                        </div>
+                        <button onClick={onDelete} className="text-slate-500 hover:text-rose-400 p-1 shrink-0" title="このマッピングを削除">
+                            <Icon name="trash-2" className="w-4 h-4" />
+                        </button>
+                    </div>
+                    {expanded && (
+                        <div className="px-3 pb-3 pt-1 border-t border-white/10 bg-black/20">
+                            {!ledgerExists ? (
+                                <div className="text-xs text-slate-500 space-y-1 pt-2">
+                                    <p>対象の台帳が削除されているため、列名を表示・編集できません。以下はCSV列とExcel列キーの対応（生データ）です。</p>
+                                    {template.csvHeaders.map((h, i) => (
+                                        <p key={i}>{h} → {template.fieldMapping[`field${i + 1}`] || '(対応なし)'}</p>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="space-y-1.5 pt-2">
+                                    {template.csvHeaders.map((h, i) => {
+                                        const fieldKey = `field${i + 1}`;
+                                        const current = template.fieldMapping[fieldKey] || '';
+                                        return (
+                                            <div key={i} className="flex items-center gap-2 text-xs">
+                                                <span className="w-1/3 truncate text-slate-400" title={h}>{h}</span>
+                                                <Icon name="arrow-right" className="w-3 h-3 text-slate-600 shrink-0" />
+                                                <select
+                                                    value={current}
+                                                    onChange={(e) => onFieldChange(fieldKey, e.target.value)}
+                                                    className="flex-1 bg-slate-800 border border-white/10 rounded-lg px-2 py-1 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                                                >
+                                                    <option value="">(対応なし)</option>
+                                                    {ledgerHeaders.map((eh, ci) => (
+                                                        <option key={ci} value={colKeys[ci]}>{eh || `(列名なし${ci + 1})`}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
         const App = () => {
             const [apiKey, setApiKey] = useState('');
             const [showSettings, setShowSettings] = useState(false);
@@ -194,6 +254,8 @@
             const skipPersistRef = useRef(false);
 
             const [mappingTemplates, setMappingTemplates] = useState([]); // [{id, ledgerId, ledgerName, csvHeaders, fieldMapping, savedAt}]
+            const [showTemplateModal, setShowTemplateModal] = useState(false);
+            const [expandedTemplateId, setExpandedTemplateId] = useState(null);
 
             const [excelFileName, setExcelFileName] = useState('');
             const [excelHeaders, setExcelHeaders] = useState([]);
@@ -475,6 +537,15 @@
                 addLog('保存済みマッピングを削除しました。', 'info');
             };
 
+            const updateTemplateFieldMapping = (templateId, fieldKey, colKey) => {
+                setMappingTemplates(prev => {
+                    const next = prev.map(t => t.id === templateId ? { ...t, fieldMapping: { ...t.fieldMapping, [fieldKey]: colKey } } : t);
+                    saveMappingTemplates(next);
+                    return next;
+                });
+                addLog('保存済みマッピングの対応を手動で変更しました。', 'info');
+            };
+
             const runAiMapping = async () => {
                 if (!apiKey) {
                     addLog('Gemini APIキーが設定されていません。画面右上の設定アイコンから入力してください。', 'error');
@@ -611,14 +682,26 @@ ${JSON.stringify(csvRows, null, 2)}
                                 <p className="text-[10px] font-medium text-slate-500 uppercase tracking-widest">AI-assisted Ledger Entry</p>
                             </div>
                         </div>
-                        <button
-                            onClick={() => { setApiKeyInput(apiKey); setShowSettings(true); }}
-                            className="relative p-2 text-slate-400 hover:bg-white/10 hover:text-white rounded-full transition-all duration-200"
-                            title="API設定"
-                        >
-                            <Icon name="settings" className="w-5 h-5" />
-                            {!apiKey && <span className="absolute top-1 right-1 w-2 h-2 bg-rose-500 rounded-full border border-slate-900"></span>}
-                        </button>
+                        <div className="flex items-center gap-1">
+                            <button
+                                onClick={() => { setExpandedTemplateId(null); setShowTemplateModal(true); }}
+                                className="relative p-2 text-slate-400 hover:bg-white/10 hover:text-white rounded-full transition-all duration-200"
+                                title="保存済みマッピング管理"
+                            >
+                                <Icon name="layout-template" className="w-5 h-5" />
+                                {mappingTemplates.length > 0 && (
+                                    <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 bg-violet-500 rounded-full text-[9px] font-bold text-white flex items-center justify-center">{mappingTemplates.length}</span>
+                                )}
+                            </button>
+                            <button
+                                onClick={() => { setApiKeyInput(apiKey); setShowSettings(true); }}
+                                className="relative p-2 text-slate-400 hover:bg-white/10 hover:text-white rounded-full transition-all duration-200"
+                                title="API設定"
+                            >
+                                <Icon name="settings" className="w-5 h-5" />
+                                {!apiKey && <span className="absolute top-1 right-1 w-2 h-2 bg-rose-500 rounded-full border border-slate-900"></span>}
+                            </button>
+                        </div>
                     </header>
 
                     <main className="max-w-7xl mx-auto p-6 space-y-6">
@@ -916,6 +999,46 @@ ${JSON.stringify(csvRows, null, 2)}
                                 )}
                                 <div className="flex justify-end mt-4">
                                     <button onClick={() => setShowLedgerModal(false)} className="px-4 py-2 text-sm text-slate-400 hover:text-white rounded-lg transition-colors">閉じる</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Template Management Modal */}
+                    {showTemplateModal && (
+                        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowTemplateModal(false)}>
+                            <div className="bg-slate-900 border border-white/10 rounded-2xl p-6 max-w-2xl w-full shadow-2xl max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+                                <div className="flex items-center gap-3 mb-1 shrink-0">
+                                    <div className="bg-gradient-to-br from-violet-500 to-blue-500 p-2.5 rounded-xl shadow-lg shadow-violet-900/30">
+                                        <Icon name="layout-template" className="text-white w-5 h-5" />
+                                    </div>
+                                    <h3 className="text-xl font-bold text-white">保存済みマッピング管理</h3>
+                                </div>
+                                <p className="text-sm text-slate-400 mb-4 mt-2 shrink-0">AI振り分け成功時に自動保存された、台帳ごとのCSV→Excel列対応の一覧です。展開すると内容を確認・手動編集できます。</p>
+                                {mappingTemplates.length === 0 ? (
+                                    <p className="text-sm text-slate-500">保存されたマッピングはありません。</p>
+                                ) : (
+                                    <div className="space-y-2 overflow-y-auto">
+                                        {mappingTemplates.slice().sort((a, b) => b.savedAt - a.savedAt).map(t => {
+                                            const ledgerExists = ledgers.some(l => l.id === t.ledgerId);
+                                            const ledgerHeaders = ledgerExists ? (loadLedgerData(t.ledgerId)?.headers || []) : [];
+                                            return (
+                                                <TemplateRow
+                                                    key={t.id}
+                                                    template={t}
+                                                    ledgerExists={ledgerExists}
+                                                    ledgerHeaders={ledgerHeaders}
+                                                    expanded={expandedTemplateId === t.id}
+                                                    onToggleExpand={() => setExpandedTemplateId(prev => prev === t.id ? null : t.id)}
+                                                    onDelete={() => { if (confirm(`「${t.ledgerName}」のマッピング(CSV列: ${t.csvHeaders.join('、')})を削除しますか？`)) deleteMappingTemplate(t.id); }}
+                                                    onFieldChange={(fieldKey, colKey) => updateTemplateFieldMapping(t.id, fieldKey, colKey)}
+                                                />
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                                <div className="flex justify-end mt-4 shrink-0">
+                                    <button onClick={() => setShowTemplateModal(false)} className="px-4 py-2 text-sm text-slate-400 hover:text-white rounded-lg transition-colors">閉じる</button>
                                 </div>
                             </div>
                         </div>
