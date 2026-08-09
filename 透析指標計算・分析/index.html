@@ -617,6 +617,12 @@
 <div class="export-bar no-print">
   <button type="button" class="btn-secondary" id="exportSnapshotBtn">📥 現在のデータをCSVダウンロード</button>
   <button type="button" class="btn-secondary" id="printBtn" style="margin-left:8px;">🖨 印刷する</button>
+  <button type="button" class="btn-secondary" id="demoDataBtn" style="margin-left:8px;">🎯 デモデータを読み込む</button>
+</div>
+<div class="patient-panel no-print" id="demoPanel">
+  <span>現在の入力データをデモ用のサンプル値で上書きします。よろしいですか？</span>
+  <button type="button" class="btn-primary" id="demoPanelConfirm">OK</button>
+  <button type="button" class="btn-secondary" id="demoPanelCancel">キャンセル</button>
 </div>
 
 <div class="container">
@@ -1779,6 +1785,66 @@ P: ${fmt(mbdP, 1)} mg/dL (目標3.5〜6.0) / 補正Ca: ${fmt(correctedCa, 1)} mg
 
   const DEFAULTS = {};
   ids.forEach(function (id) { DEFAULTS[id] = document.getElementById(id).value; });
+
+  // --- デモデータ ---
+  const DEMO_DATA = {
+    t: "240", ufTotal: "3800", bwPre: "65.5", bwPost: "63.0",
+    tp1: "6.7", tp2: "7.6", ht1: "33", co: "65", ct: "18",
+    qb: "250", qd: "500", area: "2.1",
+    qbNew: "300", tNew: "240", koaNew: "750", areaNew: "2.3",
+    hgb: "11.0", esa: "6000", fe: "45", tibc: "280", ferritin: "90",
+    pPre: "6.5", pPost: "3.0", kPre: "5.4", kPost: "3.6",
+    caRaw: "9.2", alb: "4.3", pth: "180",
+    doseParsabiv: "", doseUpacita: "", doseOxarol: "2.5",
+    lvef: "55", lvdd: "48",
+    valveMR: "Mild", valveAR: "Severe", valveAS: "None", valveTR: "None"
+  };
+  const DEMO_HYPOKINETIC_SEGMENTS = [5, 6, 11, 12];
+  segIds.forEach(function (id, i) {
+    DEMO_DATA[id] = DEMO_HYPOKINETIC_SEGMENTS.indexOf(i + 1) >= 0 ? "2" : "1";
+  });
+  function demoDateOffset(daysAgo) {
+    const d = new Date();
+    d.setDate(d.getDate() - daysAgo);
+    const pad = n => String(n).padStart(2, "0");
+    return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+  }
+  function buildDemoLog() {
+    const rows = [
+      [21, 3.6, 2.2, 16.3, 1.35, 68.0, 10.5, 64.0],
+      [14, 3.4, 2.4, 16.0, 1.42, 69.5, 9.8, 63.6],
+      [7, 3.2, 2.6, 15.9, 1.48, 71.0, 9.2, 63.3],
+      [0, 3.1, 2.7, 15.8, 1.53, 72.3, 8.7, 63.0]
+    ];
+    return rows.map(function (r) {
+      return {
+        date: demoDateOffset(r[0]), pwi: r[1], meanKr: r[2], ufr: r[3],
+        ktv: r[4], urr: r[5], eri: r[6], bwPost: r[7]
+      };
+    });
+  }
+  function loadDemoData() {
+    ids.forEach(function (id) {
+      if (DEMO_DATA[id] !== undefined) document.getElementById(id).value = DEMO_DATA[id];
+    });
+    trendLog = buildDemoLog();
+    save();
+    saveLog();
+    renderLogTable();
+    renderCharts();
+    recalc();
+  }
+  document.getElementById("demoDataBtn").addEventListener("click", function () {
+    document.getElementById("demoPanel").style.display = "flex";
+  });
+  document.getElementById("demoPanelCancel").addEventListener("click", function () {
+    document.getElementById("demoPanel").style.display = "none";
+  });
+  document.getElementById("demoPanelConfirm").addEventListener("click", function () {
+    document.getElementById("demoPanel").style.display = "none";
+    loadDemoData();
+    showToast("デモデータを読み込みました");
+  });
 
   // --- 複数患者管理 ---
   function loadPatients() {
