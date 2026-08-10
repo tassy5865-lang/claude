@@ -8,16 +8,16 @@
 <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root{
-    --cream:#F6F2EA;
-    --cream-soft:#FBF9F5;
-    --ink:#221D17;
-    --ink-soft:#6E6759;
-    --gold:#BD8B4C;
-    --gold-soft:#D8B784;
-    --green:#155841;
-    --green-light:#1E7A56;
-    --black:#17140F;
-    --line: rgba(34,29,23,0.13);
+    --cream:#F4F7FA;
+    --cream-soft:#FFFFFF;
+    --ink:#1A2332;
+    --ink-soft:#5B6B82;
+    --gold:#1E3A5F;
+    --gold-soft:#4A90D9;
+    --green:#1E3A5F;
+    --green-light:#2F5C8A;
+    --black:#101826;
+    --line: rgba(26,35,50,0.12);
   }
   *{margin:0;padding:0;box-sizing:border-box;}
   html{scroll-behavior:smooth;}
@@ -77,7 +77,7 @@
 
   .card-grid{ display:grid; grid-template-columns:repeat(3, 1fr); gap:1.1rem; margin-top:3.2rem; }
   .value-card{ background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:1.6rem; display:flex; gap:0.9rem; align-items:flex-start; }
-  .value-card .ico{ width:34px; height:34px; border-radius:8px; background:rgba(189,139,76,0.16); display:flex; align-items:center; justify-content:center; flex-shrink:0; color:var(--gold-soft); font-size:1rem; }
+  .value-card .ico{ width:34px; height:34px; border-radius:8px; background:rgba(74,144,217,0.16); display:flex; align-items:center; justify-content:center; flex-shrink:0; color:var(--gold-soft); font-size:1rem; }
   .value-card p{ font-size:0.9rem; line-height:1.65; color:#D8D2C4; }
   .value-card div h3{ font-size:1rem; margin-bottom:0.4rem; color:#F5F1E8;}
 
@@ -100,7 +100,7 @@
   .approach-card p{ font-size:0.85rem; color:var(--ink-soft); line-height:1.65; }
 
   #focus .value-card{ background:#fff; border:1px solid var(--line); }
-  #focus .value-card .ico{ background:rgba(189,139,76,0.12); color:var(--gold);}
+  #focus .value-card .ico{ background:rgba(30,58,95,0.1); color:var(--gold);}
   #focus .value-card p{ color:var(--ink-soft); }
   #focus .value-card h3{ font-size:1rem; margin-bottom:0.4rem; color:var(--ink);}
 
@@ -128,7 +128,7 @@
     background:transparent; color:#B9B2A4; cursor:pointer; transition:background .2s ease, color .2s ease, border-color .2s ease;
   }
   .tag-filter button:hover{ border-color:var(--gold-soft); color:#F5F1E8; }
-  .tag-filter button.active{ background:var(--gold); border-color:var(--gold); color:var(--black); font-weight:600; }
+  .tag-filter button.active{ background:var(--gold-soft); border-color:var(--gold-soft); color:#fff; font-weight:600; }
   .record-card h3{ font-size:1rem; margin:0.6rem 0 0.6rem; color:#F5F1E8; }
   .record-card p{ font-size:0.83rem; color:#B9B2A4; line-height:1.6; }
 
@@ -151,7 +151,7 @@
   .whynow-card h2{ color:#F5F1E8; font-size:1.6rem; margin-top:0.6rem; }
   .whynow-card p{ color:#B9B2A4; font-size:0.9rem; margin-top:1rem; line-height:1.8; }
 
-  #cta{ background:linear-gradient(135deg, var(--green), #0F4633); text-align:center; color:#fff; padding:6rem 6vw; }
+  #cta{ background:linear-gradient(135deg, var(--green), #0F2038); text-align:center; color:#fff; padding:6rem 6vw; }
   #cta h2{ color:#fff; font-size:clamp(1.7rem,4vw,2.5rem); }
   #cta .btn-primary{ background:#fff; color:var(--green); margin-top:2.2rem; }
   #cta .btn-primary:hover{ background:#F5F1E8; }
