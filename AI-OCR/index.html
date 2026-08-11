@@ -208,6 +208,16 @@
             const dragItemRef = useRef(null);
             const dragOverItemRef = useRef(null);
 
+            // 領域の他ページへの複製メニュー
+            const [copyMenuRegionId, setCopyMenuRegionId] = useState(null);
+
+            useEffect(() => {
+                if (!copyMenuRegionId) return;
+                const closeMenu = () => setCopyMenuRegionId(null);
+                window.addEventListener('click', closeMenu);
+                return () => window.removeEventListener('click', closeMenu);
+            }, [copyMenuRegionId]);
+
             const showMessage = (title, message) => setModal({ isOpen: true, title, message });
 
             const addLog = useCallback((msg, type = 'info') => {
@@ -809,6 +819,16 @@ ${JSON.stringify(targetRegionsData)}`;
                 setRegions(regions.map(r => r.id === id ? { ...r, type: newType } : r));
             };
 
+            const duplicateRegionToPage = (id, targetPageOffset) => {
+                const region = regions.find(r => r.id === id);
+                if (!region) return;
+                const newRegion = { ...region, id: `region_${Date.now()}_copy`, pageOffset: targetPageOffset };
+                setRegions(prev => [...prev, newRegion]);
+                setSelectedRegionId(newRegion.id);
+                setCopyMenuRegionId(null);
+                addLog(`「${region.name}」をP.${targetPageOffset + 1}に複製しました。`, 'success');
+            };
+
             const handleSortDragStart = (e, index) => {
                 dragItemRef.current = index;
                 if (e.dataTransfer) e.dataTransfer.setData('text/plain', '');
@@ -1135,6 +1155,34 @@ ${JSON.stringify(targetRegionsData)}`;
                                                                 <option value="circle">⭕ 丸囲み</option>
                                                             </select>
                                                         </div>
+                                                        {setImages.length > 1 && (
+                                                            <div className="relative">
+                                                                <button
+                                                                    onClick={(e) => { e.stopPropagation(); setCopyMenuRegionId(copyMenuRegionId === region.id ? null : region.id); }}
+                                                                    className="text-slate-600 hover:text-violet-400 p-1 rounded transition ml-1"
+                                                                    title="他ページに複製"
+                                                                >
+                                                                    <Icon name="copy" className="w-4 h-4" />
+                                                                </button>
+                                                                {copyMenuRegionId === region.id && (
+                                                                    <div
+                                                                        onClick={(e) => e.stopPropagation()}
+                                                                        className="absolute right-0 top-7 z-30 bg-slate-800 border border-white/10 rounded-lg shadow-xl p-1.5 flex flex-col gap-0.5 min-w-[110px]"
+                                                                    >
+                                                                        <span className="text-[10px] font-bold text-slate-500 px-1.5 pt-0.5 pb-1">複製先ページ</span>
+                                                                        {setImages.map((_, pageIdx) => pageIdx !== region.pageOffset && (
+                                                                            <button
+                                                                                key={pageIdx}
+                                                                                onClick={() => duplicateRegionToPage(region.id, pageIdx)}
+                                                                                className="text-xs text-left text-slate-200 hover:bg-violet-500/20 rounded px-2 py-1 transition-colors"
+                                                                            >
+                                                                                P.{pageIdx + 1}へ
+                                                                            </button>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        )}
                                                         <button onClick={(e) => { e.stopPropagation(); deleteRegion(region.id); }} className="text-slate-600 hover:text-rose-400 p-1 rounded transition ml-1"><Icon name="x" className="w-4 h-4" /></button>
                                                     </div>
                                                 ))}

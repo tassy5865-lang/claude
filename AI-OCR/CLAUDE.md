@@ -20,6 +20,7 @@ This file provides guidance to Claude Code when working with code in this reposi
 - プレビュー画像上でドラッグして抽出領域（バウンディングボックス）を作成・移動・リサイズ
 - 「AI自動特定」ボタンで抽出領域そのものをAIに検出させることも可能
 - 領域ごとにテキスト／チェックボックス／丸囲みの3種の読み取りタイプを指定可能
+- 領域リストの「複製」ボタンから、指定した領域を別の構成ページ（P.1/P.2...）へ複製可能（複数ページ構成の帳票で同じ位置に項目を追加する用途）
 - 抽出結果はレコード単位で確認・手動修正でき、CSV一括出力
 - 抽出領域の設定はGoogle Apps Script（GAS）のWebアプリ経由でテンプレートとしてクラウド保存・再利用可能（任意設定。セットアップ手順は[GAS_SETUP.md](./GAS_SETUP.md)、スクリプト本体は[gas/Code.gs](./gas/Code.gs)を参照）
 - Gemini APIキー・GAS URLは画面右上の設定アイコンから入力（未設定時は赤丸バッジ表示）
