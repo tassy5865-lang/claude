@@ -13,11 +13,15 @@
     <script src="https://unpkg.com/@babel/standalone@7.23.9/babel.min.js"></script>
     <!-- PDF.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <!-- SheetJS (Excel読み書き) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- PapaParse (CSV解析) -->
+    <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
     <style>
-        body { font-family: 'Inter', 'Noto Sans JP', sans-serif; background-color: #05070c; margin: 0; overflow: hidden; }
+        body { font-family: 'Inter', 'Noto Sans JP', sans-serif; background-color: #05070c; margin: 0; }
         .workspace-bg {
             background-color: #05070c;
             background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.07) 1px, transparent 0);
@@ -36,6 +40,13 @@
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #3f4759; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #565f75; }
+
+        .cell-input {
+            background: transparent; width: 100%; color: #e2e8f0; font-size: 13px;
+            padding: 6px 8px; border: 1px solid transparent; border-radius: 6px;
+        }
+        .cell-input:focus { outline: none; background: rgba(139,92,246,0.12); border-color: rgba(139,92,246,0.5); }
+        .cell-input.empty { background: rgba(244,63,94,0.08); }
     </style>
 </head>
 <body>
@@ -134,6 +145,195 @@
             }
         };
 
+        // ---- Excel振り分け(旧RPAツール)関連のヘルパー ----
+
+        const callGeminiTextAPI = async (apiKey, modelName, prompt, schema, maxRetries = 5) => {
+            if (!apiKey) {
+                throw new Error("Gemini APIキーが設定されていません。画面右上の設定アイコンから入力してください。");
+            }
+            const model = modelName || 'gemini-flash-latest';
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+            const delays = [1000, 2000, 4000, 8000, 16000];
+
+            const payload = {
+                contents: [{ role: "user", parts: [{ text: prompt }] }],
+                generationConfig: {
+                    temperature: 0.1,
+                    responseMimeType: "application/json",
+                    responseSchema: schema
+                }
+            };
+
+            for (let i = 0; i <= maxRetries; i++) {
+                let retryable = true;
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        const errBody = await response.text();
+                        let detail = errBody;
+                        try { detail = JSON.parse(errBody).error?.message || errBody; } catch (e) {}
+
+                        if (response.status === 403) {
+                            retryable = false;
+                            throw new Error(`APIキーに権限がありません。(403) ${detail}`);
+                        }
+                        if (response.status === 400) {
+                            retryable = false;
+                            throw new Error(`リクエストが不正です。(400) ${detail}`);
+                        }
+                        if (response.status === 429 || response.status >= 500) {
+                            throw new Error(`API混雑中: ${response.status} ${detail}`);
+                        }
+                        retryable = false;
+                        throw new Error(`API Error: ${response.status} ${detail}`);
+                    }
+
+                    const data = await response.json();
+                    if (!data.candidates || data.candidates.length === 0) throw new Error("No candidates returned.");
+                    const text = data.candidates[0].content.parts[0].text;
+                    return JSON.parse(text);
+                } catch (error) {
+                    if (i === maxRetries || !retryable) throw error;
+                    await new Promise(res => setTimeout(res, delays[i]));
+                }
+            }
+        };
+
+        const LEDGERS_KEY = 'rpa_ledgers';
+        const ACTIVE_LEDGER_KEY = 'rpa_active_ledger';
+        const ledgerDataKey = (id) => `rpa_ledger_data_${id}`;
+
+        const loadLedgersList = () => {
+            try {
+                const raw = localStorage.getItem(LEDGERS_KEY);
+                return raw ? JSON.parse(raw) : [];
+            } catch (e) { return []; }
+        };
+        const saveLedgersList = (list) => {
+            try { localStorage.setItem(LEDGERS_KEY, JSON.stringify(list)); } catch (e) { console.error(e); }
+        };
+        const loadLedgerData = (id) => {
+            try {
+                const raw = localStorage.getItem(ledgerDataKey(id));
+                return raw ? JSON.parse(raw) : null;
+            } catch (e) { return null; }
+        };
+
+        const MAPPING_TEMPLATES_KEY = 'rpa_mapping_templates';
+        const loadMappingTemplates = () => {
+            try {
+                const raw = localStorage.getItem(MAPPING_TEMPLATES_KEY);
+                return raw ? JSON.parse(raw) : [];
+            } catch (e) { return []; }
+        };
+        const saveMappingTemplates = (list) => {
+            try { localStorage.setItem(MAPPING_TEMPLATES_KEY, JSON.stringify(list)); } catch (e) { console.error(e); }
+        };
+
+        const LedgerRow = ({ ledger, isActive, onSwitch, onRename, onDelete }) => {
+            const [editing, setEditing] = useState(false);
+            const [nameInput, setNameInput] = useState(ledger.name);
+
+            return (
+                <div className={`flex items-center gap-2 p-2 rounded-xl border ${isActive ? 'border-violet-500/50 bg-violet-500/10' : 'border-white/10 bg-white/5'}`}>
+                    {editing ? (
+                        <React.Fragment>
+                            <input
+                                className="flex-1 bg-slate-800 border border-white/10 rounded-lg px-2 py-1 text-sm text-white"
+                                value={nameInput}
+                                onChange={(e) => setNameInput(e.target.value)}
+                                autoFocus
+                            />
+                            <button onClick={() => { onRename(nameInput); setEditing(false); }} className="text-emerald-400 hover:text-emerald-300 p-1" title="保存">
+                                <Icon name="check" className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => { setNameInput(ledger.name); setEditing(false); }} className="text-slate-500 hover:text-white p-1" title="キャンセル">
+                                <Icon name="x" className="w-4 h-4" />
+                            </button>
+                        </React.Fragment>
+                    ) : (
+                        <React.Fragment>
+                            <button onClick={onSwitch} className="flex-1 text-left text-sm text-slate-200 truncate flex items-center gap-2">
+                                {isActive && <Icon name="check-circle-2" className="w-4 h-4 text-violet-400 shrink-0" />}
+                                <span className="truncate">{ledger.name}</span>
+                            </button>
+                            <button onClick={() => setEditing(true)} className="text-slate-500 hover:text-white p-1 shrink-0" title="名前変更">
+                                <Icon name="pencil" className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => { if (confirm(`台帳「${ledger.name}」を削除しますか？（保存されているデータも削除されます）`)) onDelete(); }} className="text-slate-500 hover:text-rose-400 p-1 shrink-0" title="削除">
+                                <Icon name="trash-2" className="w-4 h-4" />
+                            </button>
+                        </React.Fragment>
+                    )}
+                </div>
+            );
+        };
+
+        const TemplateRow = ({ template, ledgerExists, ledgerHeaders, expanded, onToggleExpand, onDelete, onFieldChange }) => {
+            const colKeys = ledgerHeaders.map((_, i) => `col${i + 1}`);
+            const savedDate = new Date(template.savedAt).toLocaleString('ja-JP');
+            return (
+                <div className="border border-white/10 bg-white/5 rounded-xl overflow-hidden">
+                    <div className="flex items-center gap-2 p-3">
+                        <button onClick={onToggleExpand} className="text-slate-500 hover:text-white p-1 shrink-0" title={expanded ? '閉じる' : '詳細を表示'}>
+                            <Icon name={expanded ? 'chevron-down' : 'chevron-right'} className="w-4 h-4" />
+                        </button>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold text-slate-200 truncate">
+                                {template.ledgerName || '(不明な台帳)'}
+                                {!ledgerExists && <span className="ml-2 text-[11px] font-normal text-rose-400">台帳削除済み</span>}
+                            </p>
+                            <p className="text-[11px] text-slate-500 truncate">CSV列: {template.csvHeaders.join('、')}</p>
+                            <p className="text-[10px] text-slate-600 mt-0.5">保存日時: {savedDate}</p>
+                        </div>
+                        <button onClick={onDelete} className="text-slate-500 hover:text-rose-400 p-1 shrink-0" title="このマッピングを削除">
+                            <Icon name="trash-2" className="w-4 h-4" />
+                        </button>
+                    </div>
+                    {expanded && (
+                        <div className="px-3 pb-3 pt-1 border-t border-white/10 bg-black/20">
+                            {!ledgerExists ? (
+                                <div className="text-xs text-slate-500 space-y-1 pt-2">
+                                    <p>対象の台帳が削除されているため、列名を表示・編集できません。以下はCSV列とExcel列キーの対応（生データ）です。</p>
+                                    {template.csvHeaders.map((h, i) => (
+                                        <p key={i}>{h} → {template.fieldMapping[`field${i + 1}`] || '(対応なし)'}</p>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="space-y-1.5 pt-2">
+                                    {template.csvHeaders.map((h, i) => {
+                                        const fieldKey = `field${i + 1}`;
+                                        const current = template.fieldMapping[fieldKey] || '';
+                                        return (
+                                            <div key={i} className="flex items-center gap-2 text-xs">
+                                                <span className="w-1/3 truncate text-slate-400" title={h}>{h}</span>
+                                                <Icon name="arrow-right" className="w-3 h-3 text-slate-600 shrink-0" />
+                                                <select
+                                                    value={current}
+                                                    onChange={(e) => onFieldChange(fieldKey, e.target.value)}
+                                                    className="flex-1 bg-slate-800 border border-white/10 rounded-lg px-2 py-1 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                                                >
+                                                    <option value="">(対応なし)</option>
+                                                    {ledgerHeaders.map((eh, ci) => (
+                                                        <option key={ci} value={colKeys[ci]}>{eh || `(列名なし${ci + 1})`}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
         const Icon = ({ name, className }) => {
             const ref = useRef(null);
             useEffect(() => {
@@ -218,6 +418,43 @@
                 return () => window.removeEventListener('click', closeMenu);
             }, [copyMenuRegionId]);
 
+            // ---- Excel振り分け(旧RPAツール)関連のstate ----
+            const [viewMode, setViewMode] = useState('ocr'); // 'ocr' | 'excel'
+
+            const [ledgers, setLedgers] = useState([]); // [{id, name}]
+            const [activeLedgerId, setActiveLedgerId] = useState(null);
+            const [showLedgerModal, setShowLedgerModal] = useState(false);
+            const skipPersistRef = useRef(false);
+
+            const [mappingTemplates, setMappingTemplates] = useState([]);
+            const [showTemplateModal, setShowTemplateModal] = useState(false);
+            const [expandedTemplateId, setExpandedTemplateId] = useState(null);
+
+            const [excelFileName, setExcelFileName] = useState('');
+            const [excelHeaders, setExcelHeaders] = useState([]);
+            const [excelRows, setExcelRows] = useState([]); // array of arrays (既存データ)
+            const [sheetName, setSheetName] = useState('');
+
+            const [csvFileName, setCsvFileName] = useState('');
+            const [csvHeaders, setCsvHeaders] = useState([]);
+            const [csvRows, setCsvRows] = useState([]); // array of objects
+            const [csvSourceFiles, setCsvSourceFiles] = useState([]);
+
+            const [mappedRows, setMappedRows] = useState([]);
+            const [isProcessing, setIsProcessing] = useState(false);
+            const [reflected, setReflected] = useState(false);
+
+            const excelInputRef = useRef(null);
+            const csvInputRef = useRef(null);
+
+            // 列名の空欄・重複に依存しない、位置ベースの安定キー(col1, col2, ...)
+            const columnKeys = excelHeaders.map((_, i) => `col${i + 1}`);
+            const csvFieldKeys = csvHeaders.map((_, i) => `field${i + 1}`);
+            const activeLedgerName = ledgers.find(l => l.id === activeLedgerId)?.name || '';
+            const matchedTemplate = (excelHeaders.length > 0 && csvHeaders.length > 0)
+                ? mappingTemplates.find(t => t.ledgerId === activeLedgerId && JSON.stringify(t.csvHeaders) === JSON.stringify(csvHeaders))
+                : null;
+
             const showMessage = (title, message) => setModal({ isOpen: true, title, message });
 
             const addLog = useCallback((msg, type = 'info') => {
@@ -244,6 +481,45 @@
                     console.error("localStorage access error:", e);
                 }
             }, []);
+
+            // Excel振り分け機能: 台帳一覧・保存済みマッピングの初期読込
+            useEffect(() => {
+                setMappingTemplates(loadMappingTemplates());
+
+                const list = loadLedgersList();
+                setLedgers(list);
+                const activeId = localStorage.getItem(ACTIVE_LEDGER_KEY);
+                if (activeId && list.some(l => l.id === activeId)) {
+                    const data = loadLedgerData(activeId);
+                    if (data) {
+                        skipPersistRef.current = true;
+                        setActiveLedgerId(activeId);
+                        setExcelFileName(data.fileName || '');
+                        setExcelHeaders(data.headers || []);
+                        setExcelRows(data.rows || []);
+                        setSheetName(data.sheetName || '');
+                    }
+                }
+            }, []);
+
+            // アクティブな台帳のExcelデータが変わるたび自動でlocalStorageに保存(台帳切替直後の1回は保存をスキップ)
+            useEffect(() => {
+                if (!activeLedgerId) return;
+                if (skipPersistRef.current) { skipPersistRef.current = false; return; }
+                try {
+                    localStorage.setItem(ledgerDataKey(activeLedgerId), JSON.stringify({
+                        fileName: excelFileName, headers: excelHeaders, rows: excelRows, sheetName
+                    }));
+                } catch (e) {
+                    addLog('台帳データの自動保存に失敗しました(ブラウザの保存容量超過の可能性)。ダウンロードして手動で保存してください。', 'warning');
+                }
+            }, [excelRows, excelHeaders, sheetName, excelFileName, activeLedgerId]);
+
+            // OCRワークスペース(viewMode==='ocr')は内部パネルでスクロールを制御するためbodyのスクロールを固定し、
+            // Excel振り分け画面(viewMode==='excel')はページ全体を通常スクロールさせる
+            useEffect(() => {
+                document.body.style.overflow = viewMode === 'ocr' ? 'hidden' : 'auto';
+            }, [viewMode]);
 
             const openSettings = () => {
                 setApiKeyInput(apiKey);
@@ -896,21 +1172,396 @@ ${JSON.stringify(targetRegionsData)}`;
                 }
             };
 
+            // ---- Excel振り分け(旧RPAツール)関連の関数 ----
+
+            const handleExcelUpload = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    try {
+                        const data = new Uint8Array(evt.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const firstSheetName = workbook.SheetNames[0];
+                        const sheet = workbook.Sheets[firstSheetName];
+                        const aoa = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+                        if (aoa.length === 0) {
+                            addLog('Excelファイルにデータが見つかりません。', 'error');
+                            return;
+                        }
+                        const headers = aoa[0].map(h => String(h));
+                        const rows = aoa.slice(1).filter(r => r.some(c => String(c).trim() !== ''));
+
+                        const newId = `ledger_${Date.now()}`;
+                        const newLedger = { id: newId, name: file.name.replace(/\.[^/.]+$/, '') };
+                        const newList = [...ledgers, newLedger];
+                        setLedgers(newList);
+                        saveLedgersList(newList);
+                        try {
+                            localStorage.setItem(ledgerDataKey(newId), JSON.stringify({ fileName: file.name, headers, rows, sheetName: firstSheetName }));
+                            localStorage.setItem(ACTIVE_LEDGER_KEY, newId);
+                        } catch (err2) {
+                            addLog('台帳データの保存に失敗しました(ブラウザの保存容量超過の可能性)。この台帳は今回のセッション内のみ有効です。', 'warning');
+                        }
+
+                        skipPersistRef.current = true;
+                        setActiveLedgerId(newId);
+                        setExcelHeaders(headers);
+                        setExcelRows(rows);
+                        setSheetName(firstSheetName);
+                        setExcelFileName(file.name);
+                        setMappedRows([]);
+                        setReflected(false);
+                        addLog(`Excel「${file.name}」を新規台帳として読み込みました。シート「${firstSheetName}」/ 列${headers.length} / 既存${rows.length}行`, 'success');
+                    } catch (err) {
+                        addLog(`Excel読み込みエラー: ${err.message}`, 'error');
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+                e.target.value = '';
+            };
+
+            const parseCsvFile = (file) => new Promise((resolve) => {
+                Papa.parse(file, {
+                    header: true,
+                    skipEmptyLines: true,
+                    encoding: 'UTF-8',
+                    complete: (result) => {
+                        resolve({ name: file.name, headers: result.meta.fields || [], rows: result.data });
+                    },
+                    error: (err) => {
+                        resolve({ name: file.name, headers: [], rows: [], error: err.message });
+                    }
+                });
+            });
+
+            const handleCsvUpload = (e) => {
+                const files = Array.from(e.target.files || []);
+                if (files.length === 0) return;
+
+                Promise.all(files.map(parseCsvFile)).then(results => {
+                    const failed = results.filter(r => r.error || r.headers.length === 0);
+                    const parsed = results.filter(r => !r.error && r.headers.length > 0);
+
+                    if (parsed.length === 0) {
+                        addLog('CSVの読み込みに失敗しました（列を認識できませんでした）。', 'error');
+                        return;
+                    }
+
+                    const baseHeaders = parsed[0].headers;
+                    const matched = parsed.filter(r => JSON.stringify(r.headers) === JSON.stringify(baseHeaders));
+                    const mismatched = parsed.filter(r => JSON.stringify(r.headers) !== JSON.stringify(baseHeaders));
+
+                    const combinedRows = matched.flatMap(r => r.rows);
+                    const breakdown = matched.map(r => ({ name: r.name, count: r.rows.length }));
+
+                    setCsvHeaders(baseHeaders);
+                    setCsvRows(combinedRows);
+                    setCsvSourceFiles(breakdown);
+                    setCsvFileName(matched.length > 1 ? `${matched.length}ファイル（合計${combinedRows.length}件）` : matched[0].name);
+                    setMappedRows([]);
+                    setReflected(false);
+
+                    if (matched.length > 1) {
+                        addLog(`CSV ${matched.length}件を結合して読み込みました。列${baseHeaders.length} / 合計${combinedRows.length}件（${matched.map(r => r.name).join('、')}）`, 'success');
+                    } else {
+                        addLog(`CSV「${matched[0].name}」を読み込みました。列${baseHeaders.length} / ${combinedRows.length}件`, 'success');
+                    }
+
+                    const skipped = [...mismatched.map(r => r.name), ...failed.map(r => r.name)];
+                    if (skipped.length > 0) {
+                        addLog(`列構成が異なる、または読み込みに失敗したため除外されたファイル: ${skipped.join('、')}`, 'warning');
+                    }
+                });
+                e.target.value = '';
+            };
+
+            const loadOcrResultsIntoCsv = () => {
+                if (!ocrResults || ocrResults.length === 0) {
+                    addLog('先にOCR解析を実行してください。', 'warning');
+                    return;
+                }
+                const headers = regions.map(r => r.name);
+                const rows = ocrResults.map(res => {
+                    const obj = {};
+                    regions.forEach(r => {
+                        const d = res.data[r.name];
+                        obj[r.name] = d ? String(d.value) : '';
+                    });
+                    return obj;
+                });
+                setCsvHeaders(headers);
+                setCsvRows(rows);
+                setCsvSourceFiles([]);
+                setCsvFileName(`AI-OCRの解析結果（${rows.length}件）`);
+                setMappedRows([]);
+                setReflected(false);
+                addLog(`AI-OCRの解析結果（${rows.length}件）をExcel振り分け用データとして読み込みました。`, 'success');
+            };
+
+            const goToExcelView = () => {
+                loadOcrResultsIntoCsv();
+                setViewMode('excel');
+            };
+
+            const switchLedger = (id) => {
+                if (!id || id === activeLedgerId) return;
+                const data = loadLedgerData(id);
+                if (!data) {
+                    addLog('台帳データの読み込みに失敗しました。', 'error');
+                    return;
+                }
+                skipPersistRef.current = true;
+                setActiveLedgerId(id);
+                setExcelFileName(data.fileName || '');
+                setExcelHeaders(data.headers || []);
+                setExcelRows(data.rows || []);
+                setSheetName(data.sheetName || '');
+                setMappedRows([]);
+                setReflected(false);
+                try { localStorage.setItem(ACTIVE_LEDGER_KEY, id); } catch (e) {}
+                const name = ledgers.find(l => l.id === id)?.name || '';
+                addLog(`台帳「${name}」に切り替えました。`, 'info');
+            };
+
+            const renameLedger = (id, newName) => {
+                const trimmed = newName.trim();
+                if (!trimmed) return;
+                const newList = ledgers.map(l => l.id === id ? { ...l, name: trimmed } : l);
+                setLedgers(newList);
+                saveLedgersList(newList);
+                addLog(`台帳名を「${trimmed}」に変更しました。`, 'success');
+            };
+
+            const deleteLedger = (id) => {
+                const deletedName = ledgers.find(l => l.id === id)?.name || '';
+                const newList = ledgers.filter(l => l.id !== id);
+                setLedgers(newList);
+                saveLedgersList(newList);
+                try { localStorage.removeItem(ledgerDataKey(id)); } catch (e) {}
+
+                if (activeLedgerId === id) {
+                    if (newList.length > 0) {
+                        switchLedger(newList[0].id);
+                    } else {
+                        try { localStorage.removeItem(ACTIVE_LEDGER_KEY); } catch (e) {}
+                        setActiveLedgerId(null);
+                        setExcelFileName('');
+                        setExcelHeaders([]);
+                        setExcelRows([]);
+                        setSheetName('');
+                        setMappedRows([]);
+                        setReflected(false);
+                    }
+                }
+                addLog(`台帳「${deletedName}」を削除しました。`, 'info');
+            };
+
+            const upsertMappingTemplate = (fieldMapping) => {
+                const newTemplate = {
+                    id: `tmpl_${Date.now()}`,
+                    ledgerId: activeLedgerId,
+                    ledgerName: activeLedgerName || excelFileName,
+                    csvHeaders: csvHeaders,
+                    fieldMapping,
+                    savedAt: Date.now()
+                };
+                setMappingTemplates(prev => {
+                    const filtered = prev.filter(t => !(t.ledgerId === activeLedgerId && JSON.stringify(t.csvHeaders) === JSON.stringify(csvHeaders)));
+                    const next = [...filtered, newTemplate];
+                    saveMappingTemplates(next);
+                    return next;
+                });
+                addLog('今回のマッピング内容を保存しました。同じCSV形式・同じ台帳ならAI不要で再利用できます。', 'info');
+            };
+
+            const applyTemplateMapping = () => {
+                if (!matchedTemplate) return;
+                const rows = csvRows.map(csvRow => {
+                    const obj = {};
+                    columnKeys.forEach(k => { obj[k] = ''; });
+                    csvHeaders.forEach((h, i) => {
+                        const targetCol = matchedTemplate.fieldMapping[csvFieldKeys[i]];
+                        if (targetCol && Object.prototype.hasOwnProperty.call(obj, targetCol)) {
+                            const val = csvRow[h];
+                            obj[targetCol] = (val !== undefined && val !== null) ? String(val) : '';
+                        }
+                    });
+                    return obj;
+                });
+                setMappedRows(rows);
+                setReflected(false);
+                addLog(`保存済みマッピングを適用しました。(${rows.length}件、AI不要。複数値の自動分割・書式整形は行われないため内容を確認してください)`, 'success');
+            };
+
+            const deleteMappingTemplate = (id) => {
+                setMappingTemplates(prev => {
+                    const next = prev.filter(t => t.id !== id);
+                    saveMappingTemplates(next);
+                    return next;
+                });
+                addLog('保存済みマッピングを削除しました。', 'info');
+            };
+
+            const updateTemplateFieldMapping = (templateId, fieldKey, colKey) => {
+                setMappingTemplates(prev => {
+                    const next = prev.map(t => t.id === templateId ? { ...t, fieldMapping: { ...t.fieldMapping, [fieldKey]: colKey } } : t);
+                    saveMappingTemplates(next);
+                    return next;
+                });
+                addLog('保存済みマッピングの対応を手動で変更しました。', 'info');
+            };
+
+            const runAiMapping = async () => {
+                if (!apiKey) {
+                    addLog('Gemini APIキーが設定されていません。画面右上の設定アイコンから入力してください。', 'error');
+                    openSettings();
+                    return;
+                }
+                if (excelHeaders.length === 0) {
+                    addLog('先にExcelファイルをアップロードしてください。', 'error');
+                    return;
+                }
+                if (csvRows.length === 0) {
+                    addLog('先にCSVファイルをアップロードするか、AI-OCRの解析結果を読み込んでください。', 'error');
+                    return;
+                }
+
+                setIsProcessing(true);
+                addLog(`AIによる項目振り分けを開始します...(${csvRows.length}件)`, 'info');
+
+                try {
+                    const sampleExisting = excelRows.slice(-5).map(r => {
+                        const obj = {};
+                        excelHeaders.forEach((h, i) => { obj[h || `(列名なし${i + 1})`] = r[i] !== undefined ? r[i] : ''; });
+                        return obj;
+                    });
+
+                    const columnLegend = excelHeaders.map((h, i) => `${columnKeys[i]}: ${h || '(列名なし)'}`).join('\n');
+                    const csvFieldLegend = csvHeaders.map((h, i) => `${csvFieldKeys[i]}: ${h}`).join('\n');
+
+                    const prompt = `あなたはExcel台帳へのデータ入力を支援するアシスタントです。
+以下の「Excel列一覧」と「Excel既存データのサンプル」を参考にしながら、「CSV新規データ」の各レコードを、Excel側のどの列に入力すべきか意味内容から判断して振り分けてください。
+
+【Excel列一覧（出力時のキーは必ずこのcolN形式を使うこと。列名が同じ/空でも位置(N)で別々の列として区別すること）】
+${columnLegend}
+
+【CSV列一覧（出力するfieldMappingのキーは必ずこのfieldN形式を使うこと）】
+${csvFieldLegend}
+
+【Excel既存データのサンプル（列名: 値の形。表記ゆれ・日付形式などの参考用）】
+${JSON.stringify(sampleExisting, null, 2)}
+
+【CSV新規データ（列名: ${JSON.stringify(csvHeaders)}）】
+${JSON.stringify(csvRows, null, 2)}
+
+指示:
+- 出力は "rows" と "fieldMapping" の2つのキーを持つオブジェクトとすること。
+- "rows": 振り分け結果の配列。各オブジェクトのキーは必ず上記のcol1, col2, ...形式（Excel列一覧のキー）と完全一致させること。
+- CSV側の項目名がExcel列名と表記が異なっていても、意味内容が対応していれば値を入れること（例: CSV「会社名」→Excel「取引先名」など）。
+- 値は既存データのサンプルの書式（日付形式・全角半角など）にできるだけ合わせて整形すること。
+- 対応するCSVデータが存在しない、または該当項目が無いExcel列は空文字列にすること。
+- 重要: 1つのCSVレコードの中に、製造番号・専用番号・シリアル番号など「同種の値が複数まとまって1つのセルに入っている」項目がある場合、それは複数件のデータが1レコードにまとめられているとみなし、Excel出力では項目数の分だけ行を分割すること。区切り文字は改行・カンマ・スペース・読点など不定のためOCRの原文から意味的に個々の値を判別すること。複数の項目列（例: 製造番号と専用番号）が両方とも複数値を持つ場合は、各セル内での出現順序で対応付けること（1番目の製造番号と1番目の専用番号が同じ行、2番目同士が次の行、というように）。分割後の各行では、それ以外の共通項目（取引先名・担当者・日付など）は元のCSVレコードの値をそのまま複製すること。
+- 分割が不要なレコードはそのまま1レコード=1行として出力すること。CSVレコードの元の順序はできる限り保つこと。
+- rowsの件数はCSVレコード数と一致しなくてよい（分割により増える場合がある）。
+- "fieldMapping": CSV列一覧の各field1, field2, ...をキーとし、値にはその列が意味的に対応するExcel列のcolN（Excel列一覧のキー）を1つだけ入れること。1つのCSV列が特定の1つのExcel列に実質的に対応する場合は必ずそのcolNを入れること（複数値を含み分割対象になる列も、対応先のcolNがあればそれを入れる）。対応するExcel列がない、または単純な1対1で表せない場合のみ空文字列にすること。この情報は今後同じ形式のCSVが来た際にAIなしで機械的に再利用するためのものであり、rowsの実際の値とは独立して構わない。`;
+
+                    const schema = {
+                        type: "OBJECT",
+                        properties: {
+                            rows: {
+                                type: "ARRAY",
+                                items: {
+                                    type: "OBJECT",
+                                    properties: Object.fromEntries(columnKeys.map(k => [k, { type: "STRING" }])),
+                                    required: columnKeys
+                                }
+                            },
+                            fieldMapping: {
+                                type: "OBJECT",
+                                properties: Object.fromEntries(csvFieldKeys.map(k => [k, { type: "STRING" }])),
+                                required: csvFieldKeys
+                            }
+                        },
+                        required: ["rows", "fieldMapping"]
+                    };
+
+                    const result = await callGeminiTextAPI(apiKey, modelName, prompt, schema);
+                    if (!result || !Array.isArray(result.rows)) throw new Error('AIの応答の形式が不正です。');
+                    setMappedRows(result.rows);
+                    setReflected(false);
+                    addLog(`AIによる振り分けが完了しました。(${result.rows.length}件) 内容を確認・修正してください。`, 'success');
+                    if (result.fieldMapping) {
+                        upsertMappingTemplate(result.fieldMapping);
+                    }
+                } catch (err) {
+                    addLog(`AI振り分けエラー: ${err.message}`, 'error');
+                } finally {
+                    setIsProcessing(false);
+                }
+            };
+
+            const updateMappedCell = (rowIdx, header, value) => {
+                setMappedRows(prev => {
+                    const next = [...prev];
+                    next[rowIdx] = { ...next[rowIdx], [header]: value };
+                    return next;
+                });
+            };
+
+            const removeMappedRow = (rowIdx) => {
+                setMappedRows(prev => prev.filter((_, i) => i !== rowIdx));
+            };
+
+            const reflectToExcel = () => {
+                if (mappedRows.length === 0) return;
+                const newAoaRows = mappedRows.map(row => columnKeys.map(k => row[k] !== undefined ? row[k] : ''));
+                setExcelRows(prev => [...prev, ...newAoaRows]);
+                setMappedRows([]);
+                setReflected(true);
+                addLog(`${newAoaRows.length}件をExcelデータに反映しました。ダウンロードして保存してください。`, 'success');
+            };
+
+            const downloadExcel = () => {
+                if (excelHeaders.length === 0) return;
+                const aoa = [excelHeaders, ...excelRows];
+                const ws = XLSX.utils.aoa_to_sheet(aoa);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, sheetName || 'Sheet1');
+                const baseName = excelFileName ? excelFileName.replace(/\.[^/.]+$/, '') : 'data';
+                XLSX.writeFile(wb, `${baseName}_updated.xlsx`);
+                addLog('更新済みExcelファイルをダウンロードしました。', 'success');
+            };
+
             const totalSets = Math.ceil(numPages / pagesPerSet);
 
             return (
-                <div className="flex flex-col h-screen bg-[#05070c] text-slate-200 font-sans">
+                <div className={viewMode === 'ocr' ? "flex flex-col h-screen bg-[#05070c] text-slate-200 font-sans" : "min-h-screen bg-[#05070c] text-slate-200 font-sans workspace-bg"}>
                     {/* Header */}
-                    <header className="bg-slate-900/70 backdrop-blur-xl border-b border-white/10 px-6 py-4 flex items-center justify-between z-10">
+                    <header className="bg-slate-900/70 backdrop-blur-xl border-b border-white/10 px-6 py-4 flex items-center justify-between z-20 sticky top-0">
                         <div className="flex items-center gap-3">
                             <div className="bg-gradient-to-br from-violet-500 to-blue-500 p-2.5 rounded-xl shadow-lg shadow-violet-500/30">
-                                <Icon name="scan-line" className="text-white w-6 h-6" />
+                                <Icon name={viewMode === 'ocr' ? 'scan-line' : 'table-properties'} className="text-white w-6 h-6" />
                             </div>
                             <div>
                                 <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-violet-400 via-fuchsia-400 to-blue-400 leading-tight">
                                     AI-OCR文字起こしツール
                                 </h1>
-                                <p className="text-[10px] font-medium text-slate-500 uppercase tracking-widest">Region-based Extraction Edition</p>
+                                <p className="text-[10px] font-medium text-slate-500 uppercase tracking-widest">{viewMode === 'ocr' ? 'Region-based Extraction Edition' : 'Excel Ledger Integration'}</p>
+                            </div>
+                            <div className="hidden sm:flex items-center gap-1 bg-white/5 border border-white/10 rounded-full p-1 ml-2">
+                                <button
+                                    onClick={() => setViewMode('ocr')}
+                                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all duration-200 flex items-center gap-1.5 ${viewMode === 'ocr' ? 'bg-gradient-to-r from-violet-600 to-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+                                >
+                                    <Icon name="scan-line" className="w-3.5 h-3.5" /> OCR
+                                </button>
+                                <button
+                                    onClick={() => setViewMode('excel')}
+                                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all duration-200 flex items-center gap-1.5 ${viewMode === 'excel' ? 'bg-gradient-to-r from-violet-600 to-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+                                >
+                                    <Icon name="table-properties" className="w-3.5 h-3.5" /> Excel振り分け
+                                </button>
                             </div>
                         </div>
                         <div className="flex items-center gap-3">
@@ -918,13 +1569,27 @@ ${JSON.stringify(targetRegionsData)}`;
                                 <Icon name="cpu" className="w-3.5 h-3.5 text-violet-400" />
                                 {modelName}
                             </div>
-                            <button
-                                onClick={() => setShowLabels(!showLabels)}
-                                className={`p-2 rounded-full transition-all duration-200 ${showLabels ? 'bg-violet-500/20 text-violet-300 ring-1 ring-violet-400/40' : 'bg-white/5 text-slate-500 hover:bg-white/10'}`}
-                                title="ラベル表示ON/OFF"
-                            >
-                                <Icon name={showLabels ? "eye" : "eye-off"} className="w-5 h-5" />
-                            </button>
+                            {viewMode === 'ocr' && (
+                                <button
+                                    onClick={() => setShowLabels(!showLabels)}
+                                    className={`p-2 rounded-full transition-all duration-200 ${showLabels ? 'bg-violet-500/20 text-violet-300 ring-1 ring-violet-400/40' : 'bg-white/5 text-slate-500 hover:bg-white/10'}`}
+                                    title="ラベル表示ON/OFF"
+                                >
+                                    <Icon name={showLabels ? "eye" : "eye-off"} className="w-5 h-5" />
+                                </button>
+                            )}
+                            {viewMode === 'excel' && (
+                                <button
+                                    onClick={() => { setExpandedTemplateId(null); setShowTemplateModal(true); }}
+                                    className="relative p-2 text-slate-400 hover:bg-white/10 hover:text-white rounded-full transition-all duration-200"
+                                    title="保存済みマッピング管理"
+                                >
+                                    <Icon name="layout-template" className="w-5 h-5" />
+                                    {mappingTemplates.length > 0 && (
+                                        <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 bg-violet-500 rounded-full text-[9px] font-bold text-white flex items-center justify-center">{mappingTemplates.length}</span>
+                                    )}
+                                </button>
+                            )}
                             <button
                                 onClick={openSettings}
                                 className="relative p-2 text-slate-400 hover:bg-white/10 hover:text-white rounded-full transition-all duration-200"
@@ -938,7 +1603,8 @@ ${JSON.stringify(targetRegionsData)}`;
                         </div>
                     </header>
 
-                    {/* Main Workspace */}
+                    {/* Main Workspace (OCR) */}
+                    {viewMode === 'ocr' && (
                     <div className="flex flex-1 overflow-hidden" onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerLeave={onPointerUp}>
 
                         {/* Left: Document Viewer */}
@@ -1275,10 +1941,13 @@ ${JSON.stringify(targetRegionsData)}`;
                                         })}
                                     </div>
 
-                                    {/* CSV出力ボタン */}
-                                    <div className="p-4 flex-shrink-0">
-                                        <button onClick={handleExportCSV} className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-4 py-3.5 rounded-xl flex items-center justify-center gap-2 font-bold shadow-lg shadow-emerald-900/30 text-base transition-all duration-200 hover:-translate-y-0.5">
-                                            <Icon name="download" className="w-5 h-5" /> 全レコードをCSV出力
+                                    {/* CSV出力・Excel振り分けボタン */}
+                                    <div className="p-4 flex-shrink-0 space-y-2">
+                                        <button onClick={goToExcelView} className="w-full bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-500 hover:to-blue-500 text-white px-4 py-3.5 rounded-xl flex items-center justify-center gap-2 font-bold shadow-lg shadow-violet-900/30 text-base transition-all duration-200 hover:-translate-y-0.5">
+                                            <Icon name="table-properties" className="w-5 h-5" /> Excel台帳へ振り分ける
+                                        </button>
+                                        <button onClick={handleExportCSV} className="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 font-bold text-sm transition-all duration-200">
+                                            <Icon name="download" className="w-4 h-4" /> 全レコードをCSV出力
                                         </button>
                                     </div>
                                 </>
@@ -1301,6 +1970,256 @@ ${JSON.stringify(targetRegionsData)}`;
                             </div>
                         </div>
                     </div>
+                    )}
+
+                    {/* Excel振り分け画面(旧RPAツール) */}
+                    {viewMode === 'excel' && (
+                    <main className="max-w-7xl mx-auto p-6 space-y-6">
+                        {/* Step 1 & 2: Uploads */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Excel Upload */}
+                            <div className="bg-slate-900/60 border border-white/10 rounded-2xl p-5">
+                                <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center gap-2">
+                                        <div className="bg-emerald-500/15 text-emerald-400 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">1</div>
+                                        <h2 className="font-bold text-slate-200">既存Excel台帳をアップロード</h2>
+                                    </div>
+                                    {ledgers.length > 0 && (
+                                        <button onClick={() => setShowLedgerModal(true)} className="p-1.5 text-slate-500 hover:text-white hover:bg-white/10 rounded-lg transition-colors" title="台帳管理">
+                                            <Icon name="folder-cog" className="w-4 h-4" />
+                                        </button>
+                                    )}
+                                </div>
+                                {ledgers.length > 0 && (
+                                    <select
+                                        value={activeLedgerId || ''}
+                                        onChange={(e) => switchLedger(e.target.value)}
+                                        className="w-full mb-3 bg-slate-800 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                    >
+                                        {!activeLedgerId && <option value="">保存済み台帳を選択...</option>}
+                                        {ledgers.map(l => (
+                                            <option key={l.id} value={l.id}>{l.name}</option>
+                                        ))}
+                                    </select>
+                                )}
+                                <input ref={excelInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleExcelUpload} />
+                                <button
+                                    onClick={() => excelInputRef.current.click()}
+                                    className="w-full border-2 border-dashed border-white/15 hover:border-emerald-400/50 rounded-xl py-6 flex flex-col items-center justify-center gap-2 text-slate-500 hover:text-emerald-300 transition-all"
+                                >
+                                    <Icon name="file-spreadsheet" className="w-8 h-8" />
+                                    <span className="text-sm font-medium">{ledgers.length > 0 ? 'クリックして新しいExcel台帳を追加' : (excelFileName || 'クリックしてExcelファイルを選択 (.xlsx)')}</span>
+                                </button>
+                                {excelHeaders.length > 0 && (
+                                    <div className="mt-3 text-xs text-slate-400 space-y-1">
+                                        <p>シート: <span className="text-slate-300 font-medium">{sheetName}</span> / 列: {excelHeaders.length} / 既存行: {excelRows.length}</p>
+                                        <div className="flex flex-wrap gap-1 mt-2">
+                                            {excelHeaders.map((h, i) => (
+                                                <span key={i} className="bg-white/5 border border-white/10 px-2 py-0.5 rounded-full text-[11px] text-slate-300">{h}</span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* CSV Upload */}
+                            <div className="bg-slate-900/60 border border-white/10 rounded-2xl p-5">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <div className="bg-blue-500/15 text-blue-400 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">2</div>
+                                    <h2 className="font-bold text-slate-200">OCR結果 / CSVデータ</h2>
+                                </div>
+                                {ocrResults && ocrResults.length > 0 && (
+                                    <button
+                                        onClick={loadOcrResultsIntoCsv}
+                                        className="w-full mb-3 bg-violet-500/10 hover:bg-violet-500/20 border border-violet-400/30 text-violet-300 px-3 py-2.5 rounded-xl flex items-center justify-center gap-2 font-bold text-sm transition-all duration-200"
+                                    >
+                                        <Icon name="scan-line" className="w-4 h-4" /> AI-OCRの解析結果を読み込む（{ocrResults.length}件）
+                                    </button>
+                                )}
+                                <input ref={csvInputRef} type="file" accept=".csv" multiple className="hidden" onChange={handleCsvUpload} />
+                                <button
+                                    onClick={() => csvInputRef.current.click()}
+                                    className="w-full border-2 border-dashed border-white/15 hover:border-blue-400/50 rounded-xl py-6 flex flex-col items-center justify-center gap-2 text-slate-500 hover:text-blue-300 transition-all"
+                                >
+                                    <Icon name="file-text" className="w-8 h-8" />
+                                    <span className="text-sm font-medium">{csvFileName || 'クリックしてCSVファイルを選択（複数選択可）'}</span>
+                                </button>
+                                {csvHeaders.length > 0 && (
+                                    <div className="mt-3 text-xs text-slate-400 space-y-1">
+                                        <p>列: {csvHeaders.length} / 件数: {csvRows.length}</p>
+                                        <div className="flex flex-wrap gap-1 mt-2">
+                                            {csvHeaders.map((h, i) => (
+                                                <span key={i} className="bg-white/5 border border-white/10 px-2 py-0.5 rounded-full text-[11px] text-slate-300">{h}</span>
+                                            ))}
+                                        </div>
+                                        {csvSourceFiles.length > 1 && (
+                                            <div className="mt-2 pt-2 border-t border-white/5 space-y-0.5">
+                                                {csvSourceFiles.map((f, i) => (
+                                                    <p key={i} className="text-[11px] text-slate-500 truncate">{f.name}: {f.count}件</p>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Step 3: AI Mapping */}
+                        <div className="relative bg-slate-900/60 border border-white/10 rounded-2xl p-5">
+                            {isProcessing && (
+                                <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-md flex flex-col items-center justify-center z-30 rounded-2xl">
+                                    <Icon name="loader-2" className="w-10 h-10 text-violet-400 animate-spin mb-4" />
+                                    <div className="bg-slate-900/90 px-5 py-2.5 rounded-xl shadow-2xl border border-white/10 flex items-center gap-3">
+                                        <div className="w-2 h-2 bg-violet-400 rounded-full animate-pulse"></div>
+                                        <p className="text-sm font-bold text-white">AIが振り分け中...</p>
+                                    </div>
+                                </div>
+                            )}
+                            <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+                                <div className="flex items-center gap-2">
+                                    <div className="bg-violet-500/15 text-violet-400 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">3</div>
+                                    <h2 className="font-bold text-slate-200">AIによる項目振り分け・確認</h2>
+                                </div>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    {matchedTemplate && (
+                                        <React.Fragment>
+                                            <button
+                                                onClick={applyTemplateMapping}
+                                                disabled={isProcessing}
+                                                className="bg-emerald-500/10 hover:bg-emerald-500/20 disabled:opacity-40 disabled:cursor-not-allowed text-emerald-300 border border-emerald-500/30 px-4 py-2.5 rounded-xl flex items-center gap-2 font-bold text-sm transition-all duration-200 hover:-translate-y-0.5"
+                                                title="保存済みのマッピング設定をAIを使わず適用します（複数値の自動分割・書式整形は行われません）"
+                                            >
+                                                <Icon name="zap" className="w-4 h-4" /> 保存済みマッピングを適用（AI不要）
+                                            </button>
+                                            <button
+                                                onClick={() => deleteMappingTemplate(matchedTemplate.id)}
+                                                className="p-2 text-slate-500 hover:text-rose-400 rounded-lg transition-colors"
+                                                title="この保存済みマッピングを削除"
+                                            >
+                                                <Icon name="trash-2" className="w-4 h-4" />
+                                            </button>
+                                        </React.Fragment>
+                                    )}
+                                    <button
+                                        onClick={runAiMapping}
+                                        disabled={isProcessing || excelHeaders.length === 0 || csvRows.length === 0}
+                                        className="bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-500 hover:to-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-xl flex items-center gap-2 font-bold shadow-lg shadow-violet-900/30 text-sm transition-all duration-200 hover:-translate-y-0.5"
+                                    >
+                                        {isProcessing ? (
+                                            <React.Fragment>
+                                                <Icon name="loader-2" className="w-4 h-4 animate-spin" /> 振り分け中...
+                                            </React.Fragment>
+                                        ) : (
+                                            <React.Fragment>
+                                                <Icon name="sparkles" className="w-4 h-4" /> AIで振り分け実行
+                                            </React.Fragment>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {mappedRows.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-10 text-slate-600 text-sm">
+                                    <div className="w-16 h-16 mb-4 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
+                                        <Icon name="table-properties" className="w-7 h-7 opacity-40" />
+                                    </div>
+                                    <p>Excel台帳とCSV(またはAI-OCR結果)をアップロードし、「AIで振り分け実行」を押してください。</p>
+                                    {matchedTemplate && <span className="block mt-1 text-emerald-400">同じCSV形式の保存済みマッピングがあります。上のボタンから即時適用できます。</span>}
+                                </div>
+                            ) : (
+                                <React.Fragment>
+                                    <p className="text-xs text-slate-500 mb-3">セルをクリックして内容を修正できます。赤い背景のセルは空欄です。確認後「Excelに反映」を押してください。</p>
+                                    <div className="overflow-x-auto rounded-xl border border-white/10">
+                                        <table className="w-full text-left border-collapse">
+                                            <thead>
+                                                <tr className="bg-white/5">
+                                                    <th className="px-3 py-2 text-[11px] font-bold text-slate-500 uppercase w-10">#</th>
+                                                    {excelHeaders.map((h, i) => (
+                                                        <th key={i} className="px-2 py-2 text-[11px] font-bold text-slate-400 uppercase whitespace-nowrap">{h || <span className="italic text-slate-600">(列名なし)</span>}</th>
+                                                    ))}
+                                                    <th className="px-2 py-2 w-10"></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {mappedRows.map((row, rIdx) => (
+                                                    <tr key={rIdx} className="border-t border-white/5 hover:bg-white/[0.03]">
+                                                        <td className="px-3 py-1 text-xs text-slate-600">{rIdx + 1}</td>
+                                                        {columnKeys.map((k, cIdx) => {
+                                                            const val = row[k] !== undefined ? row[k] : '';
+                                                            const isEmpty = String(val).trim() === '';
+                                                            return (
+                                                                <td key={cIdx} className="px-1 py-1">
+                                                                    <input
+                                                                        className={`cell-input ${isEmpty ? 'empty' : ''}`}
+                                                                        value={val}
+                                                                        onChange={(e) => updateMappedCell(rIdx, k, e.target.value)}
+                                                                    />
+                                                                </td>
+                                                            );
+                                                        })}
+                                                        <td className="px-2 py-1">
+                                                            <button onClick={() => removeMappedRow(rIdx)} className="text-slate-600 hover:text-rose-400 transition-colors" title="この行を除外">
+                                                                <Icon name="x" className="w-4 h-4" />
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div className="flex justify-end mt-4">
+                                        <button
+                                            onClick={reflectToExcel}
+                                            className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 font-bold shadow-lg shadow-emerald-900/30 text-sm transition-all duration-200 hover:-translate-y-0.5"
+                                        >
+                                            <Icon name="check" className="w-4 h-4" /> Excelデータに反映 ({mappedRows.length}件)
+                                        </button>
+                                    </div>
+                                </React.Fragment>
+                            )}
+                        </div>
+
+                        {/* Step 4: Download */}
+                        <div className="bg-slate-900/60 border border-white/10 rounded-2xl p-5">
+                            <div className="flex items-center justify-between flex-wrap gap-3">
+                                <div className="flex items-center gap-2">
+                                    <div className="bg-amber-500/15 text-amber-400 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">4</div>
+                                    <div>
+                                        <h2 className="font-bold text-slate-200">更新済みExcelをダウンロード</h2>
+                                        <p className="text-xs text-slate-500 mt-0.5">
+                                            現在の台帳{activeLedgerName ? `「${activeLedgerName}」` : ''}: {excelRows.length}行 {reflected && <span className="text-emerald-400">(反映済み)</span>}
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={downloadExcel}
+                                    disabled={excelHeaders.length === 0}
+                                    className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 disabled:opacity-40 disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-xl flex items-center gap-2 font-bold shadow-lg shadow-amber-900/30 text-sm transition-all duration-200 hover:-translate-y-0.5"
+                                >
+                                    <Icon name="download" className="w-4 h-4" /> Excelファイルをダウンロード
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Logs */}
+                        <div className="bg-slate-900/40 border border-white/10 rounded-2xl p-5">
+                            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">ログ</h3>
+                            <div className="space-y-1 max-h-48 overflow-y-auto text-xs">
+                                {logs.length === 0 && <p className="text-slate-700">まだ操作はありません。</p>}
+                                {logs.slice().reverse().map((log, idx) => (
+                                    <div key={idx} className={`flex gap-2 px-2 py-1 rounded ${
+                                        log.type === 'error' ? 'text-rose-400' :
+                                        log.type === 'success' ? 'text-emerald-400' :
+                                        log.type === 'warning' ? 'text-amber-400' : 'text-slate-400'
+                                    }`}>
+                                        <span className="text-slate-600 shrink-0">{log.time}</span>
+                                        <span>{log.msg}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </main>
+                    )}
 
                     {/* Modals */}
                     <Modal isOpen={modal.isOpen} title={modal.title} message={modal.message} onClose={() => setModal({ ...modal, isOpen: false })} />
@@ -1315,7 +2234,7 @@ ${JSON.stringify(targetRegionsData)}`;
                                 </div>
 
                                 <p className="text-sm text-slate-400 mt-4 mb-2 leading-relaxed">
-                                    OCR解析にはGoogleの <span className="font-bold text-slate-200">Gemini APIキー</span> が必要です。<a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="text-violet-400 hover:text-violet-300 underline">Google AI Studio</a> で無料発行できます。このキーはブラウザ内（localStorage）にのみ保存され、外部送信はGoogleへの直接通信のみです。
+                                    OCR解析・Excel振り分けにはGoogleの <span className="font-bold text-slate-200">Gemini APIキー</span> が必要です。<a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="text-violet-400 hover:text-violet-300 underline">Google AI Studio</a> で無料発行できます。このキーはブラウザ内（localStorage）にのみ保存され、外部送信はGoogleへの直接通信のみです。
                                 </p>
                                 <div className="relative mb-6">
                                     <input
@@ -1422,6 +2341,80 @@ ${JSON.stringify(targetRegionsData)}`;
                                     {gasUrl && !activeTemplateName && (
                                         <button onClick={() => handleSaveTemplate(false)} disabled={!newTemplateName.trim()} className="bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-500 hover:to-blue-500 text-white px-4 py-2 rounded-xl disabled:from-slate-700 disabled:to-slate-700 disabled:text-slate-500 text-sm font-bold shadow-lg shadow-violet-900/30 transition-all duration-200">保存</button>
                                     )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Ledger Management Modal */}
+                    {showLedgerModal && (
+                        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[100] p-4" onClick={() => setShowLedgerModal(false)}>
+                            <div className="bg-slate-900 border border-white/10 rounded-2xl p-6 max-w-lg w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                                <div className="flex items-center gap-3 mb-1">
+                                    <div className="bg-gradient-to-br from-violet-500 to-blue-500 p-2.5 rounded-xl shadow-lg shadow-violet-900/30">
+                                        <Icon name="folder-cog" className="text-white w-5 h-5" />
+                                    </div>
+                                    <h3 className="text-xl font-bold text-white">台帳管理</h3>
+                                </div>
+                                <p className="text-sm text-slate-400 mb-4 mt-2">Excelをアップロードするたびブラウザ内に新しい台帳として自動保存されます。切り替え・名前変更・削除ができます。</p>
+                                {ledgers.length === 0 ? (
+                                    <p className="text-sm text-slate-500">保存された台帳はありません。</p>
+                                ) : (
+                                    <div className="space-y-2 max-h-80 overflow-y-auto">
+                                        {ledgers.map(l => (
+                                            <LedgerRow
+                                                key={l.id}
+                                                ledger={l}
+                                                isActive={l.id === activeLedgerId}
+                                                onSwitch={() => { switchLedger(l.id); setShowLedgerModal(false); }}
+                                                onRename={(name) => renameLedger(l.id, name)}
+                                                onDelete={() => deleteLedger(l.id)}
+                                            />
+                                        ))}
+                                    </div>
+                                )}
+                                <div className="flex justify-end mt-4">
+                                    <button onClick={() => setShowLedgerModal(false)} className="px-4 py-2 text-sm text-slate-400 hover:text-white rounded-lg transition-colors">閉じる</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Mapping Template Management Modal */}
+                    {showTemplateModal && (
+                        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[100] p-4" onClick={() => setShowTemplateModal(false)}>
+                            <div className="bg-slate-900 border border-white/10 rounded-2xl p-6 max-w-2xl w-full shadow-2xl max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+                                <div className="flex items-center gap-3 mb-1 shrink-0">
+                                    <div className="bg-gradient-to-br from-violet-500 to-blue-500 p-2.5 rounded-xl shadow-lg shadow-violet-900/30">
+                                        <Icon name="layout-template" className="text-white w-5 h-5" />
+                                    </div>
+                                    <h3 className="text-xl font-bold text-white">保存済みマッピング管理</h3>
+                                </div>
+                                <p className="text-sm text-slate-400 mb-4 mt-2 shrink-0">AI振り分け成功時に自動保存された、台帳ごとのCSV→Excel列対応の一覧です。展開すると内容を確認・手動編集できます。</p>
+                                {mappingTemplates.length === 0 ? (
+                                    <p className="text-sm text-slate-500">保存されたマッピングはありません。</p>
+                                ) : (
+                                    <div className="space-y-2 overflow-y-auto">
+                                        {mappingTemplates.slice().sort((a, b) => b.savedAt - a.savedAt).map(t => {
+                                            const ledgerExists = ledgers.some(l => l.id === t.ledgerId);
+                                            const ledgerHeaders = ledgerExists ? (loadLedgerData(t.ledgerId)?.headers || []) : [];
+                                            return (
+                                                <TemplateRow
+                                                    key={t.id}
+                                                    template={t}
+                                                    ledgerExists={ledgerExists}
+                                                    ledgerHeaders={ledgerHeaders}
+                                                    expanded={expandedTemplateId === t.id}
+                                                    onToggleExpand={() => setExpandedTemplateId(prev => prev === t.id ? null : t.id)}
+                                                    onDelete={() => { if (confirm(`「${t.ledgerName}」のマッピング(CSV列: ${t.csvHeaders.join('、')})を削除しますか？`)) deleteMappingTemplate(t.id); }}
+                                                    onFieldChange={(fieldKey, colKey) => updateTemplateFieldMapping(t.id, fieldKey, colKey)}
+                                                />
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                                <div className="flex justify-end mt-4 shrink-0">
+                                    <button onClick={() => setShowTemplateModal(false)} className="px-4 py-2 text-sm text-slate-400 hover:text-white rounded-lg transition-colors">閉じる</button>
                                 </div>
                             </div>
                         </div>
