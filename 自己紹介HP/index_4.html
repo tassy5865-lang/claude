@@ -35,6 +35,11 @@
   .eyebrow::after{ content:''; width:30px; height:1px; background:var(--gold); }
   section{ padding:6.5rem 6vw; }
   .wrap{ max-width:1180px; margin:0 auto; }
+  .reveal{ opacity:0; transform:translateY(28px); transition:opacity .8s ease, transform .8s ease; }
+  .reveal.is-visible{ opacity:1; transform:translateY(0); }
+  @media (prefers-reduced-motion: reduce){
+    .reveal{ opacity:1; transform:none; transition:none; }
+  }
   .center-text{ text-align:center; max-width:720px; margin:0 auto; }
   .section-sub{ color:var(--ink-soft); font-size:0.98rem; line-height:1.85; margin-top:1.2rem; }
 
@@ -212,19 +217,19 @@
   <a class="nav-cta" id="nav-cta" href="#contact"></a>
 </nav>
 
-<section id="hero"><div class="wrap" id="hero-wrap"></div></section>
-<section id="problem"><div class="wrap" id="problem-wrap"></div></section>
-<section id="values" class="dark"><div class="wrap" id="values-wrap"></div></section>
-<section id="philosophy"><div class="wrap" id="philosophy-wrap"></div></section>
-<section id="beforeafter" class="dark"><div class="wrap" id="beforeafter-wrap"></div></section>
-<section id="focus"><div class="wrap" id="focus-wrap"></div></section>
-<section id="process"><div class="wrap" id="process-wrap"></div></section>
-<section id="record" class="dark"><div class="wrap" id="record-wrap"></div></section>
-<section id="linkout"><div class="wrap" id="linkout-wrap"></div></section>
-<section id="profile-sec"><div class="wrap" id="profile-wrap"></div></section>
-<section id="whynow"><div class="wrap" id="whynow-wrap"></div></section>
-<section id="faq"><div class="wrap" id="faq-wrap"></div></section>
-<section id="cta"><div class="wrap" id="cta-wrap"></div></section>
+<section id="hero"><div class="wrap reveal" id="hero-wrap"></div></section>
+<section id="problem"><div class="wrap reveal" id="problem-wrap"></div></section>
+<section id="values" class="dark"><div class="wrap reveal" id="values-wrap"></div></section>
+<section id="philosophy"><div class="wrap reveal" id="philosophy-wrap"></div></section>
+<section id="beforeafter" class="dark"><div class="wrap reveal" id="beforeafter-wrap"></div></section>
+<section id="focus"><div class="wrap reveal" id="focus-wrap"></div></section>
+<section id="process"><div class="wrap reveal" id="process-wrap"></div></section>
+<section id="record" class="dark"><div class="wrap reveal" id="record-wrap"></div></section>
+<section id="linkout"><div class="wrap reveal" id="linkout-wrap"></div></section>
+<section id="profile-sec"><div class="wrap reveal" id="profile-wrap"></div></section>
+<section id="whynow"><div class="wrap reveal" id="whynow-wrap"></div></section>
+<section id="faq"><div class="wrap reveal" id="faq-wrap"></div></section>
+<section id="cta"><div class="wrap reveal" id="cta-wrap"></div></section>
 <footer id="footer-wrap"></footer>
 
 <script>
@@ -595,6 +600,21 @@ const nav = document.getElementById('nav');
 window.addEventListener('scroll', () => {
   nav.classList.toggle('scrolled', window.scrollY > 40);
 });
+
+// スクロールでのフェードイン
+if ('IntersectionObserver' in window) {
+  const revealObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('is-visible');
+        revealObserver.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.15, rootMargin: '0px 0px -60px 0px' });
+  document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
+} else {
+  document.querySelectorAll('.reveal').forEach(el => el.classList.add('is-visible'));
+}
 </script>
 
 </body>
