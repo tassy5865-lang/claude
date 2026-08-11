@@ -104,6 +104,25 @@
   #focus .value-card p{ color:var(--ink-soft); }
   #focus .value-card h3{ font-size:1rem; margin-bottom:0.4rem; color:var(--ink);}
 
+  #problem .value-card{ background:#fff; border:1px solid var(--line); }
+  #problem .value-card .ico{ background:rgba(30,58,95,0.1); color:var(--gold);}
+  #problem .value-card p{ color:var(--ink-soft); }
+
+  .ba-grid{ display:grid; grid-template-columns:1fr auto 1fr; gap:1.4rem; margin-top:3rem; align-items:stretch; }
+  .ba-col{ border-radius:16px; padding:2rem; }
+  .ba-before{ background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); }
+  .ba-after{ background:rgba(74,144,217,0.1); border:1px solid rgba(74,144,217,0.3); }
+  .ba-label{ font-family:'IBM Plex Mono',monospace; font-size:0.7rem; letter-spacing:0.1em; margin-bottom:1rem; }
+  .ba-before .ba-label{ color:#8A8375; }
+  .ba-after .ba-label{ color:var(--gold-soft); }
+  .ba-col ul{ list-style:none; }
+  .ba-col li{ font-size:0.88rem; line-height:1.75; margin-bottom:0.7rem; padding-left:1.2rem; position:relative; }
+  .ba-before li{ color:#B9B2A4; }
+  .ba-before li::before{ content:'−'; position:absolute; left:0; color:#8A8375; font-weight:700;}
+  .ba-after li{ color:#EDE8DE; }
+  .ba-after li::before{ content:'✓'; position:absolute; left:0; color:var(--gold-soft); font-weight:700;}
+  .ba-arrow{ display:flex; align-items:center; justify-content:center; font-size:1.6rem; color:var(--gold-soft); }
+
   #process{ background:var(--cream-soft); }
   .process-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:1.3rem; margin-top:3rem;}
   .process-card{ background:#fff; border:1px solid var(--gold-soft); border-radius:14px; padding:1.9rem; }
@@ -146,6 +165,18 @@
   .side-stat .num{ font-family:'Shippori Mincho',serif; font-size:1.5rem; color:var(--gold-soft); }
   .side-stat .label{ font-size:0.78rem; color:#B9B2A4; margin-top:0.4rem; }
 
+  #linkout{ background:var(--cream-soft); }
+  .linkout-card{ margin-top:3rem; background:#fff; border:1px solid var(--line); border-radius:16px; padding:2.4rem; display:flex; justify-content:space-between; align-items:center; gap:1.5rem; flex-wrap:wrap; }
+  .linkout-card .txt h3{ font-size:1.1rem; margin-bottom:0.5rem; }
+  .linkout-card .txt p{ font-size:0.88rem; color:var(--ink-soft); line-height:1.7; }
+
+  #faq{ background:var(--cream-soft); }
+  .faq-list{ margin-top:3rem; max-width:820px; margin-left:auto; margin-right:auto; }
+  .faq-item{ border-bottom:1px solid var(--line); padding:1.4rem 0; }
+  .faq-item .q{ font-size:0.98rem; font-weight:600; color:var(--ink); display:flex; gap:0.7rem; }
+  .faq-item .q .qmark{ color:var(--gold); font-family:'IBM Plex Mono',monospace; flex-shrink:0; }
+  .faq-item .a{ font-size:0.88rem; color:var(--ink-soft); line-height:1.75; margin-top:0.6rem; padding-left:1.6rem; }
+
   #whynow{ padding-bottom:0; }
   .whynow-card{ background:var(--black); border-radius:18px; padding:3rem; text-align:center; max-width:820px; margin:0 auto; }
   .whynow-card h2{ color:#F5F1E8; font-size:1.6rem; margin-top:0.6rem; }
@@ -168,6 +199,9 @@
     .stat-row{ gap:2rem; }
     section{ padding:4.5rem 6vw; }
     .nav-role{ display:none; }
+    .linkout-card{ flex-direction:column; align-items:flex-start; }
+    .ba-grid{ grid-template-columns:1fr; }
+    .ba-arrow{ transform:rotate(90deg); padding:0.5rem 0; }
   }
 </style>
 </head>
@@ -179,13 +213,17 @@
 </nav>
 
 <section id="hero"><div class="wrap" id="hero-wrap"></div></section>
+<section id="problem"><div class="wrap" id="problem-wrap"></div></section>
 <section id="values" class="dark"><div class="wrap" id="values-wrap"></div></section>
 <section id="philosophy"><div class="wrap" id="philosophy-wrap"></div></section>
+<section id="beforeafter" class="dark"><div class="wrap" id="beforeafter-wrap"></div></section>
 <section id="focus"><div class="wrap" id="focus-wrap"></div></section>
 <section id="process"><div class="wrap" id="process-wrap"></div></section>
 <section id="record" class="dark"><div class="wrap" id="record-wrap"></div></section>
+<section id="linkout"><div class="wrap" id="linkout-wrap"></div></section>
 <section id="profile-sec"><div class="wrap" id="profile-wrap"></div></section>
 <section id="whynow"><div class="wrap" id="whynow-wrap"></div></section>
+<section id="faq"><div class="wrap" id="faq-wrap"></div></section>
 <section id="cta"><div class="wrap" id="cta-wrap"></div></section>
 <footer id="footer-wrap"></footer>
 
@@ -221,6 +259,18 @@ const SITE = {
     ]
   },
 
+  problem: {
+    eyebrow: "problem",
+    title: "こんなお困りごと、<br>ありませんか。",
+    sub: "臨床の現場でも、日々の業務の中でこうした声をよく耳にします。",
+    cards: [
+      { icon:"✎", text:"記録や集計を、<b>紙やExcelへの手作業</b>で続けている" },
+      { icon:"⟳", text:"毎回ほぼ同じ手順の<b>繰り返し作業</b>に時間を取られている" },
+      { icon:"？", text:"AIを業務に取り入れたいが、<b>何から始めればいいか分からない</b>" },
+      { icon:"⚠", text:"導入したツールが<b>専門的すぎて現場に定着しない</b>" }
+    ]
+  },
+
   values: {
     eyebrow: "focus",
     title: "知っているだけでは、<br>現場は変わらない。",
@@ -245,6 +295,19 @@ const SITE = {
       { num:"01", title:"現場に強い", text:"臨床工学技士として現場に立ってきた経験があるからこそ、実務に即したツール設計ができます。" },
       { num:"02", title:"伝わる形にする", text:"難しい仕組みやAIの使い方も、専門用語をそのまま使わず、使う人に合わせてわかりやすく伝えます。" },
       { num:"03", title:"運用しながら見直す", text:"作って終わりにせず、現場での運用を見ながら継続的に改善しています。" }
+    ]
+  },
+
+  beforeAfter: {
+    eyebrow: "change",
+    title: "取り組んだ結果、<br>こんな変化がありました。",
+    sub: "実際に手がけたツールで、現場の作業がどう変わったかの一例です。",
+    beforeLabel: "BEFORE",
+    afterLabel: "AFTER",
+    pairs: [
+      { before:"エコー画像や数値を紙やノートに個別記録し、月末にExcelへ転記", after:"統一テンプレートに沿って入力し、指標の計算まで自動化" },
+      { before:"CSVデータをExcelへ手作業でコピー・整形", after:"RPAツールに読み込ませるだけで自動変換・出力" },
+      { before:"AIの仕組みを専門用語のまま説明し、現場に伝わりにくい", after:"現場の言葉に置き換えた研修資料で、使い方まで伝える" }
     ]
   },
 
@@ -286,6 +349,16 @@ const SITE = {
     ]
   },
 
+  linkout: {
+    eyebrow: "works",
+    title: "制作実績",
+    sub: "これまでに形にした業務改善ツールやホームページ制作の実績は、ポートフォリオにまとめています。",
+    cardTitle: "田代 裕貴の制作実績を見る",
+    cardText: "透析指標計算・分析ツールやRPAツールなど、現場の課題から生まれたツール・サイト制作の実績を紹介しています。",
+    cardLinkLabel: "制作実績を見る →",
+    cardLinkHref: "https://tassy5865-lang.github.io/claude/portfolio/index.html"
+  },
+
   profile: {
     eyebrow: "profile",
     title: "プロフィール",
@@ -311,6 +384,19 @@ const SITE = {
     eyebrow: "note",
     title: "取り組みは、少しずつ広げています。",
     text: "臨床の仕事と並行して、AIを活用した取り組みを積み重ねているところです。新しく形になったものがあれば、また追記していきます。"
+  },
+
+  faq: {
+    eyebrow: "faq",
+    title: "よくあるご質問",
+    sub: "",
+    items: [
+      { q:"個人や小規模のクリニックでも相談できますか?", a:"はい、規模を問わずご相談いただけます。まずは現状のヒアリングから始めます。" },
+      { q:"AIについての知識がなくても大丈夫ですか?", a:"はい。専門知識がない状態からでも、使う場面に合わせてわかりやすくお伝えします。" },
+      { q:"費用感を教えてください", a:"内容や規模によって異なるため、まずはお気軽にご相談ください。" },
+      { q:"対応エリアはどこですか?", a:"オンラインでの打ち合わせにも対応しているため、全国対応可能です。" },
+      { q:"どのくらいの期間で形になりますか?", a:"内容によりますが、小さな範囲から段階的に進めることも可能です。" }
+    ]
   },
 
   contact: {
@@ -355,6 +441,14 @@ document.getElementById('hero-wrap').innerHTML = `
   </div>
 `;
 
+document.getElementById('problem-wrap').innerHTML = `
+  <div class="eyebrow center">${SITE.problem.eyebrow}</div>
+  <div class="center-text"><h2>${SITE.problem.title}</h2><p class="section-sub">${SITE.problem.sub}</p></div>
+  <div class="card-grid">
+    ${SITE.problem.cards.map(c => `<div class="value-card"><div class="ico">${c.icon}</div><p>${c.text}</p></div>`).join('')}
+  </div>
+`;
+
 document.getElementById('values-wrap').innerHTML = `
   <div class="eyebrow center">${SITE.values.eyebrow}</div>
   <div class="center-text"><h2>${SITE.values.title}</h2><p class="section-sub">${SITE.values.sub}</p></div>
@@ -374,6 +468,18 @@ document.getElementById('philosophy-wrap').innerHTML = `
   <div class="approach-grid">
     ${SITE.philosophy.cards.map(c => `<div class="approach-card"><div class="num">${c.num}</div><h3>${c.title}</h3><p>${c.text}</p></div>`).join('')}
   </div>
+`;
+
+document.getElementById('beforeafter-wrap').innerHTML = `
+  <div class="eyebrow center">${SITE.beforeAfter.eyebrow}</div>
+  <div class="center-text"><h2>${SITE.beforeAfter.title}</h2><p class="section-sub">${SITE.beforeAfter.sub}</p></div>
+  ${SITE.beforeAfter.pairs.map(p => `
+    <div class="ba-grid">
+      <div class="ba-col ba-before"><div class="ba-label">${SITE.beforeAfter.beforeLabel}</div><ul><li>${p.before}</li></ul></div>
+      <div class="ba-arrow">→</div>
+      <div class="ba-col ba-after"><div class="ba-label">${SITE.beforeAfter.afterLabel}</div><ul><li>${p.after}</li></ul></div>
+    </div>
+  `).join('')}
 `;
 
 document.getElementById('focus-wrap').innerHTML = `
@@ -430,6 +536,15 @@ filterButtons.forEach(btn => {
   });
 });
 
+document.getElementById('linkout-wrap').innerHTML = `
+  <div class="eyebrow center">${SITE.linkout.eyebrow}</div>
+  <div class="center-text"><h2>${SITE.linkout.title}</h2><p class="section-sub">${SITE.linkout.sub}</p></div>
+  <div class="linkout-card">
+    <div class="txt"><h3>${SITE.linkout.cardTitle}</h3><p>${SITE.linkout.cardText}</p></div>
+    <a class="btn-primary" href="${SITE.linkout.cardLinkHref}" target="_blank" rel="noopener">${SITE.linkout.cardLinkLabel}</a>
+  </div>
+`;
+
 document.getElementById('profile-wrap').innerHTML = `
   <div class="eyebrow center">${SITE.profile.eyebrow}</div>
   <div class="center-text"><h2>${SITE.profile.title}</h2></div>
@@ -452,6 +567,14 @@ document.getElementById('whynow-wrap').innerHTML = `
     <div class="eyebrow center">${SITE.note.eyebrow}</div>
     <h2>${SITE.note.title}</h2>
     <p>${SITE.note.text}</p>
+  </div>
+`;
+
+document.getElementById('faq-wrap').innerHTML = `
+  <div class="eyebrow center">${SITE.faq.eyebrow}</div>
+  <div class="center-text"><h2>${SITE.faq.title}</h2>${SITE.faq.sub ? `<p class="section-sub">${SITE.faq.sub}</p>` : ''}</div>
+  <div class="faq-list">
+    ${SITE.faq.items.map(i => `<div class="faq-item"><div class="q"><span class="qmark">Q.</span>${i.q}</div><div class="a">${i.a}</div></div>`).join('')}
   </div>
 `;
 
