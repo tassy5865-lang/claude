@@ -21,7 +21,7 @@ This file provides guidance to Claude Code when working with code in this reposi
 - 「AI自動特定」ボタンで抽出領域そのものをAIに検出させることも可能
 - 領域ごとにテキスト／チェックボックス／丸囲みの3種の読み取りタイプを指定可能
 - 抽出結果はレコード単位で確認・手動修正でき、CSV一括出力
-- 抽出領域の設定はGoogle Apps Script（GAS）のWebアプリ経由でテンプレートとしてクラウド保存・再利用可能（任意設定）
+- 抽出領域の設定はGoogle Apps Script（GAS）のWebアプリ経由でテンプレートとしてクラウド保存・再利用可能（任意設定。セットアップ手順は[GAS_SETUP.md](./GAS_SETUP.md)、スクリプト本体は[gas/Code.gs](./gas/Code.gs)を参照）
 - Gemini APIキー・GAS URLは画面右上の設定アイコンから入力（未設定時は赤丸バッジ表示）
 - 使用するGeminiモデルは設定画面でプリセット（Flash/Flash-Lite/Pro）から選択、またはカスタムのモデル名を直接入力可能。選択中のモデル名はヘッダーにバッジ表示
 
