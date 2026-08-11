@@ -49,11 +49,18 @@
 
         const { useState, useEffect, useRef, useCallback } = React;
 
-        const callGeminiAPI = async (apiKey, prompt, imageBase64s, schema, maxRetries = 5) => {
+        const GEMINI_MODEL_PRESETS = [
+            { value: 'gemini-flash-latest', label: 'Gemini Flash（標準・推奨）' },
+            { value: 'gemini-flash-lite-latest', label: 'Gemini Flash-Lite（高速・低コスト）' },
+            { value: 'gemini-pro-latest', label: 'Gemini Pro（高精度・複雑な帳票向け）' },
+        ];
+
+        const callGeminiAPI = async (apiKey, modelName, prompt, imageBase64s, schema, maxRetries = 5) => {
             if (!apiKey) {
                 throw new Error("Gemini APIキーが設定されていません。画面右上の設定アイコンから入力してください。");
             }
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
+            const model = modelName || 'gemini-flash-latest';
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
             const delays = [1000, 2000, 4000, 8000, 16000];
 
             const images = Array.isArray(imageBase64s) ? imageBase64s : [imageBase64s];
@@ -181,6 +188,9 @@
             const [apiKeyInput, setApiKeyInput] = useState("");
             const [showApiKey, setShowApiKey] = useState(false);
 
+            const [modelName, setModelName] = useState("gemini-flash-latest");
+            const [modelNameInput, setModelNameInput] = useState("gemini-flash-latest");
+
             const [gasUrl, setGasUrl] = useState("");
             const [showGasSettings, setShowGasSettings] = useState(false);
             const [gasUrlInput, setGasUrlInput] = useState("");
@@ -210,6 +220,11 @@
                     if (savedApiKey) {
                         setApiKey(savedApiKey);
                     }
+                    const savedModel = localStorage.getItem('geminiModel');
+                    if (savedModel) {
+                        setModelName(savedModel);
+                        setModelNameInput(savedModel);
+                    }
                     const savedUrl = localStorage.getItem('gasWebhookUrl');
                     if (savedUrl) {
                         setGasUrl(savedUrl);
@@ -222,12 +237,14 @@
 
             const openSettings = () => {
                 setApiKeyInput(apiKey);
+                setModelNameInput(modelName);
                 setGasUrlInput(gasUrl);
                 setShowGasSettings(true);
             };
 
             const handleSaveSettings = () => {
                 const key = apiKeyInput.trim();
+                const model = modelNameInput.trim() || 'gemini-flash-latest';
                 const url = gasUrlInput.trim();
 
                 if (!key) {
@@ -237,11 +254,13 @@
 
                 try {
                     localStorage.setItem('geminiApiKey', key);
+                    localStorage.setItem('geminiModel', model);
                 } catch (e) {
                     console.error("Failed to save API key to localStorage:", e);
                 }
                 setApiKey(key);
-                addLog(`Gemini APIキーを設定しました。`, 'success');
+                setModelName(model);
+                addLog(`Gemini APIキーを設定しました。（使用モデル: ${model}）`, 'success');
 
                 if (url) {
                     if (!url.startsWith('http')) {
@@ -428,7 +447,7 @@
                                         required: ["pages_per_set"]
                                     };
 
-                                    const data = await callGeminiAPI(apiKey, prompt, testImages, schema);
+                                    const data = await callGeminiAPI(apiKey, modelName, prompt, testImages, schema);
                                     if (data.pages_per_set >= 1 && data.pages_per_set <= pdf.numPages) {
                                         detectedPagesPerSet = data.pages_per_set;
                                         addLog(`自動判定完了: 1セット ${detectedPagesPerSet} ページと推測しました。`, "success");
@@ -524,7 +543,7 @@
                             }
                         };
 
-                        const data = await callGeminiAPI(apiKey, prompt, setImages[offset], schema);
+                        const data = await callGeminiAPI(apiKey, modelName, prompt, setImages[offset], schema);
 
                         data.forEach((item, idx) => {
                             const [ymin, xmin, ymax, xmax] = item.box;
@@ -646,7 +665,7 @@
 ${JSON.stringify(targetRegionsData)}`;
 
                             try {
-                                const pageData = await callGeminiAPI(apiKey, prompt, pageImgData, schema);
+                                const pageData = await callGeminiAPI(apiKey, modelName, prompt, pageImgData, schema);
 
                                 pageData.forEach(item => {
                                     setRecordData[item.name] = {
@@ -875,6 +894,10 @@ ${JSON.stringify(targetRegionsData)}`;
                             </div>
                         </div>
                         <div className="flex items-center gap-3">
+                            <div className="hidden md:flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-full px-3 py-1.5 text-xs font-medium text-slate-400" title="使用中のAIモデル">
+                                <Icon name="cpu" className="w-3.5 h-3.5 text-violet-400" />
+                                {modelName}
+                            </div>
                             <button
                                 onClick={() => setShowLabels(!showLabels)}
                                 className={`p-2 rounded-full transition-all duration-200 ${showLabels ? 'bg-violet-500/20 text-violet-300 ring-1 ring-violet-400/40' : 'bg-white/5 text-slate-500 hover:bg-white/10'}`}
@@ -1260,6 +1283,23 @@ ${JSON.stringify(targetRegionsData)}`;
                                         <Icon name={showApiKey ? "eye-off" : "eye"} className="w-4 h-4" />
                                     </button>
                                 </div>
+
+                                <p className="text-sm text-slate-400 mb-2 leading-relaxed">
+                                    OCR解析に使用する<span className="font-bold text-slate-200">AIモデル</span>を選択してください。帳票が複雑な場合はProモデルへの切り替えを推奨します。
+                                </p>
+                                <select
+                                    value={GEMINI_MODEL_PRESETS.some(m => m.value === modelNameInput) ? modelNameInput : '__custom__'}
+                                    onChange={(e) => { if (e.target.value !== '__custom__') setModelNameInput(e.target.value); }}
+                                    className="w-full bg-white/5 border border-white/10 text-white p-3 rounded-xl outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-400/30 text-sm mb-2"
+                                >
+                                    {GEMINI_MODEL_PRESETS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                                    <option value="__custom__">その他（モデル名を直接入力）</option>
+                                </select>
+                                <input
+                                    type="text" value={modelNameInput} onChange={e => setModelNameInput(e.target.value)}
+                                    placeholder="gemini-flash-latest"
+                                    className="w-full bg-white/5 border border-white/10 text-white placeholder-slate-600 p-2.5 rounded-xl outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-400/30 mb-6 font-mono text-sm"
+                                />
 
                                 <p className="text-sm text-slate-400 mb-2 leading-relaxed">
                                     テンプレートをクラウドに保存する場合は、Google Apps Script (GAS) の「ウェブアプリURL」を入力してください（任意）。

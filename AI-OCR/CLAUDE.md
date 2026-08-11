@@ -23,6 +23,7 @@ This file provides guidance to Claude Code when working with code in this reposi
 - 抽出結果はレコード単位で確認・手動修正でき、CSV一括出力
 - 抽出領域の設定はGoogle Apps Script（GAS）のWebアプリ経由でテンプレートとしてクラウド保存・再利用可能（任意設定）
 - Gemini APIキー・GAS URLは画面右上の設定アイコンから入力（未設定時は赤丸バッジ表示）
+- 使用するGeminiモデルは設定画面でプリセット（Flash/Flash-Lite/Pro）から選択、またはカスタムのモデル名を直接入力可能。選択中のモデル名はヘッダーにバッジ表示
 
 ## 進め方の注意
 
