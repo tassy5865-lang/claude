@@ -57,7 +57,22 @@
 
   #hero{ padding-top:11rem; padding-bottom:5rem; text-align:center; background:radial-gradient(circle at 50% 0%, #FDFBF7 0%, var(--cream) 60%); }
   .badge{ display:inline-flex; align-items:center; gap:9px; background:#fff; border:1px solid var(--line); border-radius:100px; padding:0.55rem 1.2rem; font-size:0.82rem; color:var(--ink-soft); margin-bottom:2.4rem; }
-  .badge .dot{ width:7px; height:7px; border-radius:50%; background:var(--green-light); }
+  .badge .dot{ width:7px; height:7px; border-radius:50%; background:var(--green-light); position:relative; }
+  .badge .dot::before{ content:''; position:absolute; inset:-4px; background:var(--green-light); border-radius:50%; opacity:0.35; animation:ping 2s cubic-bezier(0,0,.2,1) infinite; }
+  @keyframes ping{ 75%,100%{ transform:scale(2.4); opacity:0; } }
+
+  @keyframes heroIn{ from{ opacity:0; transform:translateY(30px); } to{ opacity:1; transform:none; } }
+  .hero-inner > *{ animation:heroIn .8s cubic-bezier(.16,1,.3,1) both; }
+  .hero-inner > *:nth-child(1){ animation-delay:.05s; }
+  .hero-inner > *:nth-child(2){ animation-delay:.14s; }
+  .hero-inner > *:nth-child(3){ animation-delay:.23s; }
+  .hero-inner > *:nth-child(4){ animation-delay:.32s; }
+  .hero-inner > *:nth-child(5){ animation-delay:.41s; }
+  .hero-inner > *:nth-child(6){ animation-delay:.5s; }
+  @media (prefers-reduced-motion: reduce){
+    .badge .dot::before{ animation:none; display:none; }
+    .hero-inner > *{ animation:none; }
+  }
   #hero h1{ font-size:clamp(2.2rem, 5vw, 3.4rem); line-height:1.4; color:var(--ink); max-width:780px; margin:0 auto; }
   #hero h1 .accent{ color:var(--gold); }
   #hero .lead{ max-width:640px; margin:1.8rem auto 0; color:var(--ink-soft); font-size:1rem; line-height:1.9; }
@@ -79,6 +94,19 @@
   .dark .eyebrow::after{ background:var(--gold-soft); }
   .dark h2{ color:#F5F1E8; }
   .dark .section-sub{ color:#B9B2A4; }
+
+  .card-grid > div, .approach-grid > div, .process-grid > div, .faq-list > div, .ba-grid{
+    opacity:0; transform:translateY(20px);
+    transition:opacity .6s cubic-bezier(.16,1,.3,1), transform .6s cubic-bezier(.16,1,.3,1);
+  }
+  .reveal.is-visible .card-grid > div,
+  .reveal.is-visible .approach-grid > div,
+  .reveal.is-visible .process-grid > div,
+  .reveal.is-visible .faq-list > div,
+  .reveal.is-visible .ba-grid{ opacity:1; transform:none; }
+  @media (prefers-reduced-motion: reduce){
+    .card-grid > div, .approach-grid > div, .process-grid > div, .faq-list > div, .ba-grid{ opacity:1; transform:none; transition:none; }
+  }
 
   .card-grid{ display:grid; grid-template-columns:repeat(3, 1fr); gap:1.1rem; margin-top:3.2rem; }
   .value-card{ background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:1.6rem; display:flex; gap:0.9rem; align-items:flex-start; }
@@ -217,7 +245,7 @@
   <a class="nav-cta" id="nav-cta" href="#contact"></a>
 </nav>
 
-<section id="hero"><div class="wrap reveal" id="hero-wrap"></div></section>
+<section id="hero"><div class="wrap hero-inner" id="hero-wrap"></div></section>
 <section id="problem"><div class="wrap reveal" id="problem-wrap"></div></section>
 <section id="values" class="dark"><div class="wrap reveal" id="values-wrap"></div></section>
 <section id="philosophy"><div class="wrap reveal" id="philosophy-wrap"></div></section>
@@ -450,7 +478,7 @@ document.getElementById('problem-wrap').innerHTML = `
   <div class="eyebrow center">${SITE.problem.eyebrow}</div>
   <div class="center-text"><h2>${SITE.problem.title}</h2><p class="section-sub">${SITE.problem.sub}</p></div>
   <div class="card-grid">
-    ${SITE.problem.cards.map(c => `<div class="value-card"><div class="ico">${c.icon}</div><p>${c.text}</p></div>`).join('')}
+    ${SITE.problem.cards.map((c,i) => `<div class="value-card" style="transition-delay:${(i*0.08).toFixed(2)}s"><div class="ico">${c.icon}</div><p>${c.text}</p></div>`).join('')}
   </div>
 `;
 
@@ -458,7 +486,7 @@ document.getElementById('values-wrap').innerHTML = `
   <div class="eyebrow center">${SITE.values.eyebrow}</div>
   <div class="center-text"><h2>${SITE.values.title}</h2><p class="section-sub">${SITE.values.sub}</p></div>
   <div class="card-grid">
-    ${SITE.values.cards.map(c => `<div class="value-card"><div class="ico">${c.icon}</div><p>${c.text}</p></div>`).join('')}
+    ${SITE.values.cards.map((c,i) => `<div class="value-card" style="transition-delay:${(i*0.08).toFixed(2)}s"><div class="ico">${c.icon}</div><p>${c.text}</p></div>`).join('')}
   </div>
   <div class="quote-box"><p>${SITE.values.quote}</p></div>
 `;
@@ -471,15 +499,15 @@ document.getElementById('philosophy-wrap').innerHTML = `
   </div>
   <div class="light-quote"><p>${SITE.philosophy.quote}</p></div>
   <div class="approach-grid">
-    ${SITE.philosophy.cards.map(c => `<div class="approach-card"><div class="num">${c.num}</div><h3>${c.title}</h3><p>${c.text}</p></div>`).join('')}
+    ${SITE.philosophy.cards.map((c,i) => `<div class="approach-card" style="transition-delay:${(i*0.1).toFixed(2)}s"><div class="num">${c.num}</div><h3>${c.title}</h3><p>${c.text}</p></div>`).join('')}
   </div>
 `;
 
 document.getElementById('beforeafter-wrap').innerHTML = `
   <div class="eyebrow center">${SITE.beforeAfter.eyebrow}</div>
   <div class="center-text"><h2>${SITE.beforeAfter.title}</h2><p class="section-sub">${SITE.beforeAfter.sub}</p></div>
-  ${SITE.beforeAfter.pairs.map(p => `
-    <div class="ba-grid">
+  ${SITE.beforeAfter.pairs.map((p,i) => `
+    <div class="ba-grid" style="transition-delay:${(i*0.12).toFixed(2)}s">
       <div class="ba-col ba-before"><div class="ba-label">${SITE.beforeAfter.beforeLabel}</div><ul><li>${p.before}</li></ul></div>
       <div class="ba-arrow">→</div>
       <div class="ba-col ba-after"><div class="ba-label">${SITE.beforeAfter.afterLabel}</div><ul><li>${p.after}</li></ul></div>
@@ -491,7 +519,7 @@ document.getElementById('focus-wrap').innerHTML = `
   <div class="eyebrow center">${SITE.focus.eyebrow}</div>
   <div class="center-text"><h2>${SITE.focus.title}</h2><p class="section-sub">${SITE.focus.sub}</p></div>
   <div class="card-grid">
-    ${SITE.focus.cards.map(c => `<div class="value-card"><div class="ico">${c.icon}</div><div><h3>${c.title}</h3><p>${c.text}</p></div></div>`).join('')}
+    ${SITE.focus.cards.map((c,i) => `<div class="value-card" style="transition-delay:${(i*0.06).toFixed(2)}s"><div class="ico">${c.icon}</div><div><h3>${c.title}</h3><p>${c.text}</p></div></div>`).join('')}
   </div>
 `;
 
@@ -499,11 +527,11 @@ document.getElementById('process-wrap').innerHTML = `
   <div class="eyebrow center">${SITE.process.eyebrow}</div>
   <div class="center-text"><h2>${SITE.process.title}</h2><p class="section-sub">${SITE.process.sub}</p></div>
   <div class="process-grid">
-    ${SITE.process.steps.map(s => `
-      <div class="process-card">
+    ${SITE.process.steps.map((s,i) => `
+      <div class="process-card" style="transition-delay:${(i*0.1).toFixed(2)}s">
         <div class="step-label">${s.label}</div>
         <h3>${s.title}</h3>
-        <ul>${s.items.map(i => `<li>${i}</li>`).join('')}</ul>
+        <ul>${s.items.map(it => `<li>${it}</li>`).join('')}</ul>
       </div>
     `).join('')}
   </div>
@@ -579,7 +607,7 @@ document.getElementById('faq-wrap').innerHTML = `
   <div class="eyebrow center">${SITE.faq.eyebrow}</div>
   <div class="center-text"><h2>${SITE.faq.title}</h2>${SITE.faq.sub ? `<p class="section-sub">${SITE.faq.sub}</p>` : ''}</div>
   <div class="faq-list">
-    ${SITE.faq.items.map(i => `<div class="faq-item"><div class="q"><span class="qmark">Q.</span>${i.q}</div><div class="a">${i.a}</div></div>`).join('')}
+    ${SITE.faq.items.map((it,i) => `<div class="faq-item" style="transition-delay:${(i*0.08).toFixed(2)}s"><div class="q"><span class="qmark">Q.</span>${it.q}</div><div class="a">${it.a}</div></div>`).join('')}
   </div>
 `;
 
