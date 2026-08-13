@@ -132,10 +132,14 @@
   .approach-card h3{ font-size:1.05rem; margin-bottom:0.6rem; }
   .approach-card p{ font-size:0.85rem; color:var(--ink-soft); line-height:1.65; }
 
-  #focus .value-card{ background:#fff; border:1px solid var(--line); }
-  #focus .value-card .ico{ background:rgba(30,58,95,0.1); color:var(--gold);}
-  #focus .value-card p{ color:var(--ink-soft); }
-  #focus .value-card h3{ font-size:1rem; margin-bottom:0.4rem; color:var(--ink);}
+  #focus .value-card, #usecases .value-card{ background:#fff; border:1px solid var(--line); }
+  #focus .value-card .ico, #usecases .value-card .ico{ background:rgba(30,58,95,0.1); color:var(--gold);}
+  #focus .value-card p, #usecases .value-card p{ color:var(--ink-soft); }
+  #focus .value-card h3, #usecases .value-card h3{ font-size:1rem; margin-bottom:0.4rem; color:var(--ink);}
+
+  #impact .stat .num{ font-size:1.6rem; }
+  .impact-note{ text-align:center; font-size:0.78rem; color:var(--ink-soft); margin-top:1.6rem; }
+  #usecases .record-note{ color:var(--ink-soft); }
 
   #problem .value-card{ background:#fff; border:1px solid var(--line); }
   #problem .value-card .ico{ background:rgba(30,58,95,0.1); color:var(--gold);}
@@ -250,6 +254,8 @@
 <section id="values" class="dark"><div class="wrap reveal" id="values-wrap"></div></section>
 <section id="philosophy"><div class="wrap reveal" id="philosophy-wrap"></div></section>
 <section id="beforeafter" class="dark"><div class="wrap reveal" id="beforeafter-wrap"></div></section>
+<section id="impact"><div class="wrap reveal" id="impact-wrap"></div></section>
+<section id="usecases"><div class="wrap reveal" id="usecases-wrap"></div></section>
 <section id="focus"><div class="wrap reveal" id="focus-wrap"></div></section>
 <section id="process"><div class="wrap reveal" id="process-wrap"></div></section>
 <section id="record" class="dark"><div class="wrap reveal" id="record-wrap"></div></section>
@@ -341,6 +347,31 @@ const SITE = {
       { before:"エコー画像や数値を紙やノートに個別記録し、月末にExcelへ転記", after:"統一テンプレートに沿って入力し、指標の計算まで自動化" },
       { before:"CSVデータをExcelへ手作業でコピー・整形", after:"RPAツールに読み込ませるだけで自動変換・出力" },
       { before:"AIの仕組みを専門用語のまま説明し、現場に伝わりにくい", after:"現場の言葉に置き換えた研修資料で、使い方まで伝える" }
+    ]
+  },
+
+  impact: {
+    eyebrow: "impact",
+    title: "作業時間は、どのくらい変わったか。",
+    sub: "自作ツールを実際の業務で使ってみて感じている、作業時間の変化の目安です。",
+    stats: [
+      { num:"大幅短縮", unit:"", label:"透析指標計算(1患者あたりの計算時間)" },
+      { num:"大幅削減", unit:"", label:"CSV→Excelの転記・変換作業" },
+      { num:"継続伴走", unit:"", label:"AI研修後のフォローアップ" }
+    ],
+    note: "※厳密な計測値ではなく、開発者自身の体感に基づく概算です。"
+  },
+
+  usecases: {
+    eyebrow: "use cases",
+    title: "こんな場面での活用を想定しています。",
+    sub: "特定の業種に限らず、記録・集計・研修の場面で活用いただけます。",
+    note: "※特定の業種・企業の実績ではなく、想定される活用シーンの一例です。",
+    cards: [
+      { icon:"◎", title:"医療・介護現場の記録業務", text:"検査所見や数値の記録・集計をテンプレート化し、指標計算まで自動化したい場面に。" },
+      { icon:"▣", title:"事務・経理でのデータ入力", text:"紙帳票やCSVデータの読み取り・転記作業を、AI-OCRやRPAで自動化したい場面に。" },
+      { icon:"◈", title:"AI活用を広めたいチーム", text:"専門用語を使わない研修資料で、AIツールの使い方をチームに浸透させたい場面に。" },
+      { icon:"✎", title:"手順書・マニュアルの整備", text:"属人化しがちな業務手順を、わかりやすい教育資料として言語化したい場面に。" }
     ]
   },
 
@@ -513,6 +544,24 @@ document.getElementById('beforeafter-wrap').innerHTML = `
       <div class="ba-col ba-after"><div class="ba-label">${SITE.beforeAfter.afterLabel}</div><ul><li>${p.after}</li></ul></div>
     </div>
   `).join('')}
+`;
+
+document.getElementById('impact-wrap').innerHTML = `
+  <div class="eyebrow center">${SITE.impact.eyebrow}</div>
+  <div class="center-text"><h2>${SITE.impact.title}</h2><p class="section-sub">${SITE.impact.sub}</p></div>
+  <div class="stat-row">
+    ${SITE.impact.stats.map(s => `<div class="stat"><div class="num">${s.num}<span>${s.unit}</span></div><div class="label">${s.label}</div></div>`).join('')}
+  </div>
+  <div class="impact-note">${SITE.impact.note}</div>
+`;
+
+document.getElementById('usecases-wrap').innerHTML = `
+  <div class="eyebrow center">${SITE.usecases.eyebrow}</div>
+  <div class="center-text"><h2>${SITE.usecases.title}</h2><p class="section-sub">${SITE.usecases.sub}</p></div>
+  <div class="card-grid">
+    ${SITE.usecases.cards.map((c,i) => `<div class="value-card" style="transition-delay:${(i*0.08).toFixed(2)}s"><div class="ico">${c.icon}</div><div><h3>${c.title}</h3><p>${c.text}</p></div></div>`).join('')}
+  </div>
+  <div class="record-note">${SITE.usecases.note}</div>
 `;
 
 document.getElementById('focus-wrap').innerHTML = `

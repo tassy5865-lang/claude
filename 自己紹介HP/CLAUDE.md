@@ -21,6 +21,9 @@
 | `hero` | `#hero` | ファーストビュー(見出し・リード文・CTA・統計) |
 | `values` | `#values` | こだわり・価値観カード |
 | `philosophy` | `#philosophy` | アプローチ・フロー・引用 |
+| `beforeAfter` | `#beforeafter` | 実績に基づくBefore/After比較 |
+| `impact` | `#impact` | 効果測定(体感ベースの概算・定性表現) |
+| `usecases` | `#usecases` | 想定活用シーン(業種は名言しない) |
 | `focus` | `#focus` | 取り組んでいること一覧 |
 | `process` | `#process` | 3ステップの進め方 |
 | `record` | `#record` | 今取り組んでいること(タグフィルター付きカード) |
