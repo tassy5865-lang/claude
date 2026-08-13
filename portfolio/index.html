@@ -106,8 +106,31 @@
   .work-card h3{ font-size:1.08rem; margin:0.8rem 0 0.7rem; color:#F5F1E8; }
   .work-card p{ font-size:0.85rem; color:#B9C2D1; line-height:1.7; flex-grow:1; }
   .work-card .tech{ font-family:'IBM Plex Mono',monospace; font-size:0.7rem; color:#7E8AA0; margin-top:1rem; }
-  .work-card .link{ margin-top:1.2rem; font-size:0.82rem; color:var(--gold-soft); font-weight:600; display:inline-flex; align-items:center; gap:0.3rem; }
+  .work-card .actions{ margin-top:1.2rem; display:flex; align-items:center; justify-content:space-between; gap:0.8rem; }
+  .work-card .link{ font-size:0.82rem; color:var(--gold-soft); font-weight:600; display:inline-flex; align-items:center; gap:0.3rem; }
   .work-card .link:hover{ color:#fff; }
+  .work-detail-btn{ font-family:'Noto Sans JP',sans-serif; font-size:0.78rem; color:#B9C2D1; background:none; border:1px solid rgba(255,255,255,0.18); border-radius:100px; padding:0.4rem 0.9rem; cursor:pointer; transition:border-color .2s ease, color .2s ease; }
+  .work-detail-btn:hover{ border-color:var(--gold-soft); color:#fff; }
+
+  .modal-overlay{ position:fixed; inset:0; background:rgba(16,24,38,0.72); backdrop-filter:blur(4px); display:none; align-items:center; justify-content:center; z-index:200; padding:5vw; }
+  .modal-overlay.is-open{ display:flex; }
+  .modal-box{ background:#fff; border-radius:20px; max-width:640px; width:100%; max-height:85vh; overflow-y:auto; padding:2.6rem; position:relative; }
+  .modal-close{ position:absolute; top:1.3rem; right:1.3rem; width:32px; height:32px; border-radius:50%; border:1px solid var(--line); background:#fff; color:var(--ink-soft); font-size:0.9rem; cursor:pointer; }
+  .modal-close:hover{ border-color:var(--gold-soft); color:var(--gold); }
+  .modal-tag{ font-family:'IBM Plex Mono',monospace; font-size:0.7rem; color:var(--gold-soft); letter-spacing:0.06em; }
+  .modal-box h3{ font-size:1.3rem; margin:0.6rem 0 0.9rem; padding-right:2rem; }
+  .modal-desc{ font-size:0.9rem; color:var(--ink-soft); line-height:1.75; }
+  .modal-sec{ margin-top:1.8rem; }
+  .modal-sec-h{ font-family:'IBM Plex Mono',monospace; font-size:0.7rem; letter-spacing:0.1em; color:var(--gold); text-transform:uppercase; margin-bottom:0.9rem; }
+  .modal-change-row{ display:flex; gap:0.9rem; align-items:flex-start; padding:0.9rem 1rem; border-radius:10px; margin-bottom:0.6rem; }
+  .modal-change-row.before{ background:var(--cream); border:1px solid var(--line); }
+  .modal-change-row.after{ background:rgba(74,144,217,0.08); border:1px solid rgba(74,144,217,0.3); }
+  .modal-change-row .lab{ font-family:'IBM Plex Mono',monospace; font-size:0.68rem; font-weight:700; color:var(--ink-soft); flex-shrink:0; width:3.4rem; padding-top:0.1rem; }
+  .modal-change-row.after .lab{ color:var(--gold-soft); }
+  .modal-change-row .txt{ font-size:0.85rem; line-height:1.65; color:var(--ink); }
+  .modal-uc-list{ list-style:none; }
+  .modal-uc-list li{ font-size:0.86rem; color:var(--ink-soft); line-height:1.7; margin-bottom:0.6rem; padding-left:1.3rem; position:relative; }
+  .modal-uc-list li::before{ content:'◎'; position:absolute; left:0; color:var(--gold); font-size:0.65rem; top:0.35rem; }
 
   #linkout{ background:var(--cream-soft); }
   .linkout-card{ margin-top:3rem; background:#fff; border:1px solid var(--line); border-radius:16px; padding:2.4rem; display:flex; justify-content:space-between; align-items:center; gap:1.5rem; flex-wrap:wrap; }
@@ -131,6 +154,8 @@
     section{ padding:4.5rem 6vw; }
     .nav-role{ display:none; }
     .linkout-card{ flex-direction:column; align-items:flex-start; }
+    .work-card .actions{ flex-wrap:wrap; }
+    .modal-box{ padding:2rem 1.6rem; }
   }
 </style>
 </head>
@@ -147,6 +172,24 @@
 <section id="linkout"><div class="wrap" id="linkout-wrap"></div></section>
 <section id="cta"><div class="wrap" id="cta-wrap"></div></section>
 <footer id="footer-wrap"></footer>
+
+<div class="modal-overlay" id="work-modal">
+  <div class="modal-box" role="dialog" aria-modal="true">
+    <button class="modal-close" id="modal-close" type="button" aria-label="閉じる">✕</button>
+    <div class="modal-tag" id="modal-tag"></div>
+    <h3 id="modal-title"></h3>
+    <p class="modal-desc" id="modal-desc"></p>
+    <div class="modal-sec">
+      <div class="modal-sec-h">Before → After</div>
+      <div class="modal-change-row before"><span class="lab">Before</span><span class="txt" id="modal-before"></span></div>
+      <div class="modal-change-row after"><span class="lab">After</span><span class="txt" id="modal-after"></span></div>
+    </div>
+    <div class="modal-sec">
+      <div class="modal-sec-h">他にどんな場面で活用できるか</div>
+      <ul class="modal-uc-list" id="modal-usecases"></ul>
+    </div>
+  </div>
+</div>
 
 <script>
 /* ======================================================================
@@ -203,42 +246,60 @@ const SITE = {
         title:"透析指標計算・分析ツール",
         text:"透析患者の1回の治療データから、除水・循環動態・透析効率・貧血/電解質・心機能の各指標を自動計算する臨床用ツール。AIへ考察を依頼するためのプロンプトも自動生成。",
         tech:"HTML / CSS / JS(単一ファイル・ビルド不要)",
-        href:"https://tassy5865-lang.github.io/claude/%E9%80%8F%E6%9E%90%E6%8C%87%E6%A8%99%E8%A8%88%E7%AE%97%E3%83%BB%E5%88%86%E6%9E%90/index.html"
+        href:"https://tassy5865-lang.github.io/claude/%E9%80%8F%E6%9E%90%E6%8C%87%E6%A8%99%E8%A8%88%E7%AE%97%E3%83%BB%E5%88%86%E6%9E%90/index.html",
+        before:"測定値をもとに、除水・透析効率などの指標を都度手計算していた",
+        after:"測定値を入力するだけで、各指標を自動計算できるようになった",
+        useCases:["血液透析以外の検査データの集計・可視化", "施設内の指標管理を統一フォーマット化したい場面", "AIへの考察依頼用プロンプトを毎回書く手間をなくしたい場面"]
       },
       {
         tag:"医療・臨床", status:"公開中",
         title:"bv-prr-tool(透析CSV解析)",
         text:"透析関連の測定CSVを読み込み、患者ごとに指標を集計・グラフ化するWebアプリ。患者名はCSVから自動判定し、単独ビューでも確認できる。",
         tech:"React / Vite / Recharts",
-        href:"https://tassy5865-lang.github.io/bv-prr-tool/"
+        href:"https://tassy5865-lang.github.io/bv-prr-tool/",
+        before:"測定機器から出力されたCSVを、患者ごとにExcelへ手作業で整理・集計していた",
+        after:"CSVを読み込ませるだけで、患者ごとの指標集計・グラフ化ができるようになった",
+        useCases:["複数拠点で出力形式が異なる測定データの統一集計", "経過観察用のグラフを都度作成する手間を減らしたい場面", "特定患者のデータだけを素早く確認したい場面"]
       },
       {
         tag:"業務改善", status:"公開中",
         title:"FileData(汎用データ管理ツール)",
         text:"フィールドを自由に定義できる汎用データ管理ツール。複数データベース対応で、用途に合わせてカスタマイズできる台帳管理の仕組み。",
         tech:"HTML / CSS / JS(単一ファイル・ビルド不要)",
-        href:"https://tassy5865-lang.github.io/claude/%E9%A2%A8%E8%A2%8B%E7%AE%A1%E7%90%86%E3%83%87%E3%83%BC%E3%82%BF%E3%83%84%E3%83%BC%E3%83%AB/index.html"
+        href:"https://tassy5865-lang.github.io/claude/%E9%A2%A8%E8%A2%8B%E7%AE%A1%E7%90%86%E3%83%87%E3%83%BC%E3%82%BF%E3%83%84%E3%83%BC%E3%83%AB/index.html",
+        before:"台帳や管理表をExcelやノートで個別管理し、フォーマットがバラバラだった",
+        after:"フィールドを自由に定義できる共通の画面で、複数の台帳を一元管理できるようになった",
+        useCases:["備品・機材管理台帳のデジタル化", "部署ごとに異なる管理項目を統一したい場面", "紙の管理表をなくしペーパーレス化したい場面"]
       },
       {
         tag:"業務改善", status:"公開中",
         title:"AI-OCR",
         text:"画像・PDFをアップロードし、AI(Gemini)でOCR・文字起こしを行うWebツール。APIキーはブラウザ内保存のみでサーバー送信なし。",
         tech:"React(CDN) / Tailwind / Gemini API / PDF.js",
-        href:"https://tassy5865-lang.github.io/claude/AI-OCR/index.html"
+        href:"https://tassy5865-lang.github.io/claude/AI-OCR/index.html",
+        before:"紙の帳票やPDFの内容を、目で見ながら手入力で転記していた",
+        after:"画像・PDFをアップロードするだけで、AIが文字起こしを行いテキスト化できるようになった",
+        useCases:["紙の伝票・申込書のデータ化", "手書き資料のテキスト化", "複数ページにまたがる帳票の一括読み取り"]
       },
       {
         tag:"業務改善", status:"公開中",
         title:"RPA(CSV→Excel 自動振り分け)",
         text:"AI-OCRが出力したCSVを、既存のExcel台帳データへ自動で振り分け・追記するツール。項目マッピングはAIが提案し、テンプレートとして保存・再利用できる。",
         tech:"React(CDN) / SheetJS / PapaParse / Gemini API",
-        href:"https://tassy5865-lang.github.io/claude/RPA/index.html"
+        href:"https://tassy5865-lang.github.io/claude/RPA/index.html",
+        before:"AI-OCRで読み取ったデータを、Excel台帳の該当項目へ手作業で転記していた",
+        after:"項目マッピングをテンプレート化し、CSVを読み込ませるだけで自動的に振り分けられるようになった",
+        useCases:["毎月フォーマットが同じ集計作業の自動化", "複数の担当者間で入力ルールを統一したい場面", "手作業での転記ミスを減らしたい場面"]
       },
       {
         tag:"Web制作", status:"公開中",
         title:"自己紹介HP(プロフィールLP)",
         text:"経歴・こだわり・取り組みを1枚にまとめたプロフィールランディングページ。中身をオブジェクト1つ書き換えるだけで、内容を差し替えられる構成。",
         tech:"HTML / CSS / JS(単一ファイル・ビルド不要)",
-        href:"https://tassy5865-lang.github.io/claude/%E8%87%AA%E5%B7%B1%E7%B4%B9%E4%BB%8BHP/index_4.html"
+        href:"https://tassy5865-lang.github.io/claude/%E8%87%AA%E5%B7%B1%E7%B4%B9%E4%BB%8BHP/index_4.html",
+        before:"経歴やこだわりを伝えるページがなく、都度資料を作って説明していた",
+        after:"オブジェクトを書き換えるだけで内容を更新できる、常設のプロフィールページができた",
+        useCases:["名刺代わりのプロフィールページが欲しい場面", "独立・副業の実績をまとめて見せたい場面", "制作会社に頼らず自分で内容を更新したい場面"]
       }
     ]
   },
@@ -316,13 +377,16 @@ document.getElementById('works-wrap').innerHTML = `
     ${workTags.map((t,i) => `<button type="button" data-filter="${t}" class="${i===0?'active':''}">${t}</button>`).join('')}
   </div>
   <div class="work-grid">
-    ${SITE.works.cards.map(c => `
+    ${SITE.works.cards.map((c,i) => `
       <div class="work-card" data-tag="${c.tag}">
         <div class="head"><div class="tag">${c.tag}</div><div class="status">${c.status}</div></div>
         <h3>${c.title}</h3>
         <p>${c.text}</p>
         <div class="tech">${c.tech}</div>
-        <a class="link" href="${c.href}" target="_blank" rel="noopener">実績を見る →</a>
+        <div class="actions">
+          <a class="link" href="${c.href}" target="_blank" rel="noopener">実績を見る →</a>
+          <button type="button" class="work-detail-btn" data-index="${i}">詳しく見る</button>
+        </div>
       </div>
     `).join('')}
   </div>
@@ -342,6 +406,31 @@ filterButtons.forEach(btn => {
     });
   });
 });
+
+// 実績詳細モーダル(Before/After・活用シーン)
+const workModal = document.getElementById('work-modal');
+function openWorkModal(index){
+  const c = SITE.works.cards[index];
+  if (!c) return;
+  document.getElementById('modal-tag').textContent = c.tag;
+  document.getElementById('modal-title').textContent = c.title;
+  document.getElementById('modal-desc').textContent = c.text;
+  document.getElementById('modal-before').textContent = c.before || '';
+  document.getElementById('modal-after').textContent = c.after || '';
+  document.getElementById('modal-usecases').innerHTML = (c.useCases || []).map(u => `<li>${u}</li>`).join('');
+  workModal.classList.add('is-open');
+  document.body.style.overflow = 'hidden';
+}
+function closeWorkModal(){
+  workModal.classList.remove('is-open');
+  document.body.style.overflow = '';
+}
+document.querySelectorAll('.work-detail-btn').forEach(btn => {
+  btn.addEventListener('click', () => openWorkModal(Number(btn.dataset.index)));
+});
+document.getElementById('modal-close').addEventListener('click', closeWorkModal);
+workModal.addEventListener('click', (e) => { if (e.target === workModal) closeWorkModal(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && workModal.classList.contains('is-open')) closeWorkModal(); });
 
 document.getElementById('linkout-wrap').innerHTML = `
   <div class="eyebrow center">${SITE.linkout.eyebrow}</div>
