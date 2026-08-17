@@ -31,4 +31,5 @@
 - 各カードの「詳しく見る」ボタンから、Before/After・活用シーン(`useCases`)を表示するモーダル(`#work-modal`)が開く。参考サイト(https://sasukewebjob-ai.github.io/portfolio/ )のモーダル構造(単一モーダルをクリックのたびに`openModal`で内容だけ差し替える方式)を踏襲しているが、見出し文言・タブ構成は独自に作成。
 - 配色は `自己紹介HP` と統一(ネイビー×スカイブルー、CSS変数は同じ命名: `--gold`=ネイビー, `--gold-soft`=スカイブルー)。
 - `contact.linkHref` と `footer.links` のメールアドレスは `自己紹介HP` 同様 `hello@example.com` のプレースホルダーのまま(未対応)。
+- `#hero` の背景はグラデーションに加え、ノードネットワーク調のSVG(インラインdata URI、グロー用`<filter>`込み)を重ねている。ノード座標を変える場合はCSS内の`#hero{ background-image: ... }`を直接編集する(`SITE`オブジェクトの対象外)。
 - `linkout.cardLinkHref` と `footer.links` の「プロフィール」リンクは `自己紹介HP` の公開URLを直接指しており、プロフィール本文はそちらに一本化して重複を避けている。
