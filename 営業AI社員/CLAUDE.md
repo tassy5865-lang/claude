@@ -18,7 +18,7 @@ This file provides guidance to Claude Code when working with code in this reposi
 - 次アクション日の昇順（未設定は最後）で自動ソート
 - 次アクション日が今日以前（期日超過・当日）の案件は赤系ハイライト+「要フォロー」ラベルで表示（フォローアップリマインダー）
 - データは`localStorage`（キー: `salesPipelineDeals`）にのみ保存、サーバー送信なし
-- 案件データは今後のカテゴリ（リサーチ・営業文作成）が使う`researchNotes`・`history`フィールドを持つが、現時点では未使用（常に空）
+- 案件データは`researchNotes`・`history`フィールドを持つ。`researchNotes`は今後のリサーチ画面実装時に使用予定（現時点では未使用・常に空）。`history`フィールドは営業文作成タブで使用されている（後述）。
 - 次アクション日が期日超過でも、ステータスが「受注」「失注」の案件は赤ハイライト・「要フォロー」ラベル・ソート最上位から除外（フォロー不要な確定案件のため）
 
 ### バックアップ・データ損失対策（Phase 1時点の判断）
