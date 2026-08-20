@@ -24,10 +24,99 @@
         /** @jsxFrag React.Fragment */
         const { useState, useEffect } = React;
 
+        const STORAGE_KEY = 'salesPipelineDeals';
+        const STATUS_OPTIONS = ['未アプローチ', '提案中', '商談中', '受注', '失注'];
+
+        function loadDeals() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                return raw ? JSON.parse(raw) : [];
+            } catch (e) {
+                console.error('案件データの読み込みに失敗しました', e);
+                return [];
+            }
+        }
+
+        function saveDeals(deals) {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(deals));
+            } catch (e) {
+                console.error('案件データの保存に失敗しました', e);
+            }
+        }
+
         function App() {
+            const [deals, setDeals] = useState(loadDeals);
+            const [newCompanyName, setNewCompanyName] = useState('');
+
+            useEffect(() => {
+                saveDeals(deals);
+            }, [deals]);
+
+            function addDeal(companyName) {
+                const trimmed = companyName.trim();
+                if (!trimmed) return;
+                const newDeal = {
+                    id: crypto.randomUUID(),
+                    companyName: trimmed,
+                    status: STATUS_OPTIONS[0],
+                    nextActionDate: '',
+                    memo: '',
+                    researchNotes: '',
+                    history: [],
+                    createdAt: new Date().toISOString(),
+                };
+                setDeals(prev => [...prev, newDeal]);
+                setNewCompanyName('');
+            }
+
+            function deleteDeal(id) {
+                if (!window.confirm('この案件を削除しますか？')) return;
+                setDeals(prev => prev.filter(d => d.id !== id));
+            }
+
+            function handleAddSubmit(e) {
+                e.preventDefault();
+                addDeal(newCompanyName);
+            }
+
             return (
                 <div className="min-h-screen text-slate-100 p-6 max-w-4xl mx-auto">
                     <h1 className="text-2xl font-bold mb-6">案件パイプライン</h1>
+
+                    <form onSubmit={handleAddSubmit} className="flex gap-2 mb-6">
+                        <input
+                            type="text"
+                            value={newCompanyName}
+                            onChange={e => setNewCompanyName(e.target.value)}
+                            placeholder="会社名を入力"
+                            className="flex-1 bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
+                        />
+                        <button
+                            type="submit"
+                            className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold px-4 py-2 rounded"
+                        >
+                            + 案件を追加
+                        </button>
+                    </form>
+
+                    {deals.length === 0 ? (
+                        <p className="text-slate-400 text-sm">案件がまだありません。「+ 案件を追加」から始めましょう。</p>
+                    ) : (
+                        <ul className="space-y-2">
+                            {deals.map(deal => (
+                                <li key={deal.id} className="bg-slate-800 border border-slate-700 rounded p-3 flex items-center justify-between">
+                                    <span className="font-medium">{deal.companyName}</span>
+                                    <button
+                                        onClick={() => deleteDeal(deal.id)}
+                                        className="text-slate-400 hover:text-rose-400 text-sm"
+                                    >
+                                        削除
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
                 </div>
             );
         }
