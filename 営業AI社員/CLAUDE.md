@@ -8,7 +8,7 @@ This file provides guidance to Claude Code when working with code in this reposi
 
 ## 技術スタック
 
-単一HTML（index.html）だが、CDN経由でReact 18 + Babel Standalone（JSXをブラウザ内変換）+ Tailwind CSSを使用。サーバーなし、GitHub Pagesでそのまま公開できる。AI機能(営業文作成・リサーチ)はClaude APIを直接呼び出す方式を予定（APIキーはユーザーがブラウザ内で入力し、localStorageにのみ保存）。
+単一HTML（index.html）だが、CDN経由でReact 18 + Babel Standalone（JSXをブラウザ内変換）+ Tailwind CSSを使用。サーバーなし、GitHub Pagesでそのまま公開できる。AI機能(営業文作成)はClaude Messages API（`https://api.anthropic.com/v1/messages`）を`fetch`でブラウザから直接呼び出す方式（`anthropic-dangerous-direct-browser-access: true`ヘッダーを付与）。APIキー・使用モデルはユーザーがブラウザ内で入力し、localStorageにのみ保存（キー: `claudeApiKey`, `claudeModel`）。案件リサーチ機能は今後実装予定。
 
 ## 現在の状態
 
@@ -26,10 +26,16 @@ This file provides guidance to Claude Code when working with code in this reposi
 - `saveDeals`が`localStorage.setItem`失敗（プライベートブラウジング・容量超過等）を検知した場合、画面上部に赤いバナーで保存失敗を明示（コンソールログのみに頼らない）。ただしこれはあくまで「気づける」ようにする対策であり、データ消失そのものを防ぐものではない
 - この方針は暫定判断。実運用でデータ消失が問題になった場合は、エクスポート機能（JSON/CSVダウンロード等）の実装を再検討する
 
+### 営業文作成タブ
+- ヘッダーに「案件パイプライン」「営業文作成」の2タブを追加（タブ切替はページリロードでリセットされ、選択状態は保存しない）
+- 右上の「⚙️ 設定」からClaude APIキー・使用モデル（プリセット3種: Claude Sonnet 5[デフォルト]/Claude Opus 5/Claude Haiku 4.5 + カスタム入力）を設定（localStorageのみ保存、未設定時はボタン無効化＋赤丸バッジ）
+- パイプラインの案件を選択（または会社名を直接入力）→文章種別（提案・アプローチメール/見積もり・提案書/フォローアップ・返信文）を選択→トーン・要望を自由テキストで入力（任意）→「生成」でClaude APIを呼び出し、営業文を生成
+- 案件を選択している場合、その案件のメモと、パイプライン内の受注/失注案件の傾向をプロンプトに含める（勝率アドバイスの材料）
+- 生成結果は本文（編集可能）と改善アドバイス（プロンプト内で固定見出し「### 改善アドバイス」により分離）の2エリアに分けて表示
+- 「この案件の履歴に保存」で、選択中の案件の`history`配列に生成結果を追記。案件選択時、その案件の過去の生成履歴を一覧表示
+
 ### 未実装（今後のカテゴリ）
-- 案件リサーチ画面（リード発掘・個別下調べ、Claude API web_search連携）
-- 営業文作成画面（提案・見積・フォロー文の生成、勝率アドバイス、Claude API連携）
-- APIキー設定UI（上記2画面の実装時に追加）
+- 案件リサーチ画面（リード発掘・個別下調べ、Claude API Web検索連携）
 
 ## 進め方の注意
 
