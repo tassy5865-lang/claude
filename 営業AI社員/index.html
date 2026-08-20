@@ -79,6 +79,68 @@
             }
         }
 
+        const TEXT_TYPE_OPTIONS = [
+            { value: 'proposal', label: '提案・アプローチメール' },
+            { value: 'quote', label: '見積もり・提案書としての文章' },
+            { value: 'followup', label: 'フォローアップ・返信文' },
+        ];
+
+        async function generateSalesText({ apiKey, model, companyName, textType, tone, dealMemo, closedDeals }) {
+            const textTypeLabel = (TEXT_TYPE_OPTIONS.find(t => t.value === textType) || {}).label || textType;
+
+            let prompt = 'あなたは受託・フリーランスで開発の仕事をしている営業担当です。以下の条件で営業文を作成してください。\n\n';
+            prompt += `宛先の会社名: ${companyName || '(未指定)'}\n`;
+            prompt += `文章の種類: ${textTypeLabel}\n`;
+            if (tone && tone.trim()) {
+                prompt += `トーン・要望: ${tone.trim()}\n`;
+            }
+            if (dealMemo && dealMemo.trim()) {
+                prompt += `\n参考情報(この案件のメモ):\n${dealMemo.trim()}\n`;
+            }
+            if (closedDeals && closedDeals.length > 0) {
+                prompt += '\n過去の受注・失注案件の傾向(参考):\n';
+                closedDeals.forEach(d => {
+                    prompt += `- ${d.companyName}: ${d.status}${d.memo ? '(' + d.memo + ')' : ''}\n`;
+                });
+            }
+            prompt += '\n本文をそのまま送信できる形で出力してください。前置きや説明は不要です。\n';
+            prompt += '本文の後に、必ず見出し「### 改善アドバイス」を1行だけ出力し、その下にこの文章のトーンや構成について改善できる点を3行程度の箇条書きで書いてください。';
+
+            const response = await fetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': apiKey,
+                    'anthropic-version': '2023-06-01',
+                    'anthropic-dangerous-direct-browser-access': 'true',
+                },
+                body: JSON.stringify({
+                    model: model,
+                    max_tokens: 2048,
+                    messages: [{ role: 'user', content: prompt }],
+                }),
+            });
+
+            if (!response.ok) {
+                const errBody = await response.text();
+                throw new Error(`API呼び出しに失敗しました (${response.status}): ${errBody}`);
+            }
+
+            const data = await response.json();
+            const textBlock = (data.content || []).find(b => b.type === 'text');
+            const fullText = textBlock ? textBlock.text : '';
+
+            const marker = '### 改善アドバイス';
+            const markerIndex = fullText.indexOf(marker);
+            if (markerIndex === -1) {
+                return { body: fullText.trim(), advice: '' };
+            }
+            return {
+                body: fullText.slice(0, markerIndex).trim(),
+                advice: fullText.slice(markerIndex + marker.length).trim(),
+            };
+        }
+
         function App() {
             const [deals, setDeals] = useState(loadDeals);
             const [newCompanyName, setNewCompanyName] = useState('');
@@ -101,6 +163,40 @@
             }, [model]);
 
             const [activeTab, setActiveTab] = useState('pipeline');
+
+            const [composeSelectedDealId, setComposeSelectedDealId] = useState('');
+            const [composeManualCompany, setComposeManualCompany] = useState('');
+            const [composeTextType, setComposeTextType] = useState(TEXT_TYPE_OPTIONS[0].value);
+            const [composeTone, setComposeTone] = useState('');
+            const [composeLoading, setComposeLoading] = useState(false);
+            const [composeError, setComposeError] = useState('');
+            const [composeResultBody, setComposeResultBody] = useState('');
+            const [composeResultAdvice, setComposeResultAdvice] = useState('');
+
+            async function handleGenerate() {
+                setComposeLoading(true);
+                setComposeError('');
+                try {
+                    const selectedDeal = deals.find(d => d.id === composeSelectedDealId) || null;
+                    const companyName = selectedDeal ? selectedDeal.companyName : composeManualCompany;
+                    const closedDeals = deals.filter(d => isClosedStatus(d.status));
+                    const result = await generateSalesText({
+                        apiKey,
+                        model,
+                        companyName,
+                        textType: composeTextType,
+                        tone: composeTone,
+                        dealMemo: selectedDeal ? selectedDeal.memo : '',
+                        closedDeals,
+                    });
+                    setComposeResultBody(result.body);
+                    setComposeResultAdvice(result.advice);
+                } catch (e) {
+                    setComposeError(e.message || '生成に失敗しました');
+                } finally {
+                    setComposeLoading(false);
+                }
+            }
 
             function addDeal(companyName) {
                 const trimmed = companyName.trim();
@@ -302,7 +398,90 @@
                     )}
 
                     {activeTab === 'compose' && (
-                        <div className="text-slate-400 text-sm">準備中です。</div>
+                        <div>
+                            <div className="mb-4">
+                                <label className="block text-sm text-slate-400 mb-1">対象の案件(任意)</label>
+                                <select
+                                    value={composeSelectedDealId}
+                                    onChange={e => setComposeSelectedDealId(e.target.value)}
+                                    className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm mb-2"
+                                >
+                                    <option value="">選択しない(会社名を直接入力)</option>
+                                    {deals.map(d => (
+                                        <option key={d.id} value={d.id}>{d.companyName}</option>
+                                    ))}
+                                </select>
+                                {!composeSelectedDealId && (
+                                    <input
+                                        type="text"
+                                        value={composeManualCompany}
+                                        onChange={e => setComposeManualCompany(e.target.value)}
+                                        placeholder="会社名を入力"
+                                        className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
+                                    />
+                                )}
+                            </div>
+
+                            <div className="mb-4">
+                                <label className="block text-sm text-slate-400 mb-1">文章の種類</label>
+                                <select
+                                    value={composeTextType}
+                                    onChange={e => setComposeTextType(e.target.value)}
+                                    className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm"
+                                >
+                                    {TEXT_TYPE_OPTIONS.map(t => (
+                                        <option key={t.value} value={t.value}>{t.label}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="mb-4">
+                                <label className="block text-sm text-slate-400 mb-1">トーン・要望(任意)</label>
+                                <textarea
+                                    value={composeTone}
+                                    onChange={e => setComposeTone(e.target.value)}
+                                    placeholder="例: 丁寧に、少しカジュアルに、簡潔に、など"
+                                    rows={2}
+                                    className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
+                                />
+                            </div>
+
+                            <button
+                                onClick={handleGenerate}
+                                disabled={!apiKey || composeLoading}
+                                className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-sm font-semibold px-4 py-2 rounded mb-4"
+                            >
+                                {composeLoading ? '生成中...' : '生成'}
+                            </button>
+                            {!apiKey && (
+                                <p className="text-slate-500 text-xs mb-4">APIキーが未設定です。右上の設定から入力してください。</p>
+                            )}
+
+                            {composeError && (
+                                <div className="bg-rose-950 border border-rose-700 text-rose-200 rounded p-3 mb-4 text-sm">
+                                    {composeError}
+                                </div>
+                            )}
+
+                            {composeResultBody && (
+                                <div className="mb-4">
+                                    <label className="block text-sm text-slate-400 mb-1">生成された文章(編集可)</label>
+                                    <textarea
+                                        value={composeResultBody}
+                                        onChange={e => setComposeResultBody(e.target.value)}
+                                        rows={10}
+                                        className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
+                                    />
+                                </div>
+                            )}
+
+                            {composeResultAdvice && (
+                                <div className="bg-slate-800 border border-slate-700 rounded p-3 text-sm text-slate-300">
+                                    <div className="font-semibold text-slate-400 mb-1">改善アドバイス</div>
+                                    <div className="whitespace-pre-wrap">{composeResultAdvice}</div>
+                                </div>
+                            )}
+                        </div>
                     )}
                 </div>
             );
