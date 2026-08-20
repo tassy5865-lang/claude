@@ -100,6 +100,8 @@
                 try { localStorage.setItem('claudeModel', model); } catch (e) {}
             }, [model]);
 
+            const [activeTab, setActiveTab] = useState('pipeline');
+
             function addDeal(companyName) {
                 const trimmed = companyName.trim();
                 if (!trimmed) return;
@@ -200,84 +202,107 @@
                         </div>
                     )}
 
-                    {saveError && (
-                        <div className="bg-rose-950 border border-rose-700 text-rose-200 rounded p-3 mb-4 text-sm">
-                            変更を保存できませんでした。プライベートブラウジングモードやストレージ容量の制限が原因の可能性があります。
-                        </div>
+                    <div className="flex gap-2 mb-6 border-b border-slate-700">
+                        <button
+                            onClick={() => setActiveTab('pipeline')}
+                            className={'px-4 py-2 text-sm font-semibold border-b-2 -mb-px ' + (activeTab === 'pipeline' ? 'border-indigo-500 text-white' : 'border-transparent text-slate-400 hover:text-slate-200')}
+                        >
+                            案件パイプライン
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('compose')}
+                            className={'px-4 py-2 text-sm font-semibold border-b-2 -mb-px ' + (activeTab === 'compose' ? 'border-indigo-500 text-white' : 'border-transparent text-slate-400 hover:text-slate-200')}
+                        >
+                            営業文作成
+                        </button>
+                    </div>
+
+                    {activeTab === 'pipeline' && (
+                        <>
+                            {saveError && (
+                                <div className="bg-rose-950 border border-rose-700 text-rose-200 rounded p-3 mb-4 text-sm">
+                                    変更を保存できませんでした。プライベートブラウジングモードやストレージ容量の制限が原因の可能性があります。
+                                </div>
+                            )}
+
+                            <form onSubmit={handleAddSubmit} className="flex gap-2 mb-6">
+                                <input
+                                    type="text"
+                                    value={newCompanyName}
+                                    onChange={e => setNewCompanyName(e.target.value)}
+                                    placeholder="会社名を入力"
+                                    className="flex-1 bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
+                                />
+                                <button
+                                    type="submit"
+                                    className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold px-4 py-2 rounded"
+                                >
+                                    + 案件を追加
+                                </button>
+                            </form>
+
+                            {deals.length === 0 ? (
+                                <p className="text-slate-400 text-sm">案件がまだありません。「+ 案件を追加」から始めましょう。</p>
+                            ) : (
+                                <ul className="space-y-2">
+                                    {sortedDeals.map(deal => (
+                                        <li
+                                            key={deal.id}
+                                            className={
+                                                'rounded p-3 border ' +
+                                                (deal.nextActionDate && deal.nextActionDate <= today && !isClosedStatus(deal.status)
+                                                    ? 'bg-rose-950 border-rose-700'
+                                                    : 'bg-slate-800 border-slate-700')
+                                            }
+                                        >
+                                            <div className="flex items-center justify-between mb-2">
+                                                <span className="font-medium">{deal.companyName}</span>
+                                                <button
+                                                    onClick={() => deleteDeal(deal.id)}
+                                                    className="text-slate-400 hover:text-rose-400 text-sm"
+                                                >
+                                                    削除
+                                                </button>
+                                            </div>
+                                            <div className="flex flex-wrap gap-2 items-center text-sm mb-2">
+                                                <select
+                                                    value={deal.status}
+                                                    onChange={e => updateDeal(deal.id, { status: e.target.value })}
+                                                    className="bg-slate-900 border border-slate-600 rounded px-2 py-1"
+                                                >
+                                                    {STATUS_OPTIONS.map(s => (
+                                                        <option key={s} value={s}>{s}</option>
+                                                    ))}
+                                                </select>
+                                                <label className="flex items-center gap-1 text-slate-400">
+                                                    {deal.nextActionDate && deal.nextActionDate <= today && !isClosedStatus(deal.status) && (
+                                                        <span className="text-rose-400 font-semibold mr-1">要フォロー</span>
+                                                    )}
+                                                    次アクション日:
+                                                    <input
+                                                        type="date"
+                                                        value={deal.nextActionDate}
+                                                        onChange={e => updateDeal(deal.id, { nextActionDate: e.target.value })}
+                                                        className="bg-slate-900 border border-slate-600 rounded px-2 py-1"
+                                                    />
+                                                </label>
+                                            </div>
+                                            <textarea
+                                                value={deal.memo}
+                                                onChange={e => updateDeal(deal.id, { memo: e.target.value })}
+                                                placeholder="メモ"
+                                                rows={2}
+                                                className="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1 text-sm focus:outline-none focus:border-indigo-500"
+                                            />
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </>
                     )}
 
-                    <form onSubmit={handleAddSubmit} className="flex gap-2 mb-6">
-                        <input
-                            type="text"
-                            value={newCompanyName}
-                            onChange={e => setNewCompanyName(e.target.value)}
-                            placeholder="会社名を入力"
-                            className="flex-1 bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
-                        />
-                        <button
-                            type="submit"
-                            className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold px-4 py-2 rounded"
-                        >
-                            + 案件を追加
-                        </button>
-                    </form>
-
-                    {deals.length === 0 ? (
-                        <p className="text-slate-400 text-sm">案件がまだありません。「+ 案件を追加」から始めましょう。</p>
-                    ) : (
-                        <ul className="space-y-2">
-                            {sortedDeals.map(deal => (
-                                <li
-                                    key={deal.id}
-                                    className={
-                                        'rounded p-3 border ' +
-                                        (deal.nextActionDate && deal.nextActionDate <= today && !isClosedStatus(deal.status)
-                                            ? 'bg-rose-950 border-rose-700'
-                                            : 'bg-slate-800 border-slate-700')
-                                    }
-                                >
-                                    <div className="flex items-center justify-between mb-2">
-                                        <span className="font-medium">{deal.companyName}</span>
-                                        <button
-                                            onClick={() => deleteDeal(deal.id)}
-                                            className="text-slate-400 hover:text-rose-400 text-sm"
-                                        >
-                                            削除
-                                        </button>
-                                    </div>
-                                    <div className="flex flex-wrap gap-2 items-center text-sm mb-2">
-                                        <select
-                                            value={deal.status}
-                                            onChange={e => updateDeal(deal.id, { status: e.target.value })}
-                                            className="bg-slate-900 border border-slate-600 rounded px-2 py-1"
-                                        >
-                                            {STATUS_OPTIONS.map(s => (
-                                                <option key={s} value={s}>{s}</option>
-                                            ))}
-                                        </select>
-                                        <label className="flex items-center gap-1 text-slate-400">
-                                            {deal.nextActionDate && deal.nextActionDate <= today && !isClosedStatus(deal.status) && (
-                                                <span className="text-rose-400 font-semibold mr-1">要フォロー</span>
-                                            )}
-                                            次アクション日:
-                                            <input
-                                                type="date"
-                                                value={deal.nextActionDate}
-                                                onChange={e => updateDeal(deal.id, { nextActionDate: e.target.value })}
-                                                className="bg-slate-900 border border-slate-600 rounded px-2 py-1"
-                                            />
-                                        </label>
-                                    </div>
-                                    <textarea
-                                        value={deal.memo}
-                                        onChange={e => updateDeal(deal.id, { memo: e.target.value })}
-                                        placeholder="メモ"
-                                        rows={2}
-                                        className="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1 text-sm focus:outline-none focus:border-indigo-500"
-                                    />
-                                </li>
-                            ))}
-                        </ul>
+                    {activeTab === 'compose' && (
+                        <div className="text-slate-400 text-sm">準備中です。</div>
                     )}
                 </div>
             );
