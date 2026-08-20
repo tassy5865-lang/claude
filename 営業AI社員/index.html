@@ -75,6 +75,10 @@
                 setDeals(prev => prev.filter(d => d.id !== id));
             }
 
+            function updateDeal(id, patch) {
+                setDeals(prev => prev.map(d => d.id === id ? { ...d, ...patch } : d));
+            }
+
             function handleAddSubmit(e) {
                 e.preventDefault();
                 addDeal(newCompanyName);
@@ -105,14 +109,43 @@
                     ) : (
                         <ul className="space-y-2">
                             {deals.map(deal => (
-                                <li key={deal.id} className="bg-slate-800 border border-slate-700 rounded p-3 flex items-center justify-between">
-                                    <span className="font-medium">{deal.companyName}</span>
-                                    <button
-                                        onClick={() => deleteDeal(deal.id)}
-                                        className="text-slate-400 hover:text-rose-400 text-sm"
-                                    >
-                                        削除
-                                    </button>
+                                <li key={deal.id} className="bg-slate-800 border border-slate-700 rounded p-3">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <span className="font-medium">{deal.companyName}</span>
+                                        <button
+                                            onClick={() => deleteDeal(deal.id)}
+                                            className="text-slate-400 hover:text-rose-400 text-sm"
+                                        >
+                                            削除
+                                        </button>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2 items-center text-sm mb-2">
+                                        <select
+                                            value={deal.status}
+                                            onChange={e => updateDeal(deal.id, { status: e.target.value })}
+                                            className="bg-slate-900 border border-slate-600 rounded px-2 py-1"
+                                        >
+                                            {STATUS_OPTIONS.map(s => (
+                                                <option key={s} value={s}>{s}</option>
+                                            ))}
+                                        </select>
+                                        <label className="flex items-center gap-1 text-slate-400">
+                                            次アクション日:
+                                            <input
+                                                type="date"
+                                                value={deal.nextActionDate}
+                                                onChange={e => updateDeal(deal.id, { nextActionDate: e.target.value })}
+                                                className="bg-slate-900 border border-slate-600 rounded px-2 py-1"
+                                            />
+                                        </label>
+                                    </div>
+                                    <textarea
+                                        value={deal.memo}
+                                        onChange={e => updateDeal(deal.id, { memo: e.target.value })}
+                                        placeholder="メモ"
+                                        rows={2}
+                                        className="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1 text-sm focus:outline-none focus:border-indigo-500"
+                                    />
                                 </li>
                             ))}
                         </ul>
