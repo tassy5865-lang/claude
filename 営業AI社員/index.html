@@ -45,17 +45,24 @@
         function saveDeals(deals) {
             try {
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(deals));
+                return true;
             } catch (e) {
                 console.error('案件データの保存に失敗しました', e);
+                return false;
             }
+        }
+
+        function isClosedStatus(status) {
+            return status === '受注' || status === '失注';
         }
 
         function App() {
             const [deals, setDeals] = useState(loadDeals);
             const [newCompanyName, setNewCompanyName] = useState('');
+            const [saveError, setSaveError] = useState(false);
 
             useEffect(() => {
-                saveDeals(deals);
+                setSaveError(!saveDeals(deals));
             }, [deals]);
 
             function addDeal(companyName) {
@@ -90,16 +97,25 @@
             }
 
             const sortedDeals = [...deals].sort((a, b) => {
-                if (!a.nextActionDate && !b.nextActionDate) return 0;
-                if (!a.nextActionDate) return 1;
-                if (!b.nextActionDate) return -1;
-                return a.nextActionDate.localeCompare(b.nextActionDate);
+                // 受注/失注はソート上「日付未設定」と同様に扱い、上位に固定されないようにする
+                const aDate = isClosedStatus(a.status) ? '' : a.nextActionDate;
+                const bDate = isClosedStatus(b.status) ? '' : b.nextActionDate;
+                if (!aDate && !bDate) return 0;
+                if (!aDate) return 1;
+                if (!bDate) return -1;
+                return aDate.localeCompare(bDate);
             });
             const today = todayStr();
 
             return (
                 <div className="min-h-screen text-slate-100 p-6 max-w-4xl mx-auto">
                     <h1 className="text-2xl font-bold mb-6">案件パイプライン</h1>
+
+                    {saveError && (
+                        <div className="bg-rose-950 border border-rose-700 text-rose-200 rounded p-3 mb-4 text-sm">
+                            変更を保存できませんでした。プライベートブラウジングモードやストレージ容量の制限が原因の可能性があります。
+                        </div>
+                    )}
 
                     <form onSubmit={handleAddSubmit} className="flex gap-2 mb-6">
                         <input
@@ -126,7 +142,7 @@
                                     key={deal.id}
                                     className={
                                         'rounded p-3 border ' +
-                                        (deal.nextActionDate && deal.nextActionDate <= today
+                                        (deal.nextActionDate && deal.nextActionDate <= today && !isClosedStatus(deal.status)
                                             ? 'bg-rose-950 border-rose-700'
                                             : 'bg-slate-800 border-slate-700')
                                     }
@@ -151,7 +167,7 @@
                                             ))}
                                         </select>
                                         <label className="flex items-center gap-1 text-slate-400">
-                                            {deal.nextActionDate && deal.nextActionDate <= today && (
+                                            {deal.nextActionDate && deal.nextActionDate <= today && !isClosedStatus(deal.status) && (
                                                 <span className="text-rose-400 font-semibold mr-1">要フォロー</span>
                                             )}
                                             次アクション日:
