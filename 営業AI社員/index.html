@@ -198,6 +198,19 @@
                 }
             }
 
+            function saveGeneratedText() {
+                if (!composeSelectedDealId || !composeResultBody) return;
+                const target = deals.find(d => d.id === composeSelectedDealId);
+                if (!target) return;
+                const entry = {
+                    type: composeTextType,
+                    tone: composeTone,
+                    body: composeResultBody,
+                    createdAt: new Date().toISOString(),
+                };
+                updateDeal(composeSelectedDealId, { history: [...target.history, entry] });
+            }
+
             function addDeal(companyName) {
                 const trimmed = companyName.trim();
                 if (!trimmed) return;
@@ -475,12 +488,43 @@
                                 </div>
                             )}
 
+                            {composeResultBody && composeSelectedDealId && (
+                                <button
+                                    onClick={saveGeneratedText}
+                                    className="bg-slate-700 hover:bg-slate-600 text-white text-sm font-semibold px-4 py-2 rounded mb-4"
+                                >
+                                    この案件の履歴に保存
+                                </button>
+                            )}
+
                             {composeResultAdvice && (
                                 <div className="bg-slate-800 border border-slate-700 rounded p-3 text-sm text-slate-300">
                                     <div className="font-semibold text-slate-400 mb-1">改善アドバイス</div>
                                     <div className="whitespace-pre-wrap">{composeResultAdvice}</div>
                                 </div>
                             )}
+
+                            {composeSelectedDealId && (() => {
+                                const target = deals.find(d => d.id === composeSelectedDealId);
+                                if (!target || target.history.length === 0) return null;
+                                return (
+                                    <div className="mt-6">
+                                        <div className="text-sm font-semibold text-slate-400 mb-2">この案件の生成履歴</div>
+                                        <ul className="space-y-2">
+                                            {[...target.history].reverse().map((h, i) => (
+                                                <li key={i} className="bg-slate-800 border border-slate-700 rounded p-3 text-sm">
+                                                    <div className="text-slate-400 text-xs mb-1">
+                                                        {(TEXT_TYPE_OPTIONS.find(t => t.value === h.type) || {}).label || h.type}
+                                                        {' '}・{' '}
+                                                        {new Date(h.createdAt).toLocaleString('ja-JP')}
+                                                    </div>
+                                                    <div className="whitespace-pre-wrap">{h.body}</div>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                );
+                            })()}
                         </div>
                     )}
                 </div>
