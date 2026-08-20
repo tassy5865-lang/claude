@@ -27,6 +27,11 @@
         const STORAGE_KEY = 'salesPipelineDeals';
         const STATUS_OPTIONS = ['未アプローチ', '提案中', '商談中', '受注', '失注'];
 
+        function todayStr() {
+            const d = new Date();
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+
         function loadDeals() {
             try {
                 const raw = localStorage.getItem(STORAGE_KEY);
@@ -84,6 +89,14 @@
                 addDeal(newCompanyName);
             }
 
+            const sortedDeals = [...deals].sort((a, b) => {
+                if (!a.nextActionDate && !b.nextActionDate) return 0;
+                if (!a.nextActionDate) return 1;
+                if (!b.nextActionDate) return -1;
+                return a.nextActionDate.localeCompare(b.nextActionDate);
+            });
+            const today = todayStr();
+
             return (
                 <div className="min-h-screen text-slate-100 p-6 max-w-4xl mx-auto">
                     <h1 className="text-2xl font-bold mb-6">案件パイプライン</h1>
@@ -108,8 +121,16 @@
                         <p className="text-slate-400 text-sm">案件がまだありません。「+ 案件を追加」から始めましょう。</p>
                     ) : (
                         <ul className="space-y-2">
-                            {deals.map(deal => (
-                                <li key={deal.id} className="bg-slate-800 border border-slate-700 rounded p-3">
+                            {sortedDeals.map(deal => (
+                                <li
+                                    key={deal.id}
+                                    className={
+                                        'rounded p-3 border ' +
+                                        (deal.nextActionDate && deal.nextActionDate <= today
+                                            ? 'bg-rose-950 border-rose-700'
+                                            : 'bg-slate-800 border-slate-700')
+                                    }
+                                >
                                     <div className="flex items-center justify-between mb-2">
                                         <span className="font-medium">{deal.companyName}</span>
                                         <button
@@ -130,6 +151,9 @@
                                             ))}
                                         </select>
                                         <label className="flex items-center gap-1 text-slate-400">
+                                            {deal.nextActionDate && deal.nextActionDate <= today && (
+                                                <span className="text-rose-400 font-semibold mr-1">要フォロー</span>
+                                            )}
                                             次アクション日:
                                             <input
                                                 type="date"
