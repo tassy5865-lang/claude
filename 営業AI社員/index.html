@@ -169,6 +169,7 @@
             }, [model]);
 
             const [activeTab, setActiveTab] = useState('pipeline');
+            const [researchMode, setResearchMode] = useState('leads');
 
             const [composeSelectedDealId, setComposeSelectedDealId] = useState('');
             const [composeManualCompany, setComposeManualCompany] = useState('');
@@ -331,6 +332,12 @@
                             案件パイプライン
                         </button>
                         <button
+                            onClick={() => setActiveTab('research')}
+                            className={'px-4 py-2 text-sm font-semibold border-b-2 -mb-px ' + (activeTab === 'research' ? 'border-indigo-500 text-white' : 'border-transparent text-slate-400 hover:text-slate-200')}
+                        >
+                            案件リサーチ
+                        </button>
+                        <button
                             onClick={() => setActiveTab('compose')}
                             className={'px-4 py-2 text-sm font-semibold border-b-2 -mb-px ' + (activeTab === 'compose' ? 'border-indigo-500 text-white' : 'border-transparent text-slate-400 hover:text-slate-200')}
                         >
@@ -420,6 +427,33 @@
                                 </ul>
                             )}
                         </>
+                    )}
+
+                    {activeTab === 'research' && (
+                        <div>
+                            <div className="flex gap-2 mb-4">
+                                <button
+                                    onClick={() => setResearchMode('leads')}
+                                    className={'px-3 py-1.5 rounded text-sm font-semibold ' + (researchMode === 'leads' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-slate-200')}
+                                >
+                                    リード発掘
+                                </button>
+                                <button
+                                    onClick={() => setResearchMode('individual')}
+                                    className={'px-3 py-1.5 rounded text-sm font-semibold ' + (researchMode === 'individual' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-slate-200')}
+                                >
+                                    個別下調べ
+                                </button>
+                            </div>
+
+                            {researchMode === 'leads' && (
+                                <div className="text-slate-400 text-sm">準備中です。</div>
+                            )}
+
+                            {researchMode === 'individual' && (
+                                <div className="text-slate-400 text-sm">準備中です。</div>
+                            )}
+                        </div>
                     )}
 
                     {activeTab === 'compose' && (
