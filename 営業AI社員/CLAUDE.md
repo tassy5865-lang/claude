@@ -8,7 +8,7 @@ This file provides guidance to Claude Code when working with code in this reposi
 
 ## 技術スタック
 
-単一HTML（index.html）だが、CDN経由でReact 18 + Babel Standalone（JSXをブラウザ内変換）+ Tailwind CSSを使用。サーバーなし、GitHub Pagesでそのまま公開できる。AI機能(営業文作成)はClaude Messages API（`https://api.anthropic.com/v1/messages`）を`fetch`でブラウザから直接呼び出す方式（`anthropic-dangerous-direct-browser-access: true`ヘッダーを付与）。APIキー・使用モデルはユーザーがブラウザ内で入力し、localStorageにのみ保存（キー: `claudeApiKey`, `claudeModel`）。案件リサーチ機能は今後実装予定。
+単一HTML（index.html）だが、CDN経由でReact 18 + Babel Standalone（JSXをブラウザ内変換）+ Tailwind CSSを使用。サーバーなし、GitHub Pagesでそのまま公開できる。AI機能（営業文作成・案件リサーチ）はClaude Messages API（`https://api.anthropic.com/v1/messages`）を`fetch`でブラウザから直接呼び出す方式（`anthropic-dangerous-direct-browser-access: true`ヘッダーを付与）。APIキー・使用モデルはユーザーがブラウザ内で入力し、localStorageにのみ保存（キー: `claudeApiKey`, `claudeModel`）。
 
 ## 現在の状態
 
@@ -18,7 +18,7 @@ This file provides guidance to Claude Code when working with code in this reposi
 - 次アクション日の昇順（未設定は最後）で自動ソート
 - 次アクション日が今日以前（期日超過・当日）の案件は赤系ハイライト+「要フォロー」ラベルで表示（フォローアップリマインダー）
 - データは`localStorage`（キー: `salesPipelineDeals`）にのみ保存、サーバー送信なし
-- 案件データは`researchNotes`・`history`フィールドを持つ。`researchNotes`は今後のリサーチ画面実装時に使用予定（現時点では未使用・常に空）。`history`フィールドは営業文作成タブで使用されている（後述）。
+- 案件データは`researchNotes`・`history`フィールドを持つ。`researchNotes`は案件リサーチタブ（後述）で使用され、`history`フィールドは営業文作成タブで使用されている（後述）。
 - 次アクション日が期日超過でも、ステータスが「受注」「失注」の案件は赤ハイライト・「要フォロー」ラベル・ソート最上位から除外（フォロー不要な確定案件のため）
 
 ### バックアップ・データ損失対策（Phase 1時点の判断）
@@ -34,8 +34,14 @@ This file provides guidance to Claude Code when working with code in this reposi
 - 生成結果は本文（編集可能）と改善アドバイス（プロンプト内で固定見出し「### 改善アドバイス」により分離）の2エリアに分けて表示
 - 「この案件の履歴に保存」で、選択中の案件の`history`配列に生成結果を追記。案件選択時、その案件の過去の生成履歴を一覧表示
 
-### 未実装（今後のカテゴリ）
-- 案件リサーチ画面（リード発掘・個別下調べ、Claude API Web検索連携）
+### 案件リサーチタブ
+- ヘッダーに「案件パイプライン」「案件リサーチ」「営業文作成」の3タブ構成（案件リサーチは中央）。タブ内に「リード発掘」「個別下調べ」の2サブモードを切替ボタンで表示
+- **リード発掘**: 業界・キーワードを入力→Claude API（Web検索ツール`web_search_20250305`）が引き合いそうな候補企業をJSON形式で5〜8社程度リストアップ（会社名+理由）。JSON解析に失敗した場合は生の応答テキストをフォールバック表示。各候補の「+ パイプラインに追加」でワンクリックで新規案件を作成し、理由を`researchNotes`に自動保存
+- **個別下調べ**: 会社名またはURLを入力→Claude API（Web検索`web_search_20250305`+Web取得`web_fetch_20250910`、入力にURLが含まれる場合は該当ページを直接取得）が事業内容・課題・営業上の接点を要約。既存案件を選択して「この案件のリサーチメモに保存」すると、選択案件の`researchNotes`に日付区切りで追記（上書きしない）
+- Web検索・Web取得はユーザーのAnthropic APIキー側で従量課金される機能（トークン費用とは別に検索回数に応じて課金）
+- 営業文作成タブの生成プロンプトには、選択中の案件の`researchNotes`も自動的に含まれる（メモと同様、空なら該当セクションを省略）
+
+計画していた3カテゴリ（案件パイプライン・案件リサーチ・営業文作成）はすべて実装済み。今後の機能追加はユーザーの指示ベースで検討する。
 
 ## 進め方の注意
 
