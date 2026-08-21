@@ -283,22 +283,12 @@ const SITE = {
       {
         tag:"業務改善", status:"公開中",
         title:"AI-OCR",
-        text:"画像・PDFをアップロードし、AI(Gemini)でOCR・文字起こしを行うWebツール。APIキーはブラウザ内保存のみでサーバー送信なし。",
-        tech:"React(CDN) / Tailwind / Gemini API / PDF.js",
+        text:"画像・PDFをアップロードしAI(Gemini)でOCR・文字起こしを行い、その結果を既存のExcel台帳へ自動で振り分け・追記するところまで1つで完結するWebツール。項目マッピングはAIが提案し、テンプレートとして保存・再利用できる。APIキーはブラウザ内保存のみでサーバー送信なし。",
+        tech:"React(CDN) / Tailwind / Gemini API / PDF.js / SheetJS / PapaParse",
         href:"https://tassy5865-lang.github.io/claude/AI-OCR/index.html",
-        before:"紙の帳票やPDFの内容を、目で見ながら手入力で転記していた",
-        after:"画像・PDFをアップロードするだけで、AIが文字起こしを行いテキスト化できるようになった",
-        useCases:["紙の伝票・申込書のデータ化", "手書き資料のテキスト化", "複数ページにまたがる帳票の一括読み取り"]
-      },
-      {
-        tag:"業務改善", status:"公開中",
-        title:"RPA(CSV→Excel 自動振り分け)",
-        text:"AI-OCRが出力したCSVを、既存のExcel台帳データへ自動で振り分け・追記するツール。項目マッピングはAIが提案し、テンプレートとして保存・再利用できる。",
-        tech:"React(CDN) / SheetJS / PapaParse / Gemini API",
-        href:"https://tassy5865-lang.github.io/claude/RPA/index.html",
-        before:"AI-OCRで読み取ったデータを、Excel台帳の該当項目へ手作業で転記していた",
-        after:"項目マッピングをテンプレート化し、CSVを読み込ませるだけで自動的に振り分けられるようになった",
-        useCases:["毎月フォーマットが同じ集計作業の自動化", "複数の担当者間で入力ルールを統一したい場面", "手作業での転記ミスを減らしたい場面"]
+        before:"紙の帳票やPDFの内容を目で見ながら手入力で転記し、さらにExcel台帳の該当項目へも手作業で転記していた",
+        after:"画像・PDFをアップロードするだけでAIが文字起こしを行い、項目マッピングをテンプレート化してExcel台帳への振り分けまで自動化できるようになった",
+        useCases:["紙の伝票・申込書のデータ化", "手書き資料のテキスト化", "毎月フォーマットが同じ集計作業の自動化", "複数の担当者間で入力ルールを統一したい場面"]
       },
       {
         tag:"Web制作", status:"公開中",
