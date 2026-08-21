@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>営業AI社員 - 案件パイプライン</title>
+    <title>営業AI社員</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- React & ReactDOM -->
@@ -130,6 +130,12 @@
             const textBlock = (data.content || []).find(b => b.type === 'text');
             const fullText = textBlock ? textBlock.text : '';
 
+            if (!fullText.trim()) {
+                throw new Error(data.stop_reason === 'refusal'
+                    ? 'AIが生成を拒否しました。内容を変えて再試行してください。'
+                    : 'APIから本文を取得できませんでした。');
+            }
+
             const marker = '### 改善アドバイス';
             const markerIndex = fullText.indexOf(marker);
             if (markerIndex === -1) {
@@ -173,6 +179,12 @@
             const [composeResultBody, setComposeResultBody] = useState('');
             const [composeResultAdvice, setComposeResultAdvice] = useState('');
 
+            useEffect(() => {
+                if (composeSelectedDealId && !deals.some(d => d.id === composeSelectedDealId)) {
+                    setComposeSelectedDealId('');
+                }
+            }, [deals, composeSelectedDealId]);
+
             async function handleGenerate() {
                 setComposeLoading(true);
                 setComposeError('');
@@ -208,7 +220,7 @@
                     body: composeResultBody,
                     createdAt: new Date().toISOString(),
                 };
-                updateDeal(composeSelectedDealId, { history: [...target.history, entry] });
+                updateDeal(composeSelectedDealId, { history: [...(target.history || []), entry] });
             }
 
             function addDeal(companyName) {
@@ -326,14 +338,14 @@
                         </button>
                     </div>
 
+                    {saveError && (
+                        <div className="bg-rose-950 border border-rose-700 text-rose-200 rounded p-3 mb-4 text-sm">
+                            変更を保存できませんでした。プライベートブラウジングモードやストレージ容量の制限が原因の可能性があります。
+                        </div>
+                    )}
+
                     {activeTab === 'pipeline' && (
                         <>
-                            {saveError && (
-                                <div className="bg-rose-950 border border-rose-700 text-rose-200 rounded p-3 mb-4 text-sm">
-                                    変更を保存できませんでした。プライベートブラウジングモードやストレージ容量の制限が原因の可能性があります。
-                                </div>
-                            )}
-
                             <form onSubmit={handleAddSubmit} className="flex gap-2 mb-6">
                                 <input
                                     type="text"
@@ -506,12 +518,12 @@
 
                             {composeSelectedDealId && (() => {
                                 const target = deals.find(d => d.id === composeSelectedDealId);
-                                if (!target || target.history.length === 0) return null;
+                                if (!target || (target.history || []).length === 0) return null;
                                 return (
                                     <div className="mt-6">
                                         <div className="text-sm font-semibold text-slate-400 mb-2">この案件の生成履歴</div>
                                         <ul className="space-y-2">
-                                            {[...target.history].reverse().map((h, i) => (
+                                            {[...(target.history || [])].reverse().map((h, i) => (
                                                 <li key={i} className="bg-slate-800 border border-slate-700 rounded p-3 text-sm">
                                                     <div className="text-slate-400 text-xs mb-1">
                                                         {(TEXT_TYPE_OPTIONS.find(t => t.value === h.type) || {}).label || h.type}
