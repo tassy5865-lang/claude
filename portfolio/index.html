@@ -148,8 +148,11 @@
 
   #cta{ background:linear-gradient(135deg, var(--green), #0F2038); text-align:center; color:#fff; padding:6rem 6vw; }
   #cta h2{ color:#fff; font-size:clamp(1.7rem,4vw,2.5rem); }
-  #cta .btn-primary{ background:#fff; color:var(--green); margin-top:2.2rem; }
+  #cta .hero-ctas{ margin-top:2.2rem; }
+  #cta .btn-primary{ background:#fff; color:var(--green); }
   #cta .btn-primary:hover{ background:#F5F1E8; }
+  #cta .btn-line{ background:transparent; border:1px solid rgba(255,255,255,0.5); color:#fff; padding:1rem 1.8rem; border-radius:8px; font-size:0.92rem; font-weight:600; display:inline-block; transition:background .2s ease, border-color .2s ease; }
+  #cta .btn-line:hover{ background:rgba(255,255,255,0.12); border-color:#fff; }
   #cta .cta-note{ margin-top:1rem; font-size:0.8rem; color:rgba(255,255,255,0.75); }
 
   footer{ background:var(--black); color:#8A8375; padding:2.6rem 6vw; text-align:center; font-size:0.8rem; }
@@ -225,7 +228,7 @@ const SITE = {
     ctaSecondary: { label: "お問い合わせ", href: "#contact" },
     note: "実績は随時追加しています。",
     stats: [
-      { num:"6", unit:"件", label:"公開中の制作実績" },
+      { num:"5", unit:"件", label:"公開中の制作実績" },
       { num:"医療/業務/Web", unit:"", label:"対応領域" },
       { num:"無料", unit:"", label:"すべて体験可能" }
     ]
@@ -316,17 +319,19 @@ const SITE = {
   contact: {
     eyebrow: "contact",
     title: "お気軽にご連絡ください",
-    linkLabel: "Email →",
-    linkHref: "mailto:nexsist88@gmail.com",
-    note: "ご連絡はメールまたはSNSにて承っています。"
+    ctas: [
+      { label: "Email →", href: "mailto:nexsist88@gmail.com" },
+      { label: "公式LINE →", href: "https://lin.ee/WNdDlGb" }
+    ],
+    note: "ご連絡はメールまたは公式LINEにて承っています。"
   },
 
   footer: {
     left: "田代 裕貴<span class=\"role-accent\">(AI・DXコンサル)</span> | 制作実績ポートフォリオ",
     links: [
       { label:"Email", href:"mailto:nexsist88@gmail.com" },
-      { label:"プロフィール", href:"https://tassy5865-lang.github.io/claude/%E8%87%AA%E5%B7%B1%E7%B4%B9%E4%BB%8BHP/index_4.html" },
-      { label:"X (Twitter)", href:"#" }
+      { label:"公式LINE", href:"https://lin.ee/WNdDlGb" },
+      { label:"プロフィール", href:"https://tassy5865-lang.github.io/claude/%E8%87%AA%E5%B7%B1%E7%B4%B9%E4%BB%8BHP/index_4.html" }
     ],
     copyright: "© 2026 田代 裕貴<span class=\"role-accent\">(AI・DXコンサル)</span>"
   }
@@ -443,7 +448,9 @@ document.getElementById('linkout-wrap').innerHTML = `
 document.getElementById('cta-wrap').innerHTML = `
   <div class="eyebrow center" style="color:rgba(255,255,255,0.85);">${SITE.contact.eyebrow}</div>
   <h2 id="contact">${SITE.contact.title}</h2>
-  <a class="btn-primary" href="${SITE.contact.linkHref}">${SITE.contact.linkLabel}</a>
+  <div class="hero-ctas">
+    ${SITE.contact.ctas.map((c,i) => `<a class="${i===0 ? 'btn-primary' : 'btn-line'}"${c.href.startsWith('mailto:') ? '' : ' target="_blank" rel="noopener"'} href="${c.href}">${c.label}</a>`).join('')}
+  </div>
   <div class="cta-note">${SITE.contact.note}</div>
 `;
 
