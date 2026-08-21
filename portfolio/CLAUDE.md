@@ -31,6 +31,6 @@
 - 各カードの「詳しく見る」ボタンから、Before/After・活用シーン(`useCases`)を表示するモーダル(`#work-modal`)が開く。参考サイト(https://sasukewebjob-ai.github.io/portfolio/ )のモーダル構造(単一モーダルをクリックのたびに`openModal`で内容だけ差し替える方式)を踏襲しているが、見出し文言・タブ構成は独自に作成。
 - 配色は `自己紹介HP` と統一(ネイビー×スカイブルー、CSS変数は同じ命名: `--gold`=ネイビー, `--gold-soft`=スカイブルー)。
 - `contact.ctas` と `footer.links` は Email(`nexsist88@gmail.com`)と公式LINE(`https://lin.ee/WNdDlGb`)の2本立て。`contact.ctas`は配列で、1件目が塗りつぶしボタン(`.btn-primary`)、2件目以降が枠線ボタン(`.btn-line`)として自動描画される(`i===0`判定、`.hero-ctas`クラスを流用)。連絡導線を増やす場合はこの配列に追加するだけでよい。
-- CONTACTセクションのボタン下に、公式LINEのQRコード画像(`LINE_QR_DATA_URI`変数、`SITE`オブジェクトの外・スクリプト冒頭に定義)を表示。Pythonの`qrcode`ライブラリで`https://lin.ee/WNdDlGb`から生成したPNGをbase64データURI化したもの。LINEのURL自体を変更する場合はQR画像も作り直す必要がある(`contact.qr.caption`はキャプション文言のみ`SITE`側で編集可能)。
+- CONTACTセクションの「公式LINE」ボタンをクリックすると、ボタン下のQRコード(`LINE_QR_DATA_URI`変数、`SITE`オブジェクトの外・スクリプト冒頭に定義)がトグル表示される(初期状態は非表示、`.cta-qr.is-visible`で表示)。QR画像はPythonの`qrcode`ライブラリで`https://lin.ee/WNdDlGb`から生成したPNGをbase64データURI化したもの。ボタン自体は通常どおりLINEへのリンクとしても機能する(スマホではLINEアプリが開く想定)。`contact.ctas`の該当エントリに`showQrOnClick:true`を付けると同様の挙動になる。LINEのURL自体を変更する場合はQR画像も作り直す必要がある(`contact.qr.caption`はキャプション文言のみ`SITE`側で編集可能)。
 - `#hero` の背景はグラデーションに加え、ノードネットワーク調のSVG(インラインdata URI、グロー用`<filter>`込み)を重ねている。ノード座標を変える場合はCSS内の`#hero{ background-image: ... }`を直接編集する(`SITE`オブジェクトの対象外)。
 - `linkout.cardLinkHref` と `footer.links` の「プロフィール」リンクは `自己紹介HP` の公開URLを直接指しており、プロフィール本文はそちらに一本化して重複を避けている。

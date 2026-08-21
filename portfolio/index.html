@@ -154,7 +154,8 @@
   #cta .btn-line{ background:transparent; border:1px solid rgba(255,255,255,0.5); color:#fff; padding:1rem 1.8rem; border-radius:8px; font-size:0.92rem; font-weight:600; display:inline-block; transition:background .2s ease, border-color .2s ease; }
   #cta .btn-line:hover{ background:rgba(255,255,255,0.12); border-color:#fff; }
   #cta .cta-note{ margin-top:1rem; font-size:0.8rem; color:rgba(255,255,255,0.75); }
-  #cta .cta-qr{ display:inline-flex; flex-direction:column; align-items:center; gap:0.6rem; margin-top:2.2rem; }
+  #cta .cta-qr{ display:none; flex-direction:column; align-items:center; gap:0.6rem; margin-top:2.2rem; }
+  #cta .cta-qr.is-visible{ display:inline-flex; }
   #cta .cta-qr img{ width:120px; height:120px; background:#fff; border-radius:8px; padding:8px; }
   #cta .cta-qr span{ font-size:0.75rem; color:rgba(255,255,255,0.75); }
 
@@ -324,7 +325,7 @@ const SITE = {
     title: "お気軽にご連絡ください",
     ctas: [
       { label: "Email →", href: "mailto:nexsist88@gmail.com" },
-      { label: "公式LINE →", href: "https://lin.ee/WNdDlGb" }
+      { label: "公式LINE →", href: "https://lin.ee/WNdDlGb", showQrOnClick: true }
     ],
     note: "ご連絡はメールまたは公式LINEにて承っています。",
     qr: { caption: "スマホでスキャンして公式LINEを友だち追加" }
@@ -456,14 +457,17 @@ document.getElementById('cta-wrap').innerHTML = `
   <div class="eyebrow center" style="color:rgba(255,255,255,0.85);">${SITE.contact.eyebrow}</div>
   <h2 id="contact">${SITE.contact.title}</h2>
   <div class="hero-ctas">
-    ${SITE.contact.ctas.map((c,i) => `<a class="${i===0 ? 'btn-primary' : 'btn-line'}"${c.href.startsWith('mailto:') ? '' : ' target="_blank" rel="noopener"'} href="${c.href}">${c.label}</a>`).join('')}
+    ${SITE.contact.ctas.map((c,i) => `<a class="${i===0 ? 'btn-primary' : 'btn-line'}"${c.href.startsWith('mailto:') ? '' : ' target="_blank" rel="noopener"'}${c.showQrOnClick ? ' id="line-cta-btn"' : ''} href="${c.href}">${c.label}</a>`).join('')}
   </div>
   <div class="cta-note">${SITE.contact.note}</div>
-  <div class="cta-qr">
+  <div class="cta-qr" id="line-cta-qr">
     <img src="${LINE_QR_DATA_URI}" alt="公式LINE QRコード" />
     <span>${SITE.contact.qr.caption}</span>
   </div>
 `;
+document.getElementById('line-cta-btn')?.addEventListener('click', () => {
+  document.getElementById('line-cta-qr').classList.toggle('is-visible');
+});
 
 document.getElementById('footer-wrap').innerHTML = `
   <div>${SITE.footer.left}</div>
