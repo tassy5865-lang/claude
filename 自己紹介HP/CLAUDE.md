@@ -34,6 +34,7 @@
 
 ## 注意点
 
-- `contact.linkHref` と `footer.links` のメールアドレスは `hello@example.com` のプレースホルダーのまま。実際のメールアドレス・SNSリンクへの差し替えが未対応。
+- `contact.ctas`(Email/公式LINE)と`footer.links`の連絡先は実際のアドレス/URLに設定済み(`nexsist88@gmail.com` / `https://lin.ee/WNdDlGb`)。footer.linksのX(Twitter)/NoteのみURL未設定(`#`のまま)。
+- CTAセクションの公式LINEボタンはクリックでQRコード(`LINE_QR_DATA_URI`、data URI埋め込み)をトグル表示する。ボタン自体はlin.eeへのリンクとしても機能する。
 - 画像は `profile.avatarImage` にURLを入れると背景画像として表示される(現状は空でグラデーションアバター)。
 - レスポンシブは `@media (max-width:860px)` 以下で対応済み。

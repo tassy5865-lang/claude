@@ -221,9 +221,16 @@
 
   #cta{ background:linear-gradient(135deg, var(--green), #0F2038); text-align:center; color:#fff; padding:6rem 6vw; }
   #cta h2{ color:#fff; font-size:clamp(1.7rem,4vw,2.5rem); }
-  #cta .btn-primary{ background:#fff; color:var(--green); margin-top:2.2rem; }
+  #cta .hero-ctas{ margin-top:2.2rem; }
+  #cta .btn-primary{ background:#fff; color:var(--green); }
   #cta .btn-primary:hover{ background:#F5F1E8; }
+  #cta .btn-line{ background:transparent; border:1px solid rgba(255,255,255,0.5); color:#fff; padding:1rem 1.8rem; border-radius:8px; font-size:0.92rem; font-weight:600; display:inline-block; transition:background .2s ease, border-color .2s ease; }
+  #cta .btn-line:hover{ background:rgba(255,255,255,0.12); border-color:#fff; }
   #cta .cta-note{ margin-top:1rem; font-size:0.8rem; color:rgba(255,255,255,0.75); }
+  #cta .cta-qr{ display:none; flex-direction:column; align-items:center; gap:0.6rem; margin-top:2.2rem; }
+  #cta .cta-qr.is-visible{ display:inline-flex; }
+  #cta .cta-qr img{ width:120px; height:120px; background:#fff; border-radius:8px; padding:8px; }
+  #cta .cta-qr span{ font-size:0.75rem; color:rgba(255,255,255,0.75); }
 
   footer{ background:var(--black); color:#8A8375; padding:2.6rem 6vw; text-align:center; font-size:0.8rem; }
   footer .flinks{ margin-top:0.8rem; display:flex; gap:1.4rem; justify-content:center; }
@@ -464,15 +471,19 @@ const SITE = {
   contact: {
     eyebrow: "contact",
     title: "お気軽にご連絡ください",
-    linkLabel: "Email →",
-    linkHref: "mailto:nexsist88@gmail.com",
-    note: "ご連絡はメールまたはSNSにて承っています。"
+    ctas: [
+      { label: "Email →", href: "mailto:nexsist88@gmail.com" },
+      { label: "公式LINE →", href: "https://lin.ee/WNdDlGb", showQrOnClick: true }
+    ],
+    note: "ご連絡はメールまたは公式LINEにて承っています。",
+    qr: { caption: "スマホでスキャンして公式LINEを友だち追加" }
   },
 
   footer: {
     left: "田代 裕貴<span class=\"role-accent\">(AI・DXコンサル)</span> | AI活用・業務改善 / 臨床工学技士",
     links: [
       { label:"Email", href:"mailto:nexsist88@gmail.com" },
+      { label:"公式LINE", href:"https://lin.ee/WNdDlGb" },
       { label:"X (Twitter)", href:"#" },
       { label:"Note", href:"#" }
     ],
@@ -480,6 +491,9 @@ const SITE = {
   }
 };
 /* ▲▲▲ 編集はここまで。以下は描画ロジックなので触る必要はありません ▲▲▲ */
+
+/* 公式LINE(https://lin.ee/WNdDlGb)のQRコード画像。SITEオブジェクトの対象外(長いdata URIのためここに分離)。 */
+const LINE_QR_DATA_URI = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQ4AAAEOCAIAAAD3027yAAAEjUlEQVR4nO3dO3LbMBRAUTuTXgtMmXWlzAK1AqZNxdwJBQOgzmlj/RjfgWeeAH4ex/EB/Mu3f/4EIBWorCqQSAUSqUAiFUikAolUIJEKJN/P//nx68fHvTx//v7vz3vlsbOcv+crHkt+3nHXyqoCiVQgkQokUoFEKpBIBRKpQCIVSKQCr5jWz5oEz5oiX/lEs67GmlPz5+1+N6wqkEgFEqlAIhVIpAKJVCCRCiRSgUQqMH5aP2uKvON+8Svvec15/P2u8zmrCiRSgUQqkEgFEqlAIhVIpAKJVCCRCsye1u9o1jn554+98sxXXpe/WVUgkQokUoFEKpBIBRKpQCIVSKQCiVQgMa3/Ijve856/WVUgkQokUoFEKpBIBRKpQCIVSKQCiVRg9rR+x33ba+6eX/M9v9vvhlUFEqlAIhVIpAKJVCCRCiRSgUQqkEgFxk/r7Qh/lfudV/+43WkBVhVIpAKJVCCRCiRSgUQqkEgFEqlAIhVIPo/jaD/JwJn6rGc+t+O3BMaxqkAiFUikAolUIJEKJFKBRCqQSAUSqcAr9tbveMr6rPn0jnPxWf8Lzw1P/reqQCIVSKQCiVQgkQokUoFEKpBIBRKpwNr3rR832571uuPOfr8yYx43vX4s+XnHvSurCiRSgUQqkEgFEqlAIhVIpAKJVCCRCrziJPwd96mPs+bke9a7ek6amp+ztx4m8wcYJFKBRCqQSAUSqUAiFUikAolUYPbe+jXntTueZr/mXQNmuXI1rjzWqgKJVCCRCiRSgUQqkEgFEqlAIhVIpALj99bPutv6uTX3qb/bPeDPzfrNcd96GM4fYJBIBRKpQCIVSKQCiVQgkQokUoFX7K1fc1675gnt42bqs67Vjh7uWw9z+QMMEqlAIhVIpAKJVCCRCiRSgUQqMPu+9VfseM/7d9uX/26nI1hVIJEKJFKBRCqQSAUSqUAiFUikAolU4BXT+jWtubd+x9Pd17ySa15nqwokUoFEKpBIBRKpQCIVSKQCiVQgkQrsvLee3U8auGLNk/+tKpBIBRKpQCIVSKQCiVQgkQokUoFEKnDfvfXjzNp5/27n5D82fF2rCiRSgUQqkEgFEqlAIhVIpAKJVCCRCiTf77cz+9yVSfCaJ8PvOPnekVUFEqlAIhVIpAKJVCCRCiRSgUQqkEgFXjGtP7fmRPbK1HzHu7yv+br3Y1UBqcDrWFUgkQokUoFEKpBIBRKpQCIVGD+tP2dOvPu95+93ssIVVhVIpAKJVCCRCiRSgUQqkEgFEqlAIhWYPa3na4w7D2DN7wE8hp2dcM6qAolUIJEKJFKBRCqQSAUSqUAiFUikAolp/RftJr8yNb8yYx53Tv5z2DOPu+PAlWe2qkAiFUikAolUIJEKJFKBRCqQSAUSqcDsaf2O9zWfNQk+d7/98efGfTvhCqsKJFKBRCqQSAUSqUAiFUikAolUIJEKjJ/W3+++5rN2de/oOWwuvub3HqwqkEgFEqlAIhVIpAKJVCCRCiRSgUQqkHwex9F+Et6aVQUSqUAiFUikAolUIJEKJFKBRCqQSAU+ij/Uz34QTvo/LwAAAABJRU5ErkJggg==";
 
 document.getElementById('page-title').textContent = SITE.meta.title;
 
@@ -661,9 +675,18 @@ document.getElementById('faq-wrap').innerHTML = `
 document.getElementById('cta-wrap').innerHTML = `
   <div class="eyebrow center" style="color:rgba(255,255,255,0.85);">${SITE.contact.eyebrow}</div>
   <h2 id="contact">${SITE.contact.title}</h2>
-  <a class="btn-primary" href="${SITE.contact.linkHref}">${SITE.contact.linkLabel}</a>
+  <div class="hero-ctas">
+    ${SITE.contact.ctas.map((c,i) => `<a class="${i===0 ? 'btn-primary' : 'btn-line'}"${c.href.startsWith('mailto:') ? '' : ' target="_blank" rel="noopener"'}${c.showQrOnClick ? ' id="line-cta-btn"' : ''} href="${c.href}">${c.label}</a>`).join('')}
+  </div>
   <div class="cta-note">${SITE.contact.note}</div>
+  <div class="cta-qr" id="line-cta-qr">
+    <img src="${LINE_QR_DATA_URI}" alt="公式LINE QRコード" />
+    <span>${SITE.contact.qr.caption}</span>
+  </div>
 `;
+document.getElementById('line-cta-btn')?.addEventListener('click', () => {
+  document.getElementById('line-cta-qr').classList.toggle('is-visible');
+});
 
 document.getElementById('footer-wrap').innerHTML = `
   <div>${SITE.footer.left}</div>
