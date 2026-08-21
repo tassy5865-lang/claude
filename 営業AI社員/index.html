@@ -85,7 +85,7 @@
             { value: 'followup', label: 'フォローアップ・返信文' },
         ];
 
-        async function generateSalesText({ apiKey, model, companyName, textType, tone, dealMemo, closedDeals }) {
+        async function generateSalesText({ apiKey, model, companyName, textType, tone, dealMemo, dealResearchNotes, closedDeals }) {
             const textTypeLabel = (TEXT_TYPE_OPTIONS.find(t => t.value === textType) || {}).label || textType;
 
             let prompt = 'あなたは受託・フリーランスで開発の仕事をしている営業担当です。以下の条件で営業文を作成してください。\n\n';
@@ -96,6 +96,9 @@
             }
             if (dealMemo && dealMemo.trim()) {
                 prompt += `\n参考情報(この案件のメモ):\n${dealMemo.trim()}\n`;
+            }
+            if (dealResearchNotes && dealResearchNotes.trim()) {
+                prompt += `\n参考情報(この案件のリサーチメモ):\n${dealResearchNotes.trim()}\n`;
             }
             if (closedDeals && closedDeals.length > 0) {
                 prompt += '\n過去の受注・失注案件の傾向(参考):\n';
@@ -329,6 +332,7 @@
                         textType: composeTextType,
                         tone: composeTone,
                         dealMemo: selectedDeal ? selectedDeal.memo : '',
+                        dealResearchNotes: selectedDeal ? selectedDeal.researchNotes : '',
                         closedDeals,
                     });
                     setComposeResultBody(result.body);
