@@ -147,6 +147,55 @@
             };
         }
 
+        async function researchCompany({ apiKey, model, query }) {
+            let prompt = 'あなたは受託・フリーランスで開発の仕事をしている営業担当のリサーチ担当です。';
+            prompt += '以下の会社について、Web検索を使って調査し、営業アプローチの参考になるよう要約してください。\n\n';
+            prompt += `調査対象: ${query}\n\n`;
+            prompt += '出力には以下を含めてください:\n';
+            prompt += '- 事業内容の概要\n';
+            prompt += '- 抱えていそうな課題・ニーズ\n';
+            prompt += '- 営業上の接点になりそうな情報(採用状況、最近のニュース、技術スタックなど)\n';
+            prompt += '前置きや断り書きは不要です。箇条書き中心で簡潔にまとめてください。';
+
+            const response = await fetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': apiKey,
+                    'anthropic-version': '2023-06-01',
+                    'anthropic-dangerous-direct-browser-access': 'true',
+                },
+                body: JSON.stringify({
+                    model: model,
+                    max_tokens: 4096,
+                    tools: [
+                        { type: 'web_search_20250305', name: 'web_search', max_uses: 5 },
+                        { type: 'web_fetch_20250910', name: 'web_fetch', max_uses: 5 },
+                    ],
+                    messages: [{ role: 'user', content: prompt }],
+                }),
+            });
+
+            if (!response.ok) {
+                const errBody = await response.text();
+                throw new Error(`API呼び出しに失敗しました (${response.status}): ${errBody}`);
+            }
+
+            const data = await response.json();
+            const text = (data.content || [])
+                .filter(b => b.type === 'text')
+                .map(b => b.text)
+                .join('\n')
+                .trim();
+
+            if (!text) {
+                throw new Error(data.stop_reason === 'refusal'
+                    ? 'AIが調査を拒否しました。内容を変えて再試行してください。'
+                    : 'APIから調査結果を取得できませんでした。');
+            }
+            return text;
+        }
+
         function App() {
             const [deals, setDeals] = useState(loadDeals);
             const [newCompanyName, setNewCompanyName] = useState('');
@@ -170,6 +219,18 @@
 
             const [activeTab, setActiveTab] = useState('pipeline');
             const [researchMode, setResearchMode] = useState('leads');
+
+            const [researchQuery, setResearchQuery] = useState('');
+            const [researchLoading, setResearchLoading] = useState(false);
+            const [researchError, setResearchError] = useState('');
+            const [researchResultText, setResearchResultText] = useState('');
+            const [researchSaveDealId, setResearchSaveDealId] = useState('');
+
+            useEffect(() => {
+                if (researchSaveDealId && !deals.some(d => d.id === researchSaveDealId)) {
+                    setResearchSaveDealId('');
+                }
+            }, [deals, researchSaveDealId]);
 
             const [composeSelectedDealId, setComposeSelectedDealId] = useState('');
             const [composeManualCompany, setComposeManualCompany] = useState('');
@@ -222,6 +283,29 @@
                     createdAt: new Date().toISOString(),
                 };
                 updateDeal(composeSelectedDealId, { history: [...(target.history || []), entry] });
+            }
+
+            async function handleResearchIndividual() {
+                setResearchLoading(true);
+                setResearchError('');
+                try {
+                    const text = await researchCompany({ apiKey, model, query: researchQuery });
+                    setResearchResultText(text);
+                } catch (e) {
+                    setResearchError(e.message || '調査に失敗しました');
+                } finally {
+                    setResearchLoading(false);
+                }
+            }
+
+            function saveResearchNotes() {
+                if (!researchSaveDealId || !researchResultText) return;
+                const target = deals.find(d => d.id === researchSaveDealId);
+                if (!target) return;
+                const dateLabel = new Date().toLocaleDateString('ja-JP');
+                const entry = `[${dateLabel}]\n${researchResultText}`;
+                const merged = target.researchNotes ? `${target.researchNotes}\n\n---\n${entry}` : entry;
+                updateDeal(researchSaveDealId, { researchNotes: merged });
             }
 
             function addDeal(companyName) {
@@ -451,7 +535,61 @@
                             )}
 
                             {researchMode === 'individual' && (
-                                <div className="text-slate-400 text-sm">準備中です。</div>
+                                <div>
+                                    <div className="mb-4">
+                                        <label className="block text-sm text-slate-400 mb-1">会社名またはURL</label>
+                                        <input
+                                            type="text"
+                                            value={researchQuery}
+                                            onChange={e => setResearchQuery(e.target.value)}
+                                            placeholder="例: 株式会社〇〇 または https://example.com"
+                                            className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
+                                        />
+                                    </div>
+
+                                    <button
+                                        onClick={handleResearchIndividual}
+                                        disabled={!apiKey || !researchQuery.trim() || researchLoading}
+                                        className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-sm font-semibold px-4 py-2 rounded mb-4"
+                                    >
+                                        {researchLoading ? '調査中...' : '調査する'}
+                                    </button>
+                                    {!apiKey && (
+                                        <p className="text-slate-500 text-xs mb-4">APIキーが未設定です。右上の設定から入力してください。</p>
+                                    )}
+
+                                    {researchError && (
+                                        <div className="bg-rose-950 border border-rose-700 text-rose-200 rounded p-3 mb-4 text-sm">
+                                            {researchError}
+                                        </div>
+                                    )}
+
+                                    {researchResultText && (
+                                        <div className="mb-4">
+                                            <div className="bg-slate-800 border border-slate-700 rounded p-3 text-sm text-slate-300 whitespace-pre-wrap mb-2">
+                                                {researchResultText}
+                                            </div>
+                                            <label className="block text-sm text-slate-400 mb-1">この結果を保存する案件</label>
+                                            <select
+                                                value={researchSaveDealId}
+                                                onChange={e => setResearchSaveDealId(e.target.value)}
+                                                className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm mb-2"
+                                            >
+                                                <option value="">選択してください</option>
+                                                {deals.map(d => (
+                                                    <option key={d.id} value={d.id}>{d.companyName}</option>
+                                                ))}
+                                            </select>
+                                            <button
+                                                onClick={saveResearchNotes}
+                                                disabled={!researchSaveDealId}
+                                                className="bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 disabled:text-slate-600 text-white text-sm font-semibold px-4 py-2 rounded"
+                                            >
+                                                この案件のリサーチメモに保存
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
                             )}
                         </div>
                     )}
