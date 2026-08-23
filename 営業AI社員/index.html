@@ -57,15 +57,15 @@
         }
 
         const MODEL_PRESETS = [
-            { label: 'Claude Sonnet 5(バランス重視)', value: 'claude-sonnet-5' },
-            { label: 'Claude Opus 5(最高品質)', value: 'claude-opus-5' },
-            { label: 'Claude Haiku 4.5(最安)', value: 'claude-haiku-4-5' },
+            { label: 'Gemini Flash(標準・推奨)', value: 'gemini-flash-latest' },
+            { label: 'Gemini Flash-Lite(高速・低コスト)', value: 'gemini-flash-lite-latest' },
+            { label: 'Gemini Pro(高精度)', value: 'gemini-pro-latest' },
         ];
-        const DEFAULT_MODEL = 'claude-sonnet-5';
+        const DEFAULT_MODEL = 'gemini-flash-latest';
 
         function loadApiKey() {
             try {
-                return localStorage.getItem('claudeApiKey') || '';
+                return localStorage.getItem('geminiApiKey') || '';
             } catch (e) {
                 return '';
             }
@@ -73,7 +73,7 @@
 
         function loadModel() {
             try {
-                return localStorage.getItem('claudeModel') || DEFAULT_MODEL;
+                return localStorage.getItem('geminiModel') || DEFAULT_MODEL;
             } catch (e) {
                 return DEFAULT_MODEL;
             }
@@ -289,11 +289,11 @@
             const [showSettings, setShowSettings] = useState(false);
 
             useEffect(() => {
-                try { localStorage.setItem('claudeApiKey', apiKey); } catch (e) {}
+                try { localStorage.setItem('geminiApiKey', apiKey); } catch (e) {}
             }, [apiKey]);
 
             useEffect(() => {
-                try { localStorage.setItem('claudeModel', model); } catch (e) {}
+                try { localStorage.setItem('geminiModel', model); } catch (e) {}
             }, [model]);
 
             const [activeTab, setActiveTab] = useState('pipeline');
@@ -494,12 +494,12 @@
                         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50" onClick={() => setShowSettings(false)}>
                             <div className="bg-slate-800 border border-slate-600 rounded p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
                                 <h2 className="text-lg font-bold mb-4">API設定</h2>
-                                <label className="block text-sm text-slate-400 mb-1">Claude APIキー</label>
+                                <label className="block text-sm text-slate-400 mb-1">Gemini APIキー</label>
                                 <input
                                     type="password"
                                     value={apiKey}
                                     onChange={e => setApiKey(e.target.value)}
-                                    placeholder="sk-ant-..."
+                                    placeholder="AIza..."
                                     className="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 text-sm mb-4 focus:outline-none focus:border-indigo-500"
                                 />
                                 <label className="block text-sm text-slate-400 mb-1">モデル</label>
