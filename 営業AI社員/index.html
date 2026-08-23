@@ -146,75 +146,39 @@
             };
         }
 
-        async function callClaudeWithTools({ apiKey, model, prompt, tools, maxTokens }) {
-            const headers = {
-                'Content-Type': 'application/json',
-                'x-api-key': apiKey,
-                'anthropic-version': '2023-06-01',
-                'anthropic-dangerous-direct-browser-access': 'true',
-            };
-            let messages = [{ role: 'user', content: prompt }];
-            let data;
-            let continuations = 0;
-            const MAX_CONTINUATIONS = 3;
-            while (true) {
-                const response = await fetch('https://api.anthropic.com/v1/messages', {
-                    method: 'POST',
-                    headers,
-                    body: JSON.stringify({ model: model, max_tokens: maxTokens, tools: tools, messages: messages }),
-                });
-
-                if (!response.ok) {
-                    const errBody = await response.text();
-                    throw new Error(`API呼び出しに失敗しました (${response.status}): ${errBody}`);
-                }
-
-                data = await response.json();
-                if (data.stop_reason === 'pause_turn' && continuations < MAX_CONTINUATIONS) {
-                    messages = [...messages, { role: 'assistant', content: data.content }];
-                    continuations++;
-                    continue;
-                }
-                break;
-            }
-            return data;
-        }
-
         async function researchCompany({ apiKey, model, query }) {
             let prompt = 'あなたは受託・フリーランスで開発の仕事をしている営業担当のリサーチ担当です。';
-            prompt += '以下の会社について、Web検索を使って調査し、営業アプローチの参考になるよう要約してください。\n\n';
+            prompt += 'あなたが学習時点で知っている情報の範囲で、以下の会社について営業アプローチの参考になるよう要約してください。\n';
+            prompt += 'あなたはインターネットに接続できないため、最新情報の確認や実在確認はできません。知らない場合や自信がない場合は、推測であることを明記するか、正直に「情報が見つかりませんでした」と書いてください。\n\n';
             prompt += `調査対象: ${query}\n\n`;
-            prompt += '調査対象がURLの場合は、Web取得ツールでそのページの内容を直接確認したうえで要約に反映してください。\n';
             prompt += '出力には以下を含めてください:\n';
             prompt += '- 事業内容の概要\n';
             prompt += '- 抱えていそうな課題・ニーズ\n';
-            prompt += '- 営業上の接点になりそうな情報(採用状況、最近のニュース、技術スタックなど)\n';
-            prompt += '前置きや断り書きは不要です。箇条書き中心で簡潔にまとめてください。';
+            prompt += '- 営業上の接点になりそうな情報\n';
+            prompt += '前置きや断り書き(上記の免責事項以外)は不要です。箇条書き中心で簡潔にまとめてください。';
 
-            const data = await callClaudeWithTools({
-                apiKey,
-                model,
-                prompt,
-                maxTokens: 4096,
-                tools: [
-                    { type: 'web_search_20250305', name: 'web_search', max_uses: 5 },
-                    { type: 'web_fetch_20250910', name: 'web_fetch', max_uses: 5 },
-                ],
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                }),
             });
 
-            const text = (data.content || [])
-                .filter(b => b.type === 'text')
-                .map(b => b.text)
-                .join('\n')
-                .trim();
-
-            if (data.stop_reason === 'pause_turn') {
-                const note = '\n\n[注意: 検索回数の上限に達したため、調査が完了しないまま打ち切られました。結果は不完全な可能性があります。]';
-                return (text || '(調査結果を取得できませんでした)') + note;
+            if (!response.ok) {
+                const errBody = await response.text();
+                throw new Error(`API呼び出しに失敗しました (${response.status}): ${errBody}`);
             }
 
+            const data = await response.json();
+            const candidate = (data.candidates || [])[0];
+            const text = candidate && candidate.content && candidate.content.parts
+                ? candidate.content.parts.map(p => p.text || '').join('').trim()
+                : '';
+
             if (!text) {
-                throw new Error(data.stop_reason === 'refusal'
+                throw new Error(candidate && candidate.finishReason === 'SAFETY'
                     ? 'AIが調査を拒否しました。内容を変えて再試行してください。'
                     : 'APIから調査結果を取得できませんでした。');
             }
@@ -223,40 +187,54 @@
 
         async function findLeadCandidates({ apiKey, model, keywords }) {
             let prompt = 'あなたは受託・フリーランスで開発の仕事をしている営業担当です。';
-            prompt += 'Web検索を使って、以下の条件に合いそうな新規営業先の候補企業を5〜8社程度探してください。\n\n';
-            prompt += `条件・キーワード: ${keywords}\n\n`;
-            prompt += '出力は必ず、説明文を一切含めず、以下の形式のJSON配列のみにしてください:\n';
-            prompt += '[{"companyName": "会社名", "reason": "候補として挙げた理由(1〜2文)"}, ...]';
+            prompt += 'あなたが学習時点で知っている情報の範囲で、以下の条件に合いそうな新規営業先の候補企業を5〜8社程度、思いつく限り挙げてください。\n';
+            prompt += 'あなたはインターネットに接続できないため、実在確認や最新の企業状況は確認できません。実在するかどうか確信が持てない場合でも、条件に近そうな候補として挙げて構いません。\n\n';
+            prompt += `条件・キーワード: ${keywords}`;
 
-            const data = await callClaudeWithTools({
-                apiKey,
-                model,
-                prompt,
-                maxTokens: 4096,
-                tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 5 }],
+            const schema = {
+                type: 'ARRAY',
+                items: {
+                    type: 'OBJECT',
+                    properties: {
+                        companyName: { type: 'STRING' },
+                        reason: { type: 'STRING' },
+                    },
+                    required: ['companyName', 'reason'],
+                },
+            };
+
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                    generationConfig: {
+                        responseMimeType: 'application/json',
+                        responseSchema: schema,
+                    },
+                }),
             });
 
-            const fullText = (data.content || [])
-                .filter(b => b.type === 'text')
-                .map(b => b.text)
-                .join('\n')
-                .trim();
+            if (!response.ok) {
+                const errBody = await response.text();
+                throw new Error(`API呼び出しに失敗しました (${response.status}): ${errBody}`);
+            }
+
+            const data = await response.json();
+            const candidate = (data.candidates || [])[0];
+            const fullText = candidate && candidate.content && candidate.content.parts
+                ? candidate.content.parts.map(p => p.text || '').join('').trim()
+                : '';
 
             if (!fullText) {
-                throw new Error(data.stop_reason === 'refusal'
+                throw new Error(candidate && candidate.finishReason === 'SAFETY'
                     ? 'AIが調査を拒否しました。内容を変えて再試行してください。'
-                    : data.stop_reason === 'pause_turn'
-                        ? '検索回数の上限に達したため、候補を取得できませんでした。キーワードを絞って再試行してください。'
-                        : 'APIから候補を取得できませんでした。');
+                    : 'APIから候補を取得できませんでした。');
             }
 
-            const start = fullText.indexOf('[');
-            const end = fullText.lastIndexOf(']');
-            if (start === -1 || end === -1 || end < start) {
-                return { candidates: null, rawText: fullText };
-            }
             try {
-                const parsed = JSON.parse(fullText.slice(start, end + 1));
+                const parsed = JSON.parse(fullText);
                 if (!Array.isArray(parsed)) {
                     return { candidates: null, rawText: fullText };
                 }
@@ -648,6 +626,10 @@
                                 >
                                     個別下調べ
                                 </button>
+                            </div>
+
+                            <div className="bg-amber-950 border border-amber-700 text-amber-200 rounded p-3 mb-4 text-sm">
+                                ⚠️ この機能はWeb検索を行いません。AIの学習知識のみに基づく推測です。情報が古い・不正確な場合や、候補企業が実在しない場合があります。必ずご自身で最新情報・実在確認を行ってください。
                             </div>
 
                             {researchMode === 'leads' && (
