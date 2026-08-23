@@ -398,7 +398,7 @@
                     status: STATUS_OPTIONS[0],
                     nextActionDate: '',
                     memo: '',
-                    researchNotes: candidate.reason || '',
+                    researchNotes: candidate.reason ? `[AIの学習知識に基づく候補・実在未確認]\n${candidate.reason}` : '',
                     history: [],
                     createdAt: new Date().toISOString(),
                 };
@@ -629,7 +629,7 @@
                             </div>
 
                             <div className="bg-amber-950 border border-amber-700 text-amber-200 rounded p-3 mb-4 text-sm">
-                                ⚠️ この機能はWeb検索を行いません。AIの学習知識のみに基づく推測です。情報が古い・不正確な場合や、候補企業が実在しない場合があります。必ずご自身で最新情報・実在確認を行ってください。
+                                ⚠️ この機能はWeb検索を行いません。AIの学習知識のみに基づく推測です。情報が古い・不正確な場合や、候補企業が実在しない場合があります。URLを入力してもページの内容は読み取れません。必ずご自身で最新情報・実在確認を行ってください。
                             </div>
 
                             {researchMode === 'leads' && (
@@ -702,12 +702,12 @@
                             {researchMode === 'individual' && (
                                 <div>
                                     <div className="mb-4">
-                                        <label className="block text-sm text-slate-400 mb-1">会社名またはURL</label>
+                                        <label className="block text-sm text-slate-400 mb-1">会社名</label>
                                         <input
                                             type="text"
                                             value={researchQuery}
                                             onChange={e => setResearchQuery(e.target.value)}
-                                            placeholder="例: 株式会社〇〇 または https://example.com"
+                                            placeholder="例: 株式会社〇〇"
                                             className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
                                         />
                                     </div>
