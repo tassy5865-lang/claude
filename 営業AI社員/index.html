@@ -22,7 +22,7 @@
     <script type="text/babel">
         /** @jsx React.createElement */
         /** @jsxFrag React.Fragment */
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useMemo, useRef } = React;
 
         const STORAGE_KEY = 'salesPipelineDeals';
         const STATUS_OPTIONS = ['未アプローチ', '提案中', '商談中', '受注', '失注'];
@@ -35,10 +35,15 @@
         function loadDeals() {
             try {
                 const raw = localStorage.getItem(STORAGE_KEY);
-                return raw ? JSON.parse(raw) : [];
+                if (!raw) return [];
+                const parsed = JSON.parse(raw);
+                if (!Array.isArray(parsed)) {
+                    throw new Error('保存データの形式が不正です');
+                }
+                return parsed;
             } catch (e) {
                 console.error('案件データの読み込みに失敗しました', e);
-                return [];
+                return null;
             }
         }
 
@@ -56,12 +61,47 @@
             return status === '受注' || status === '失注';
         }
 
+        function createDeal(companyName, researchNotes = '') {
+            return {
+                id: crypto.randomUUID(),
+                companyName,
+                status: STATUS_OPTIONS[0],
+                nextActionDate: '',
+                memo: '',
+                researchNotes,
+                history: [],
+                createdAt: new Date().toISOString(),
+            };
+        }
+
         const MODEL_PRESETS = [
             { label: 'Gemini Flash(標準・推奨)', value: 'gemini-flash-latest' },
             { label: 'Gemini Flash-Lite(高速・低コスト)', value: 'gemini-flash-lite-latest' },
             { label: 'Gemini Pro(高精度)', value: 'gemini-pro-latest' },
         ];
         const DEFAULT_MODEL = 'gemini-flash-latest';
+
+        async function requestGeminiText({ apiKey, model, prompt, generationConfig }) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                    ...(generationConfig ? { generationConfig } : {}),
+                }),
+            });
+
+            if (!response.ok) {
+                const errBody = (await response.text()).slice(0, 1000);
+                throw new Error(`API呼び出しに失敗しました (${response.status}): ${errBody}`);
+            }
+
+            const data = await response.json();
+            const candidate = data.candidates?.[0];
+            const text = candidate?.content?.parts?.map(part => part.text || '').join('').trim() || '';
+            return { text, finishReason: candidate?.finishReason };
+        }
 
         function loadApiKey() {
             try {
@@ -109,28 +149,10 @@
             prompt += '\n本文をそのまま送信できる形で出力してください。前置きや説明は不要です。\n';
             prompt += '本文の後に、必ず見出し「### 改善アドバイス」を1行だけ出力し、その下にこの文章のトーンや構成について改善できる点を3行程度の箇条書きで書いてください。';
 
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-                }),
-            });
-
-            if (!response.ok) {
-                const errBody = await response.text();
-                throw new Error(`API呼び出しに失敗しました (${response.status}): ${errBody}`);
-            }
-
-            const data = await response.json();
-            const candidate = (data.candidates || [])[0];
-            const fullText = candidate && candidate.content && candidate.content.parts
-                ? candidate.content.parts.map(p => p.text || '').join('')
-                : '';
+            const { text: fullText, finishReason } = await requestGeminiText({ apiKey, model, prompt });
 
             if (!fullText.trim()) {
-                throw new Error(candidate && candidate.finishReason === 'SAFETY'
+                throw new Error(finishReason === 'SAFETY'
                     ? 'AIが生成を拒否しました。内容を変えて再試行してください。'
                     : 'APIから本文を取得できませんでした。');
             }
@@ -157,28 +179,10 @@
             prompt += '- 営業上の接点になりそうな情報\n';
             prompt += '前置きや断り書き(上記の免責事項以外)は不要です。箇条書き中心で簡潔にまとめてください。';
 
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-                }),
-            });
-
-            if (!response.ok) {
-                const errBody = await response.text();
-                throw new Error(`API呼び出しに失敗しました (${response.status}): ${errBody}`);
-            }
-
-            const data = await response.json();
-            const candidate = (data.candidates || [])[0];
-            const text = candidate && candidate.content && candidate.content.parts
-                ? candidate.content.parts.map(p => p.text || '').join('').trim()
-                : '';
+            const { text, finishReason } = await requestGeminiText({ apiKey, model, prompt });
 
             if (!text) {
-                throw new Error(candidate && candidate.finishReason === 'SAFETY'
+                throw new Error(finishReason === 'SAFETY'
                     ? 'AIが調査を拒否しました。内容を変えて再試行してください。'
                     : 'APIから調査結果を取得できませんでした。');
             }
@@ -203,32 +207,18 @@
                 },
             };
 
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-                    generationConfig: {
-                        responseMimeType: 'application/json',
-                        responseSchema: schema,
-                    },
-                }),
+            const { text: fullText, finishReason } = await requestGeminiText({
+                apiKey,
+                model,
+                prompt,
+                generationConfig: {
+                    responseMimeType: 'application/json',
+                    responseSchema: schema,
+                },
             });
 
-            if (!response.ok) {
-                const errBody = await response.text();
-                throw new Error(`API呼び出しに失敗しました (${response.status}): ${errBody}`);
-            }
-
-            const data = await response.json();
-            const candidate = (data.candidates || [])[0];
-            const fullText = candidate && candidate.content && candidate.content.parts
-                ? candidate.content.parts.map(p => p.text || '').join('').trim()
-                : '';
-
             if (!fullText) {
-                throw new Error(candidate && candidate.finishReason === 'SAFETY'
+                throw new Error(finishReason === 'SAFETY'
                     ? 'AIが調査を拒否しました。内容を変えて再試行してください。'
                     : 'APIから候補を取得できませんでした。');
             }
@@ -250,11 +240,14 @@
         }
 
         function App() {
-            const [deals, setDeals] = useState(loadDeals);
+            const [initialDeals] = useState(loadDeals);
+            const [deals, setDeals] = useState(() => initialDeals || []);
             const [newCompanyName, setNewCompanyName] = useState('');
-            const [saveError, setSaveError] = useState(false);
+            const [saveError, setSaveError] = useState(initialDeals === null);
+            const canPersistDeals = useRef(initialDeals !== null);
 
             useEffect(() => {
+                if (!canPersistDeals.current) return;
                 setSaveError(!saveDeals(deals));
             }, [deals]);
 
@@ -314,7 +307,6 @@
                 try {
                     const selectedDeal = deals.find(d => d.id === composeSelectedDealId) || null;
                     const companyName = selectedDeal ? selectedDeal.companyName : composeManualCompany;
-                    const closedDeals = deals.filter(d => isClosedStatus(d.status));
                     const result = await generateSalesText({
                         apiKey,
                         model,
@@ -392,16 +384,8 @@
             function addLeadToPipeline(candidate) {
                 const trimmed = candidate.companyName.trim();
                 if (!trimmed || addedLeadNames.includes(trimmed)) return;
-                const newDeal = {
-                    id: crypto.randomUUID(),
-                    companyName: trimmed,
-                    status: STATUS_OPTIONS[0],
-                    nextActionDate: '',
-                    memo: '',
-                    researchNotes: candidate.reason ? `[AIの学習知識に基づく候補・実在未確認]\n${candidate.reason}` : '',
-                    history: [],
-                    createdAt: new Date().toISOString(),
-                };
+                const researchNotes = candidate.reason ? `[AIの学習知識に基づく候補・実在未確認]\n${candidate.reason}` : '';
+                const newDeal = createDeal(trimmed, researchNotes);
                 setDeals(prev => [...prev, newDeal]);
                 setAddedLeadNames(prev => [...prev, trimmed]);
             }
@@ -409,16 +393,7 @@
             function addDeal(companyName) {
                 const trimmed = companyName.trim();
                 if (!trimmed) return;
-                const newDeal = {
-                    id: crypto.randomUUID(),
-                    companyName: trimmed,
-                    status: STATUS_OPTIONS[0],
-                    nextActionDate: '',
-                    memo: '',
-                    researchNotes: '',
-                    history: [],
-                    createdAt: new Date().toISOString(),
-                };
+                const newDeal = createDeal(trimmed);
                 setDeals(prev => [...prev, newDeal]);
                 setNewCompanyName('');
             }
@@ -437,7 +412,8 @@
                 addDeal(newCompanyName);
             }
 
-            const sortedDeals = [...deals].sort((a, b) => {
+            const closedDeals = useMemo(() => deals.filter(d => isClosedStatus(d.status)), [deals]);
+            const sortedDeals = useMemo(() => [...deals].sort((a, b) => {
                 // 受注/失注はソート上「日付未設定」と同様に扱い、上位に固定されないようにする
                 const aDate = isClosedStatus(a.status) ? '' : a.nextActionDate;
                 const bDate = isClosedStatus(b.status) ? '' : b.nextActionDate;
@@ -445,7 +421,7 @@
                 if (!aDate) return 1;
                 if (!bDate) return -1;
                 return aDate.localeCompare(bDate);
-            });
+            }), [deals]);
             const today = todayStr();
 
             return (
