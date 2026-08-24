@@ -81,7 +81,7 @@
         ];
         const DEFAULT_MODEL = 'gemini-flash-latest';
 
-        async function requestGeminiText({ apiKey, model, prompt, generationConfig }) {
+        async function requestGeminiText({ apiKey, model, prompt, generationConfig, tools }) {
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
             const response = await fetch(url, {
                 method: 'POST',
@@ -89,6 +89,7 @@
                 body: JSON.stringify({
                     contents: [{ role: 'user', parts: [{ text: prompt }] }],
                     ...(generationConfig ? { generationConfig } : {}),
+                    ...(tools ? { tools } : {}),
                 }),
             });
 
@@ -100,7 +101,12 @@
             const data = await response.json();
             const candidate = data.candidates?.[0];
             const text = candidate?.content?.parts?.map(part => part.text || '').join('').trim() || '';
-            return { text, finishReason: candidate?.finishReason };
+            const groundingChunks = candidate?.groundingMetadata?.groundingChunks || [];
+            const sources = groundingChunks
+                .map(c => c.web)
+                .filter(w => w && w.uri)
+                .map(w => ({ uri: w.uri, title: w.title || w.uri }));
+            return { text, finishReason: candidate?.finishReason, sources };
         }
 
         function loadApiKey() {
@@ -125,7 +131,23 @@
             { value: 'followup', label: 'フォローアップ・返信文' },
         ];
 
-        async function generateSalesText({ apiKey, model, companyName, textType, tone, dealMemo, dealResearchNotes, closedDeals }) {
+        const TEMPLATES_STORAGE_KEY = 'salesTextTemplates';
+
+        function loadTemplates() {
+            try {
+                const raw = localStorage.getItem(TEMPLATES_STORAGE_KEY);
+                const parsed = raw ? JSON.parse(raw) : [];
+                return Array.isArray(parsed) ? parsed : [];
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function saveTemplates(templates) {
+            try { localStorage.setItem(TEMPLATES_STORAGE_KEY, JSON.stringify(templates)); } catch (e) {}
+        }
+
+        async function generateSalesText({ apiKey, model, companyName, textType, tone, dealMemo, dealResearchNotes, closedDeals, templateReference }) {
             const textTypeLabel = (TEXT_TYPE_OPTIONS.find(t => t.value === textType) || {}).label || textType;
 
             let prompt = 'あなたは受託・フリーランスで開発の仕事をしている営業担当です。以下の条件で営業文を作成してください。\n\n';
@@ -145,6 +167,9 @@
                 closedDeals.forEach(d => {
                     prompt += `- ${d.companyName}: ${d.status}${d.memo ? '(' + d.memo + ')' : ''}\n`;
                 });
+            }
+            if (templateReference && templateReference.trim()) {
+                prompt += `\n過去のテンプレート文章(参考・トーンや構成の参考にしてください。そのままコピーせず、今回の宛先・条件に合わせて書き直してください):\n${templateReference.trim()}\n`;
             }
             prompt += '\n本文をそのまま送信できる形で出力してください。前置きや説明は不要です。\n';
             prompt += '本文の後に、必ず見出し「### 改善アドバイス」を1行だけ出力し、その下にこの文章のトーンや構成について改善できる点を3行程度の箇条書きで書いてください。';
@@ -168,10 +193,15 @@
             };
         }
 
-        async function researchCompany({ apiKey, model, query }) {
+        async function researchCompany({ apiKey, model, query, useSearch }) {
             let prompt = 'あなたは受託・フリーランスで開発の仕事をしている営業担当のリサーチ担当です。';
-            prompt += 'あなたが学習時点で知っている情報の範囲で、以下の会社について営業アプローチの参考になるよう要約してください。\n';
-            prompt += 'あなたはインターネットに接続できないため、最新情報の確認や実在確認はできません。知らない場合や自信がない場合は、推測であることを明記するか、正直に「情報が見つかりませんでした」と書いてください。\n\n';
+            if (useSearch) {
+                prompt += 'Web検索の結果を踏まえて、以下の会社について営業アプローチの参考になるよう要約してください。\n';
+                prompt += '検索しても情報が見つからない場合は、正直に「情報が見つかりませんでした」と書いてください。憶測で断定しないでください。\n\n';
+            } else {
+                prompt += 'あなたが学習時点で知っている情報の範囲で、以下の会社について営業アプローチの参考になるよう要約してください。\n';
+                prompt += 'あなたはインターネットに接続できないため、最新情報の確認や実在確認はできません。知らない場合や自信がない場合は、推測であることを明記するか、正直に「情報が見つかりませんでした」と書いてください。\n\n';
+            }
             prompt += `調査対象: ${query}\n\n`;
             prompt += '出力には以下を含めてください:\n';
             prompt += '- 事業内容の概要\n';
@@ -179,14 +209,19 @@
             prompt += '- 営業上の接点になりそうな情報\n';
             prompt += '前置きや断り書き(上記の免責事項以外)は不要です。箇条書き中心で簡潔にまとめてください。';
 
-            const { text, finishReason } = await requestGeminiText({ apiKey, model, prompt });
+            const { text, finishReason, sources } = await requestGeminiText({
+                apiKey,
+                model,
+                prompt,
+                tools: useSearch ? [{ google_search: {} }] : undefined,
+            });
 
             if (!text) {
                 throw new Error(finishReason === 'SAFETY'
                     ? 'AIが調査を拒否しました。内容を変えて再試行してください。'
                     : 'APIから調査結果を取得できませんでした。');
             }
-            return text;
+            return { text, sources: sources || [] };
         }
 
         async function findLeadCandidates({ apiKey, model, keywords }) {
@@ -267,9 +302,11 @@
             const [researchMode, setResearchMode] = useState('leads');
 
             const [researchQuery, setResearchQuery] = useState('');
+            const [researchUseSearch, setResearchUseSearch] = useState(true);
             const [researchLoading, setResearchLoading] = useState(false);
             const [researchError, setResearchError] = useState('');
             const [researchResultText, setResearchResultText] = useState('');
+            const [researchSources, setResearchSources] = useState([]);
             const [researchSaveDealId, setResearchSaveDealId] = useState('');
             const [researchSaveConfirmed, setResearchSaveConfirmed] = useState(false);
 
@@ -290,10 +327,19 @@
             const [composeManualCompany, setComposeManualCompany] = useState('');
             const [composeTextType, setComposeTextType] = useState(TEXT_TYPE_OPTIONS[0].value);
             const [composeTone, setComposeTone] = useState('');
+            const [composeTemplateId, setComposeTemplateId] = useState('');
             const [composeLoading, setComposeLoading] = useState(false);
             const [composeError, setComposeError] = useState('');
             const [composeResultBody, setComposeResultBody] = useState('');
             const [composeResultAdvice, setComposeResultAdvice] = useState('');
+
+            const [templates, setTemplates] = useState(loadTemplates);
+            const [showTemplateSave, setShowTemplateSave] = useState(false);
+            const [templateSaveName, setTemplateSaveName] = useState('');
+
+            useEffect(() => {
+                saveTemplates(templates);
+            }, [templates]);
 
             useEffect(() => {
                 if (composeSelectedDealId && !deals.some(d => d.id === composeSelectedDealId)) {
@@ -304,9 +350,12 @@
             async function handleGenerate() {
                 setComposeLoading(true);
                 setComposeError('');
+                setShowTemplateSave(false);
+                setTemplateSaveName('');
                 try {
                     const selectedDeal = deals.find(d => d.id === composeSelectedDealId) || null;
                     const companyName = selectedDeal ? selectedDeal.companyName : composeManualCompany;
+                    const selectedTemplate = templates.find(t => t.id === composeTemplateId) || null;
                     const result = await generateSalesText({
                         apiKey,
                         model,
@@ -316,6 +365,7 @@
                         dealMemo: selectedDeal ? selectedDeal.memo : '',
                         dealResearchNotes: selectedDeal ? selectedDeal.researchNotes : '',
                         closedDeals,
+                        templateReference: selectedTemplate ? selectedTemplate.body : '',
                     });
                     setComposeResultBody(result.body);
                     setComposeResultAdvice(result.advice);
@@ -339,14 +389,37 @@
                 updateDeal(composeSelectedDealId, { history: [...(target.history || []), entry] });
             }
 
+            function saveAsTemplate() {
+                const name = templateSaveName.trim();
+                if (!name || !composeResultBody) return;
+                const newTemplate = {
+                    id: crypto.randomUUID(),
+                    name,
+                    textType: composeTextType,
+                    body: composeResultBody,
+                    createdAt: new Date().toISOString(),
+                };
+                setTemplates(prev => [...prev, newTemplate]);
+                setTemplateSaveName('');
+                setShowTemplateSave(false);
+            }
+
+            function deleteTemplate(id) {
+                if (!window.confirm('このテンプレートを削除しますか？')) return;
+                setTemplates(prev => prev.filter(t => t.id !== id));
+                if (composeTemplateId === id) setComposeTemplateId('');
+            }
+
             async function handleResearchIndividual() {
                 setResearchLoading(true);
                 setResearchError('');
                 setResearchResultText('');
+                setResearchSources([]);
                 setResearchSaveConfirmed(false);
                 try {
-                    const text = await researchCompany({ apiKey, model, query: researchQuery });
+                    const { text, sources } = await researchCompany({ apiKey, model, query: researchQuery, useSearch: researchUseSearch });
                     setResearchResultText(text);
+                    setResearchSources(sources);
                 } catch (e) {
                     setResearchError(e.message || '調査に失敗しました');
                 } finally {
@@ -359,7 +432,10 @@
                 const target = deals.find(d => d.id === researchSaveDealId);
                 if (!target) return;
                 const dateLabel = new Date().toLocaleDateString('ja-JP');
-                const entry = `[${dateLabel}]\n${researchResultText}`;
+                let entry = `[${dateLabel}]\n${researchResultText}`;
+                if (researchSources.length > 0) {
+                    entry += '\n\n情報源:\n' + researchSources.map(s => `- ${s.title}: ${s.uri}`).join('\n');
+                }
                 const merged = target.researchNotes ? `${target.researchNotes}\n\n---\n${entry}` : entry;
                 updateDeal(researchSaveDealId, { researchNotes: merged });
                 setResearchSaveConfirmed(true);
@@ -605,7 +681,9 @@
                             </div>
 
                             <div className="bg-amber-950 border border-amber-700 text-amber-200 rounded p-3 mb-4 text-sm">
-                                ⚠️ この機能はWeb検索を行いません。AIの学習知識のみに基づく推測です。情報が古い・不正確な場合や、候補企業が実在しない場合があります。URLを入力してもページの内容は読み取れません。必ずご自身で最新情報・実在確認を行ってください。
+                                {researchMode === 'individual' && researchUseSearch
+                                    ? '⚠️ Web検索の結果に基づいていますが、AIによる要約のため誤りを含む場合があります。必ずご自身で情報源を確認してください。'
+                                    : '⚠️ この機能はWeb検索を行いません。AIの学習知識のみに基づく推測です。情報が古い・不正確な場合や、候補企業が実在しない場合があります。URLを入力してもページの内容は読み取れません。必ずご自身で最新情報・実在確認を行ってください。'}
                             </div>
 
                             {researchMode === 'leads' && (
@@ -688,6 +766,16 @@
                                         />
                                     </div>
 
+                                    <label className="flex items-center gap-2 text-sm text-slate-400 mb-4">
+                                        <input
+                                            type="checkbox"
+                                            checked={researchUseSearch}
+                                            onChange={e => setResearchUseSearch(e.target.checked)}
+                                        />
+                                        🔍 Web検索を使う
+                                        <span className="text-xs text-slate-500">(検索クエリ数に応じて追加コストがかかる場合があります)</span>
+                                    </label>
+
                                     <button
                                         onClick={handleResearchIndividual}
                                         disabled={!apiKey || !researchQuery.trim() || researchLoading}
@@ -710,6 +798,20 @@
                                             <div className="bg-slate-800 border border-slate-700 rounded p-3 text-sm text-slate-300 whitespace-pre-wrap mb-2">
                                                 {researchResultText}
                                             </div>
+                                            {researchSources.length > 0 && (
+                                                <div className="mb-4 text-xs">
+                                                    <div className="text-slate-400 mb-1">情報源:</div>
+                                                    <ul className="space-y-1">
+                                                        {researchSources.map((s, i) => (
+                                                            <li key={i}>
+                                                                <a href={s.uri} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:underline break-all">
+                                                                    {s.title}
+                                                                </a>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            )}
                                             <label className="block text-sm text-slate-400 mb-1">この結果を保存する案件</label>
                                             <select
                                                 value={researchSaveDealId}
@@ -787,6 +889,37 @@
                                 />
                             </div>
 
+                            <div className="mb-4">
+                                <label className="block text-sm text-slate-400 mb-1">参考テンプレート(任意)</label>
+                                <select
+                                    value={composeTemplateId}
+                                    onChange={e => setComposeTemplateId(e.target.value)}
+                                    className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm mb-2"
+                                >
+                                    <option value="">使用しない</option>
+                                    {templates.map(t => (
+                                        <option key={t.id} value={t.id}>
+                                            {t.name}({(TEXT_TYPE_OPTIONS.find(o => o.value === t.textType) || {}).label || t.textType})
+                                        </option>
+                                    ))}
+                                </select>
+                                {templates.length > 0 && (
+                                    <ul className="space-y-1">
+                                        {templates.map(t => (
+                                            <li key={t.id} className="flex items-center justify-between text-xs text-slate-400">
+                                                <span>{t.name}</span>
+                                                <button
+                                                    onClick={() => deleteTemplate(t.id)}
+                                                    className="text-slate-500 hover:text-rose-400"
+                                                >
+                                                    削除
+                                                </button>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                            </div>
+
                             <button
                                 onClick={handleGenerate}
                                 disabled={!apiKey || composeLoading}
@@ -816,13 +949,42 @@
                                 </div>
                             )}
 
-                            {composeResultBody && composeSelectedDealId && (
-                                <button
-                                    onClick={saveGeneratedText}
-                                    className="bg-slate-700 hover:bg-slate-600 text-white text-sm font-semibold px-4 py-2 rounded mb-4"
-                                >
-                                    この案件の履歴に保存
-                                </button>
+                            {composeResultBody && (
+                                <div className="flex flex-wrap gap-2 items-center mb-4">
+                                    {composeSelectedDealId && (
+                                        <button
+                                            onClick={saveGeneratedText}
+                                            className="bg-slate-700 hover:bg-slate-600 text-white text-sm font-semibold px-4 py-2 rounded"
+                                        >
+                                            この案件の履歴に保存
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={() => setShowTemplateSave(v => !v)}
+                                        className="bg-slate-700 hover:bg-slate-600 text-white text-sm font-semibold px-4 py-2 rounded"
+                                    >
+                                        📄 テンプレとして保存
+                                    </button>
+                                </div>
+                            )}
+
+                            {showTemplateSave && (
+                                <div className="flex gap-2 items-center mb-4">
+                                    <input
+                                        type="text"
+                                        value={templateSaveName}
+                                        onChange={e => setTemplateSaveName(e.target.value)}
+                                        placeholder="テンプレート名を入力"
+                                        className="flex-1 bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
+                                    />
+                                    <button
+                                        onClick={saveAsTemplate}
+                                        disabled={!templateSaveName.trim()}
+                                        className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-sm font-semibold px-4 py-2 rounded"
+                                    >
+                                        保存
+                                    </button>
+                                </div>
                             )}
 
                             {composeResultAdvice && (
