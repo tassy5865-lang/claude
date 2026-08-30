@@ -325,7 +325,7 @@ const SITE = {
     title: "お気軽にご連絡ください",
     ctas: [
       { label: "Email →", href: "mailto:nexsist88@gmail.com" },
-      { label: "公式LINE →", href: "https://lin.ee/WNdDlGb", showQrOnClick: true }
+      { label: "公式LINE →", href: "https://lin.ee/5SAPZeC", showQrOnClick: true }
     ],
     note: "ご連絡はメールまたは公式LINEにて承っています。",
     qr: { caption: "スマホでスキャンして公式LINEを友だち追加" }
@@ -335,7 +335,7 @@ const SITE = {
     left: "田代 裕貴<span class=\"role-accent\">(AI・DXコンサル)</span> | 制作実績ポートフォリオ",
     links: [
       { label:"Email", href:"mailto:nexsist88@gmail.com" },
-      { label:"公式LINE", href:"https://lin.ee/WNdDlGb" },
+      { label:"公式LINE", href:"https://lin.ee/5SAPZeC" },
       { label:"プロフィール", href:"https://tassy5865-lang.github.io/claude/%E8%87%AA%E5%B7%B1%E7%B4%B9%E4%BB%8BHP/index_4.html" }
     ],
     copyright: "© 2026 田代 裕貴<span class=\"role-accent\">(AI・DXコンサル)</span>"
@@ -343,8 +343,8 @@ const SITE = {
 };
 /* ▲▲▲ 編集はここまで。以下は描画ロジックなので触る必要はありません ▲▲▲ */
 
-/* 公式LINE(https://lin.ee/WNdDlGb)のQRコード画像。SITEオブジェクトの対象外(長いdata URIのためここに分離)。 */
-const LINE_QR_DATA_URI = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQ4AAAEOCAIAAAD3027yAAAEjUlEQVR4nO3dO3LbMBRAUTuTXgtMmXWlzAK1AqZNxdwJBQOgzmlj/RjfgWeeAH4ex/EB/Mu3f/4EIBWorCqQSAUSqUAiFUikAolUIJEKJN/P//nx68fHvTx//v7vz3vlsbOcv+crHkt+3nHXyqoCiVQgkQokUoFEKpBIBRKpQCIVSKQCr5jWz5oEz5oiX/lEs67GmlPz5+1+N6wqkEgFEqlAIhVIpAKJVCCRCiRSgUQqMH5aP2uKvON+8Svvec15/P2u8zmrCiRSgUQqkEgFEqlAIhVIpAKJVCCRCsye1u9o1jn554+98sxXXpe/WVUgkQokUoFEKpBIBRKpQCIVSKQCiVQgMa3/Ijve856/WVUgkQokUoFEKpBIBRKpQCIVSKQCiVRg9rR+x33ba+6eX/M9v9vvhlUFEqlAIhVIpAKJVCCRCiRSgUQqkEgFxk/r7Qh/lfudV/+43WkBVhVIpAKJVCCRCiRSgUQqkEgFEqlAIhVIPo/jaD/JwJn6rGc+t+O3BMaxqkAiFUikAolUIJEKJFKBRCqQSAUSqcAr9tbveMr6rPn0jnPxWf8Lzw1P/reqQCIVSKQCiVQgkQokUoFEKpBIBRKpwNr3rR832571uuPOfr8yYx43vX4s+XnHvSurCiRSgUQqkEgFEqlAIhVIpAKJVCCRCrziJPwd96mPs+bke9a7ek6amp+ztx4m8wcYJFKBRCqQSAUSqUAiFUikAolUYPbe+jXntTueZr/mXQNmuXI1rjzWqgKJVCCRCiRSgUQqkEgFEqlAIhVIpALj99bPutv6uTX3qb/bPeDPzfrNcd96GM4fYJBIBRKpQCIVSKQCiVQgkQokUoFX7K1fc1675gnt42bqs67Vjh7uWw9z+QMMEqlAIhVIpAKJVCCRCiRSgUQqMPu+9VfseM/7d9uX/26nI1hVIJEKJFKBRCqQSAUSqUAiFUikAolU4BXT+jWtubd+x9Pd17ySa15nqwokUoFEKpBIBRKpQCIVSKQCiVQgkQrsvLee3U8auGLNk/+tKpBIBRKpQCIVSKQCiVQgkQokUoFEKnDfvfXjzNp5/27n5D82fF2rCiRSgUQqkEgFEqlAIhVIpAKJVCCRCiTf77cz+9yVSfCaJ8PvOPnekVUFEqlAIhVIpAKJVCCRCiRSgUQqkEgFXjGtP7fmRPbK1HzHu7yv+br3Y1UBqcDrWFUgkQokUoFEKpBIBRKpQCIVGD+tP2dOvPu95+93ssIVVhVIpAKJVCCRCiRSgUQqkEgFEqlAIhWYPa3na4w7D2DN7wE8hp2dcM6qAolUIJEKJFKBRCqQSAUSqUAiFUikAolp/RftJr8yNb8yYx53Tv5z2DOPu+PAlWe2qkAiFUikAolUIJEKJFKBRCqQSAUSqcDsaf2O9zWfNQk+d7/98efGfTvhCqsKJFKBRCqQSAUSqUAiFUikAolUIJEKjJ/W3+++5rN2de/oOWwuvub3HqwqkEgFEqlAIhVIpAKJVCCRCiRSgUQqkHwex9F+Et6aVQUSqUAiFUikAolUIJEKJFKBRCqQSAU+ij/Uz34QTvo/LwAAAABJRU5ErkJggg==";
+/* 公式LINE(https://lin.ee/5SAPZeC)のQRコード画像。SITEオブジェクトの対象外(長いdata URIのためここに分離)。LINEのURLを変更したらこのQRも作り直すこと(python qrcodeライブラリで生成)。 */
+const LINE_QR_DATA_URI = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAASIAAAEiAQAAAAB1xeIbAAAB4klEQVR4nO1aQY7DIAwcp0g9hh/0KeRnqz5pf5A8ZX8Ax0qNvLLjtOqpe1haknoOEUJzsMwwGBNiPMfU/YEEOGuFZ2IDmShkGAoRpihCp4B1NrQd/cZZB1boCOkngL4ygKSzufXon6NtFi3y7i8EYDbx64YY3hrXB7FKAA297oCm4voEVn9dFsCcppm4dsoK+uX7xBRBvKxCL9PlPXF1H8Kal4IGKEdGygemoQQpdgSx9eifo1VWMHkrROPTSST/uBeajb7bOqtILR9F/KcLIeWZ1Plp0IrH6/vqK1SOzKPU90uyRffneGA7fxtWzoZZYM6SYlieeZRkJ71bZbt08dhq9N0u6pwSiYHZaszpdA2MMhPS+J64us/Rfbp91GQSq/htQ7juq+WezWR0xKPea9XltdEjxuOeUzP30DaaNNQWq7/rvne/r+s5LGrXTsL96NWyx3VfWfe8+v3qOQ/9HPecurk3LJXluhduh7D7fT3PgUHTPj7WPq77V75bZbncxnUVxqYr5G5f71ZTlBtVlvaOjLynUPteaygRlLJ0jXsGpe8IAsK1deXshcVn/U9BJb/2eFqIa/fvVr2oXcYpS2dH4P2cV71bEdmDuZy/ZxG/9+/r5Z78n8DGnalzluE/M/EL13UfV8AvaREAAAAASUVORK5CYII=";
 
 document.getElementById('page-title').textContent = SITE.meta.title;
 
