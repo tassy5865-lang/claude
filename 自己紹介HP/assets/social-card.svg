@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">田代裕貴 AI・DXコンサル</title>
+  <desc id="desc">現場の課題をAIで形にする、田代裕貴のプロフィールサイト</desc>
+  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#101826"/><stop offset="1" stop-color="#1e3a5f"/></linearGradient></defs>
+  <rect width="1200" height="630" fill="url(#g)"/>
+  <circle cx="1040" cy="80" r="290" fill="#4a90d9" opacity=".14"/>
+  <circle cx="1120" cy="550" r="210" fill="#fff" opacity=".04"/>
+  <text x="90" y="130" fill="#84b9ee" font-family="Arial, sans-serif" font-size="24" letter-spacing="6">AI × CLINICAL WORKFLOW</text>
+  <text x="90" y="275" fill="#fff" font-family="Georgia, 'Noto Serif JP', serif" font-size="72" font-weight="700">現場の課題を、</text>
+  <text x="90" y="375" fill="#84b9ee" font-family="Georgia, 'Noto Serif JP', serif" font-size="88" font-weight="700">AIで形にする。</text>
+  <text x="90" y="500" fill="#fff" fill-opacity=".82" font-family="Arial, 'Noto Sans JP', sans-serif" font-size="30">田代 裕貴｜臨床工学技士 / AI活用・業務改善</text>
+</svg>

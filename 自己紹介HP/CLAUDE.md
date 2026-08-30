@@ -1,40 +1,38 @@
 # 自己紹介HP
 
-田代裕貴さん(臨床工学技士 / AI・DXコンサル)の自己紹介・プロフィールサイト。単一HTMLファイルのランディングページ。
+田代裕貴さん(臨床工学技士 / AI・DXコンサル)の自己紹介・プロフィールサイト。ビルド不要の静的ランディングページ。
 
 ## 構成
 
-- `index_4.html` — サイト全体(HTML/CSS/JS込みの単一ファイル)
+- `index.html` — 公開用のメインページ。本文はSEO・耐障害性を考慮して静的HTMLで記述
+- `styles.css` — レイアウト、配色、レスポンシブ、フォーカス表示
+- `main.js` — ナビゲーション、表示アニメーション、LINE QR表示
+- `assets/profile-mark.svg` — 顔写真へ差し替え可能な仮プロフィール画像
+- `assets/social-card.svg` — OGP・SNS共有用画像
+- `index_4.html` — 旧URL互換用。アクセス時に`index.html`へ移動
 
 ## 編集方法
 
-このテンプレートは **`SITE` オブジェクト(script内、"ここから下のSITEオブジェクトだけを書き換えれば〜"というコメント以降)だけを編集する** ことを前提に作られている。HTML構造・CSS・描画ロジック(`SITE`定義より下の部分)は基本的に触らない。
+文章やカードは`index.html`を編集する。デザインは`styles.css`、動作は`main.js`に分離している。JavaScriptが無効でも本文とリンクは閲覧できる。
 
-テキスト・見出し・リンク・カードの中身などはすべて `SITE` オブジェクトのプロパティに入っており、`document.getElementById(...).innerHTML = \`...\`` のテンプレートリテラルで描画される。
+### セクション構成
 
-### セクション構成(`SITE`のキーとページ内セクションの対応)
-
-| SITEキー | セクションID | 内容 |
-|---|---|---|
-| `meta` | `<title>` | ページタイトル |
-| `nav` | `#nav` | ナビゲーションバー(名前・肩書き・CTAボタン) |
-| `hero` | `#hero` | ファーストビュー(見出し・リード文・CTA・統計) |
-| `values` | `#values` | こだわり・価値観カード |
-| `philosophy` | `#philosophy` | アプローチ・フロー・引用 |
-| `beforeAfter` | `#beforeafter` | 実績に基づくBefore/After比較 |
-| `impact` | `#impact` | 効果測定(体感ベースの概算・定性表現) |
-| `usecases` | `#usecases` | 想定活用シーン(業種は名言しない) |
-| `focus` | `#focus` | 取り組んでいること一覧 |
-| `process` | `#process` | 3ステップの進め方 |
-| `record` | `#record` | 今取り組んでいること(タグフィルター付きカード) |
-| `profile` | `#profile-sec` | プロフィール詳細(経歴・サイドステータス) |
-| `note` | `#whynow` | 補足メッセージ |
-| `contact` | `#cta` | お問い合わせ |
-| `footer` | `<footer>` | フッター(リンク・コピーライト) |
+| セクションID | 内容 |
+|---|---|
+| `#top` | ファーストビューと公開実績数 |
+| `#issues` | 対応する課題 |
+| `#works` | 公開ツールのライブプレビュー |
+| `#results` | 工程のBefore / After |
+| `#services` | 対応範囲、研修、料金の考え方 |
+| `#cases` | 匿名の業務改善事例 |
+| `#profile` | プロフィール |
+| `#faq` | よくある質問 |
+| `#contact` | メール、LINE、QRコード |
 
 ## 注意点
 
-- `contact.ctas`(Email/公式LINE)と`footer.links`(Email/公式LINEの2件のみ)は実際のアドレス/URLに設定済み(`nexsist88@gmail.com` / `https://lin.ee/5SAPZeC`(旧`https://lin.ee/WNdDlGb`から2026-08-30に更新))。X(Twitter)/Noteは実URL未提供のためfooter.linksから削除済み。
-- CTAセクションの公式LINEボタンはクリックでQRコード(`LINE_QR_DATA_URI`、data URI埋め込み)をトグル表示する。ボタン自体はlin.eeへのリンクとしても機能する。
-- 画像は `profile.avatarImage` にURLを入れると背景画像として表示される(現状は空でグラデーションアバター)。
-- レスポンシブは `@media (max-width:860px)` 以下で対応済み。
+- メールとLINEは実際の連絡先に設定済み。
+- 「公式LINEを開く」と「QRコードを表示」は別操作にしている。
+- 顔写真を掲載する場合は`assets/profile-mark.svg`を写真へ置換し、`index.html`内の拡張子と代替テキストも更新する。
+- 実測していない時間、未確認の研修人数、許諾のない利用者コメントは掲載しない。
+- 公開ツールのライブプレビューには個人情報や実データを入力しない。
