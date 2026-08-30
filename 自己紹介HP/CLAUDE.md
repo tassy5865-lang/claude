@@ -34,7 +34,7 @@
 
 ## 注意点
 
-- `contact.ctas`(Email/公式LINE)と`footer.links`(Email/公式LINEの2件のみ)は実際のアドレス/URLに設定済み(`nexsist88@gmail.com` / `https://lin.ee/WNdDlGb`)。X(Twitter)/Noteは実URL未提供のためfooter.linksから削除済み。
+- `contact.ctas`(Email/公式LINE)と`footer.links`(Email/公式LINEの2件のみ)は実際のアドレス/URLに設定済み(`nexsist88@gmail.com` / `https://lin.ee/5SAPZeC`(旧`https://lin.ee/WNdDlGb`から2026-08-30に更新))。X(Twitter)/Noteは実URL未提供のためfooter.linksから削除済み。
 - CTAセクションの公式LINEボタンはクリックでQRコード(`LINE_QR_DATA_URI`、data URI埋め込み)をトグル表示する。ボタン自体はlin.eeへのリンクとしても機能する。
 - 画像は `profile.avatarImage` にURLを入れると背景画像として表示される(現状は空でグラデーションアバター)。
 - レスポンシブは `@media (max-width:860px)` 以下で対応済み。
