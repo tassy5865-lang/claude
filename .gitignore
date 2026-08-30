@@ -1,3 +1,7 @@
 /.claude
 /DRAGON QUEST
 /tetris
+
+# 独立した git リポジトリ（専用リポジトリ github.com/tassy5865-lang/bv-prr-tool で管理・公開）。
+# gitlink として取り込むと GitHub Pages ビルドが壊れる（コミット 249785e 参照）。
+/bv-prr-tool
