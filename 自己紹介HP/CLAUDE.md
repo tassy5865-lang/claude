@@ -8,8 +8,12 @@
 - `styles.css` — レイアウト、配色、レスポンシブ、フォーカス表示
 - `main.js` — ナビゲーション、表示アニメーション、LINE QR表示
 - `assets/profile-mark.svg` — 顔写真へ差し替え可能な仮プロフィール画像
-- `assets/social-card.svg` — OGP・SNS共有用画像
+- `assets/social-card.png` — OGP・SNS共有用画像（1200×630）。実際に配信するのはこのPNG（SVGはTwitter/Facebook/LINE等でOGP画像として表示されないため）
+- `assets/social-card.svg` — 上記PNGの元デザイン（参考用。配信はしていない）
+- `assets/build-og-card.py` — `social-card.png`の生成スクリプト。`python assets/build-og-card.py assets/social-card.png`で再生成（要Pillow、Windowsフォント）
 - `index_4.html` — 旧URL互換用。アクセス時に`index.html`へ移動
+
+`index.html`の`<head>`にJSON-LD構造化データ（`ProfilePage` / `WebSite` / `Person` / `FAQPage`の`@graph`）を埋め込み済み。プロフィール文・FAQ・公開ツールを変更したら、対応するJSON-LDの記述も合わせて更新する。
 
 ## 編集方法
 
