@@ -1,0 +1,42 @@
+/* Both pages share the same short, non-looping motion language. */
+@media (prefers-reduced-motion: no-preference) {
+  .btn, .btn-primary, .btn-secondary, .btn-line, .nav-cta, .work-detail-btn,
+  .tag-filter button, .feature-detail {
+    transition: transform .2s ease, background-color .2s ease, border-color .2s ease, box-shadow .2s ease;
+  }
+  .preview, .work-card, .service, .card, .flow-step {
+    transition: transform .28s cubic-bezier(.22,1,.36,1), box-shadow .28s ease, border-color .28s ease;
+  }
+  .work-preview-btn img, .preview img {
+    transition: transform .45s cubic-bezier(.22,1,.36,1);
+  }
+  .modal-overlay.is-open { animation: motion-overlay .18s ease-out; }
+  .modal-overlay.is-open .modal-box { animation: motion-panel .28s cubic-bezier(.22,1,.36,1); }
+  .cta-qr.is-visible, .qr-panel.open, .faq details[open] p {
+    animation: motion-panel .25s ease-out;
+  }
+  .tag-filter button:active, .btn:active, .btn-primary:active,
+  .btn-secondary:active, .btn-line:active, .work-detail-btn:active {
+    transform: scale(.98);
+  }
+}
+@media (prefers-reduced-motion: no-preference) and (hover: hover) and (pointer: fine) {
+  .btn:hover, .btn-primary:hover, .btn-secondary:hover, .btn-line:hover,
+  .nav-cta:hover, .work-detail-btn:hover { transform: translateY(-2px); }
+  .preview:hover, .work-card:hover, .service:hover, .card:hover, .flow-step:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 28px rgba(24,43,66,.10);
+  }
+  .work-preview-btn:hover img, .preview:hover img { transform: scale(1.015); }
+}
+@keyframes motion-overlay { from { opacity: 0; } to { opacity: 1; } }
+@keyframes motion-panel {
+  from { opacity: .45; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+@media print {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
