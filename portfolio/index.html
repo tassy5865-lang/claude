@@ -32,222 +32,22 @@
   ]
 }
 </script>
-<style>
-  :root{
-    --cream:#F4F7FA;
-    --cream-soft:#FFFFFF;
-    --ink:#1A2332;
-    --ink-soft:#5B6B82;
-    --gold:#1E3A5F;
-    --gold-soft:#4A90D9;
-    --green:#1E3A5F;
-    --green-light:#2F5C8A;
-    --black:#101826;
-    --line: rgba(26,35,50,0.12);
-    --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Yu Gothic UI","Yu Gothic","Hiragino Kaku Gothic ProN",Meiryo,sans-serif;
-    --font-serif:"Yu Mincho","Hiragino Mincho ProN","Hiragino Mincho Pro",serif;
-    --font-mono:"SFMono-Regular",Consolas,"Liberation Mono",monospace;
-  }
-  *{margin:0;padding:0;box-sizing:border-box;}
-  html{scroll-behavior:smooth;}
-  body{ background:var(--cream); color:var(--ink); font-family:var(--font-sans); }
-  ::selection{background:var(--gold-soft); color:#fff;}
-  a{color:inherit; text-decoration:none;}
-  button{font:inherit;}
-  h1,h2,h3{font-family:var(--font-serif); font-weight:600; letter-spacing:0.01em;}
-  .mono{font-family:var(--font-mono);}
-  :focus-visible{outline:3px solid #F4B942; outline-offset:3px;}
-  section{scroll-margin-top:5rem;}
-  .skip-link{position:fixed; top:0.75rem; left:0.75rem; z-index:500; padding:0.7rem 1rem; border-radius:6px; background:#fff; color:var(--ink); transform:translateY(-160%); transition:transform .2s ease;}
-  .skip-link:focus{transform:translateY(0);}
-
-  .eyebrow{
-    display:flex; align-items:center; justify-content:center; gap:10px;
-    font-family:var(--font-mono); font-size:0.72rem; letter-spacing:0.22em;
-    color:var(--gold); text-transform:uppercase; font-weight:500; margin-bottom:1.1rem;
-  }
-  .eyebrow::after{ content:''; width:30px; height:1px; background:var(--gold); }
-  section{ padding:6.5rem 6vw; }
-  .wrap{ max-width:1180px; margin:0 auto; }
-  .center-text{ text-align:center; max-width:720px; margin:0 auto; }
-  .section-sub{ color:var(--ink-soft); font-size:0.98rem; line-height:1.85; margin-top:1.2rem; }
-
-  nav{
-    position:fixed; top:0; left:0; right:0; z-index:50;
-    display:flex; justify-content:space-between; align-items:center;
-    padding:20px 6vw; transition:background .3s ease, box-shadow .3s ease;
-  }
-  nav.scrolled{ background:rgba(244,247,250,0.92); backdrop-filter:blur(8px); box-shadow:0 1px 0 var(--line); }
-  .nav-name{ font-family:var(--font-serif); font-size:1.05rem; font-weight:600; }
-  .nav-role{ font-family:var(--font-mono); font-size:0.7rem; color:var(--gold); margin-left:0.6rem; letter-spacing:0.02em;}
-  .role-accent{ color:var(--gold-soft); font-weight:600; }
-  .nav-cta{ background:var(--green); color:#fff; padding:0.65rem 1.35rem; border-radius:6px; font-size:0.82rem; font-weight:500; transition:background .2s ease; }
-  .nav-cta:hover{ background:var(--green-light); }
-  .nav-actions{ display:flex; align-items:center; gap:1.1rem; }
-  .nav-link{ font-family:var(--font-mono); font-size:0.8rem; color:var(--gold); white-space:nowrap; transition:color .2s ease; }
-  .nav-link:hover{ color:var(--gold-soft); }
-
-  #hero{
-    padding-top:11rem; padding-bottom:5rem; text-align:center;
-    background-color:var(--cream);
-    background-image:
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='420' viewBox='0 0 800 420'%3E%3Cdefs%3E%3Cfilter id='g' x='-0.6' y='-0.6' width='2.2' height='2.2'%3E%3CfeGaussianBlur stdDeviation='3.2'/%3E%3C/filter%3E%3C/defs%3E%3Cg filter='url(%23g)' opacity='0.4'%3E%3Cg fill='none' stroke='%234A90D9' stroke-width='2.6' stroke-linecap='round'%3E%3Cline x1='400' y1='40' x2='230' y2='150'/%3E%3Cline x1='400' y1='40' x2='400' y2='170'/%3E%3Cline x1='400' y1='40' x2='560' y2='140'/%3E%3Cline x1='230' y1='150' x2='120' y2='250'/%3E%3Cline x1='230' y1='150' x2='260' y2='270'/%3E%3Cline x1='400' y1='170' x2='260' y2='270'/%3E%3Cline x1='400' y1='170' x2='470' y2='280'/%3E%3Cline x1='560' y1='140' x2='470' y2='280'/%3E%3Cline x1='560' y1='140' x2='670' y2='240'/%3E%3Cline x1='120' y1='250' x2='170' y2='360'/%3E%3Cline x1='260' y1='270' x2='170' y2='360'/%3E%3Cline x1='260' y1='270' x2='340' y2='380'/%3E%3Cline x1='470' y1='280' x2='340' y2='380'/%3E%3Cline x1='470' y1='280' x2='540' y2='370'/%3E%3Cline x1='670' y1='240' x2='540' y2='370'/%3E%3Cline x1='670' y1='240' x2='700' y2='120'/%3E%3C/g%3E%3Cg fill='%234A90D9'%3E%3Ccircle cx='400' cy='40' r='5.2'/%3E%3Ccircle cx='230' cy='150' r='4.4'/%3E%3Ccircle cx='400' cy='170' r='4.4'/%3E%3Ccircle cx='560' cy='140' r='4.4'/%3E%3Ccircle cx='120' cy='250' r='3.8'/%3E%3Ccircle cx='260' cy='270' r='3.8'/%3E%3Ccircle cx='470' cy='280' r='3.8'/%3E%3Ccircle cx='670' cy='240' r='3.8'/%3E%3Ccircle cx='170' cy='360' r='3.4'/%3E%3Ccircle cx='340' cy='380' r='3.4'/%3E%3Ccircle cx='540' cy='370' r='3.4'/%3E%3Ccircle cx='700' cy='120' r='3.4'/%3E%3C/g%3E%3C/g%3E%3Cg fill='none' stroke='%231E3A5F' stroke-width='1.4' stroke-linecap='round' opacity='0.22'%3E%3Cline x1='400' y1='40' x2='230' y2='150'/%3E%3Cline x1='400' y1='40' x2='400' y2='170'/%3E%3Cline x1='400' y1='40' x2='560' y2='140'/%3E%3Cline x1='230' y1='150' x2='120' y2='250'/%3E%3Cline x1='230' y1='150' x2='260' y2='270'/%3E%3Cline x1='400' y1='170' x2='260' y2='270'/%3E%3Cline x1='400' y1='170' x2='470' y2='280'/%3E%3Cline x1='560' y1='140' x2='470' y2='280'/%3E%3Cline x1='560' y1='140' x2='670' y2='240'/%3E%3Cline x1='120' y1='250' x2='170' y2='360'/%3E%3Cline x1='260' y1='270' x2='170' y2='360'/%3E%3Cline x1='260' y1='270' x2='340' y2='380'/%3E%3Cline x1='470' y1='280' x2='340' y2='380'/%3E%3Cline x1='470' y1='280' x2='540' y2='370'/%3E%3Cline x1='670' y1='240' x2='540' y2='370'/%3E%3Cline x1='670' y1='240' x2='700' y2='120'/%3E%3C/g%3E%3Cg fill='%234A90D9' opacity='0.42'%3E%3Ccircle cx='400' cy='40' r='4.4'/%3E%3Ccircle cx='230' cy='150' r='3.6'/%3E%3Ccircle cx='400' cy='170' r='3.6'/%3E%3Ccircle cx='560' cy='140' r='3.6'/%3E%3Ccircle cx='120' cy='250' r='3'/%3E%3Ccircle cx='260' cy='270' r='3'/%3E%3Ccircle cx='470' cy='280' r='3'/%3E%3Ccircle cx='670' cy='240' r='3'/%3E%3Ccircle cx='170' cy='360' r='2.6'/%3E%3Ccircle cx='340' cy='380' r='2.6'/%3E%3Ccircle cx='540' cy='370' r='2.6'/%3E%3Ccircle cx='700' cy='120' r='2.6'/%3E%3C/g%3E%3C/svg%3E"),
-      radial-gradient(circle at 50% 0%, #FDFDFC 0%, var(--cream) 60%);
-    background-repeat:no-repeat, no-repeat;
-    background-position:center 6%, center;
-    background-size:min(920px, 132%) auto, cover;
-  }
-  .badge{ display:inline-flex; align-items:center; gap:9px; background:#fff; border:1px solid var(--line); border-radius:100px; padding:0.55rem 1.2rem; font-size:0.82rem; color:var(--ink-soft); margin-bottom:2.4rem; }
-  .badge .dot{ width:7px; height:7px; border-radius:50%; background:var(--green-light); }
-  #hero h1{ font-size:clamp(2.2rem, 5vw, 3.4rem); line-height:1.4; color:var(--ink); max-width:780px; margin:0 auto; }
-  #hero h1 .accent{ color:var(--gold-soft); }
-  #hero .lead{ max-width:640px; margin:1.8rem auto 0; color:var(--ink-soft); font-size:1rem; line-height:1.9; }
-  #hero .lead b{ color:var(--ink); font-weight:600; }
-  .hero-ctas{ display:flex; gap:1rem; justify-content:center; margin-top:2.6rem; flex-wrap:wrap; }
-  .btn-primary{ background:var(--green); color:#fff; padding:1rem 1.8rem; border-radius:8px; font-size:0.92rem; font-weight:600; transition:background .2s ease; display:inline-block;}
-  .btn-primary:hover{ background:var(--green-light); }
-  .btn-secondary{ background:#fff; border:1px solid var(--line); color:var(--ink); padding:1rem 1.8rem; border-radius:8px; font-size:0.92rem; font-weight:500; }
-  .hero-note{ margin-top:1.1rem; font-size:0.78rem; color:var(--ink-soft); }
-
-  .stat-row{ display:flex; justify-content:center; gap:4rem; margin-top:4.5rem; padding-top:3rem; border-top:1px solid var(--line); max-width:820px; margin-left:auto; margin-right:auto; flex-wrap:wrap; }
-  .stat{ text-align:center; }
-  .stat .num{ font-family:var(--font-serif); font-size:2.2rem; color:var(--gold); font-weight:600;}
-  .stat .num span{ font-size:1.1rem; margin-left:2px; }
-  .stat .label{ font-size:0.78rem; color:var(--ink-soft); margin-top:0.4rem; }
-
-  .dark{ background:var(--black); color:#EDE8DE; }
-  .dark .eyebrow{ color:var(--gold-soft); }
-  .dark .eyebrow::after{ background:var(--gold-soft); }
-  .dark h2{ color:#F5F1E8; }
-  .dark .section-sub{ color:#A9B3C4; }
-
-  .card-grid{ display:grid; grid-template-columns:repeat(2, 1fr); gap:1.1rem; margin-top:3.2rem; }
-  .pain-card{ background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:1.6rem; display:flex; gap:0.9rem; align-items:flex-start; }
-  .pain-card .ico{ width:34px; height:34px; border-radius:8px; background:rgba(74,144,217,0.16); display:flex; align-items:center; justify-content:center; flex-shrink:0; color:var(--gold-soft); font-size:1rem; }
-  .pain-card p{ font-size:0.9rem; line-height:1.65; color:#D2D8E2; }
-
-  .quote-box{ margin-top:2.6rem; border:1px solid rgba(255,255,255,0.1); border-radius:16px; padding:2.4rem 2.6rem; background:rgba(255,255,255,0.03); }
-  .quote-box p{ font-size:1.05rem; line-height:1.85; color:#EDE8DE; }
-  .quote-box p b{ color:var(--gold-soft); font-weight:600; }
-
-  #works .stat-row{ border-top:none; padding-top:0; margin-top:2.6rem; gap:2.5rem;}
-  #works .stat .num{ color:var(--gold-soft); }
-  #works .stat .label{ color:#A9B3C4; }
-  .tag-filter{ display:flex; gap:0.6rem; justify-content:center; flex-wrap:wrap; margin-top:2.6rem; }
-  .tag-filter button{
-    font-family:var(--font-mono); font-size:0.72rem; letter-spacing:0.06em;
-    padding:0.5rem 1.1rem; border-radius:100px; border:1px solid rgba(255,255,255,0.18);
-    background:transparent; color:#A9B3C4; cursor:pointer; transition:background .2s ease, color .2s ease, border-color .2s ease;
-  }
-  .tag-filter button:hover{ border-color:var(--gold-soft); color:#F5F1E8; }
-  .tag-filter button.active{ background:var(--gold-soft); border-color:var(--gold-soft); color:#fff; font-weight:600; }
-
-  .work-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:1.1rem; margin-top:3rem;}
-  .work-card{ background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:1.7rem; display:flex; flex-direction:column; transition:opacity .25s ease, transform .25s ease, border-color .2s ease; }
-  .work-card:hover{ border-color:rgba(74,144,217,0.4); }
-  .work-card.is-hidden{ display:none; }
-  .work-card .head{ display:flex; justify-content:space-between; align-items:flex-start; gap:0.6rem; }
-  .work-card .tag{ font-family:var(--font-mono); font-size:0.68rem; color:var(--gold-soft); letter-spacing:0.06em; }
-  .work-card .status{ font-family:var(--font-mono); font-size:0.65rem; letter-spacing:0.04em; background:rgba(47,92,138,0.35); color:#9FC4EE; padding:0.25rem 0.6rem; border-radius:100px; white-space:nowrap; }
-  .work-card h3{ font-size:1.08rem; margin:0.8rem 0 0.7rem; color:#F5F1E8; }
-  .work-card p{ font-size:0.85rem; color:#B9C2D1; line-height:1.7; flex-grow:1; }
-  .work-card .tech{ font-family:var(--font-mono); font-size:0.7rem; color:#7E8AA0; margin-top:1rem; }
-  .work-card .actions{ margin-top:1.2rem; display:flex; align-items:center; justify-content:space-between; gap:0.8rem; }
-  .work-card .link{ font-size:0.82rem; color:var(--gold-soft); font-weight:600; display:inline-flex; align-items:center; gap:0.3rem; }
-  .work-card .link:hover{ color:#fff; }
-  .work-detail-btn{ font-family:var(--font-sans); font-size:0.78rem; color:#B9C2D1; background:none; border:1px solid rgba(255,255,255,0.18); border-radius:100px; padding:0.4rem 0.9rem; cursor:pointer; transition:border-color .2s ease, color .2s ease; }
-  .work-detail-btn:hover{ border-color:var(--gold-soft); color:#fff; }
-
-  .modal-overlay{ position:fixed; inset:0; background:rgba(16,24,38,0.72); backdrop-filter:blur(4px); display:none; align-items:center; justify-content:center; z-index:200; padding:5vw; }
-  .modal-overlay.is-open{ display:flex; }
-  .modal-box{ background:#fff; border-radius:20px; max-width:640px; width:100%; max-height:85vh; overflow-y:auto; padding:2.6rem; position:relative; }
-  .modal-close{ position:absolute; top:1.3rem; right:1.3rem; width:32px; height:32px; border-radius:50%; border:1px solid var(--line); background:#fff; color:var(--ink-soft); font-size:0.9rem; cursor:pointer; }
-  .modal-close:hover{ border-color:var(--gold-soft); color:var(--gold); }
-  .modal-tag{ font-family:var(--font-mono); font-size:0.7rem; color:var(--gold-soft); letter-spacing:0.06em; }
-  .modal-box h3{ font-size:1.3rem; margin:0.6rem 0 0.9rem; padding-right:2rem; }
-  .modal-desc{ font-size:0.9rem; color:var(--ink-soft); line-height:1.75; }
-  .modal-sec{ margin-top:1.8rem; }
-  .modal-sec-h{ font-family:var(--font-mono); font-size:0.7rem; letter-spacing:0.1em; color:var(--gold); text-transform:uppercase; margin-bottom:0.9rem; }
-  .modal-change-row{ display:flex; gap:0.9rem; align-items:flex-start; padding:0.9rem 1rem; border-radius:10px; margin-bottom:0.6rem; }
-  .modal-change-row.before{ background:var(--cream); border:1px solid var(--line); }
-  .modal-change-row.after{ background:rgba(74,144,217,0.08); border:1px solid rgba(74,144,217,0.3); }
-  .modal-change-row .lab{ font-family:var(--font-mono); font-size:0.68rem; font-weight:700; color:var(--ink-soft); flex-shrink:0; width:3.4rem; padding-top:0.1rem; }
-  .modal-change-row.after .lab{ color:var(--gold-soft); }
-  .modal-change-row .txt{ font-size:0.85rem; line-height:1.65; color:var(--ink); }
-  .modal-uc-list{ list-style:none; }
-  .modal-uc-list li{ font-size:0.86rem; color:var(--ink-soft); line-height:1.7; margin-bottom:0.6rem; padding-left:1.3rem; position:relative; }
-  .modal-uc-list li::before{ content:'◎'; position:absolute; left:0; color:var(--gold); font-size:0.65rem; top:0.35rem; }
-
-  #linkout{ background:var(--cream-soft); }
-  .linkout-card{ margin-top:3rem; background:#fff; border:1px solid var(--line); border-radius:16px; padding:2.4rem; display:flex; justify-content:space-between; align-items:center; gap:1.5rem; flex-wrap:wrap; }
-  .linkout-card .txt h3{ font-size:1.1rem; margin-bottom:0.5rem; }
-  .linkout-card .txt p{ font-size:0.88rem; color:var(--ink-soft); line-height:1.7; }
-
-  #cta{ background:linear-gradient(135deg, var(--green), #0F2038); text-align:center; color:#fff; padding:6rem 6vw; }
-  #cta h2{ color:#fff; font-size:clamp(1.7rem,4vw,2.5rem); }
-  #cta .hero-ctas{ margin-top:2.2rem; }
-  #cta .btn-primary{ background:#fff; color:var(--green); }
-  #cta .btn-primary:hover{ background:#F5F1E8; }
-  #cta .btn-line{ background:transparent; border:1px solid rgba(255,255,255,0.5); color:#fff; padding:1rem 1.8rem; border-radius:8px; font-size:0.92rem; font-weight:600; display:inline-block; cursor:pointer; transition:background .2s ease, border-color .2s ease; }
-  #cta .btn-line:hover{ background:rgba(255,255,255,0.12); border-color:#fff; }
-  #cta .cta-note{ margin-top:1rem; font-size:0.8rem; color:rgba(255,255,255,0.75); }
-  #cta .cta-qr{ display:none; flex-direction:column; align-items:center; gap:0.6rem; margin-top:2.2rem; }
-  #cta .cta-qr.is-visible{ display:inline-flex; }
-  #cta .cta-qr img{ width:120px; height:120px; background:#fff; border-radius:8px; padding:8px; }
-  #cta .cta-qr span{ font-size:0.75rem; color:rgba(255,255,255,0.75); }
-
-  footer{ background:var(--black); color:#8A8375; padding:2.6rem 6vw; text-align:center; font-size:0.8rem; }
-  footer .flinks{ margin-top:0.8rem; display:flex; gap:1.4rem; justify-content:center; }
-  footer .flinks a{ color:#A9B3C4; }
-  footer .flinks a:hover{ color:#fff; }
-
-  @media (max-width:860px){
-    .card-grid, .work-grid{ grid-template-columns:1fr !important; }
-    .stat-row{ gap:2rem; }
-    section{ padding:4.5rem 6vw; }
-    .nav-role{ display:none; }
-    #nav .role-accent{ display:none; }
-    .nav-actions{ gap:0.7rem; }
-    .linkout-card{ flex-direction:column; align-items:flex-start; }
-    .work-card .actions{ flex-wrap:wrap; }
-    .modal-box{ padding:2rem 1.6rem; }
-  }
-  @media (max-width:480px){
-    nav{padding:14px 5vw;}
-    .nav-name{font-size:0.94rem;}
-    .nav-link{font-size:0.74rem;}
-    .nav-cta{padding:0.58rem 0.85rem; font-size:0.76rem;}
-    #hero{padding-top:8.5rem;}
-    section{padding:3.8rem 5vw;}
-    .hero-ctas{gap:0.75rem;}
-    .hero-ctas > a, .hero-ctas > button{width:100%; max-width:320px; text-align:center;}
-    .stat-row{gap:1.6rem; margin-top:3rem;}
-    .stat{min-width:120px;}
-    .work-card{padding:1.4rem;}
-    .modal-overlay{padding:3vw;}
-    .modal-box{padding:2.8rem 1.2rem 1.5rem; max-height:92vh; border-radius:14px;}
-    footer .flinks{flex-wrap:wrap;}
-  }
-  @media (prefers-reduced-motion:reduce){
-    html{scroll-behavior:auto;}
-    *,*::before,*::after{scroll-behavior:auto !important; transition-duration:0.01ms !important; animation-duration:0.01ms !important; animation-iteration-count:1 !important;}
-  }
-</style>
+<link rel="stylesheet" href="styles.css">
 </head>
 <body>
 <a class="skip-link" href="#main-content">本文へ移動</a>
 
 <nav id="nav" aria-label="メインナビゲーション">
-  <div><span class="nav-name" id="nav-name"></span><span class="nav-role" id="nav-role"></span></div>
-  <div class="nav-actions"><a class="nav-link" id="nav-profile"></a><a class="nav-cta" id="nav-cta" href="#contact"></a></div>
+  <a href="#hero" class="nav-brand" aria-label="田代裕貴のポートフォリオ、ページ先頭へ"><span class="nav-name" id="nav-name">田代 裕貴</span><span class="nav-role" id="nav-role">制作実績ポートフォリオ</span></a>
+  <div class="nav-actions"><a class="nav-link nav-works" href="#works">制作実績</a><a class="nav-link" id="nav-profile" href="../自己紹介HP/">プロフィール ↗</a><a class="nav-cta" id="nav-cta" href="#contact">相談する</a></div>
 </nav>
 
-<main id="main-content" tabindex="-1">
+<main id="main-content" tabindex="-1"><noscript><div class="wrap fallback"><h1>田代 裕貴の制作実績</h1><p>一覧の絞り込みにはJavaScriptを使用します。<a href="../自己紹介HP/">自己紹介と代表的な制作実績はこちら</a>からご覧いただけます。</p><a href="mailto:nexsist88@gmail.com">メールで相談する</a></div></noscript>
 <section id="hero"><div class="wrap" id="hero-wrap"></div></section>
-<section id="pain" class="dark"><div class="wrap" id="pain-wrap"></div></section>
-<section id="works" class="dark"><div class="wrap" id="works-wrap"></div></section>
+
+<section id="works"><div class="wrap" id="works-wrap"></div></section>
 <section id="linkout"><div class="wrap" id="linkout-wrap"></div></section>
-<section id="cta"><div class="wrap" id="cta-wrap"></div></section>
+<section id="cta"><span id="contact" class="anchor-target" aria-hidden="true"></span><div class="wrap" id="cta-wrap"></div></section>
 </main>
 <footer id="footer-wrap"></footer>
 
@@ -257,14 +57,17 @@
     <div class="modal-tag" id="modal-tag"></div>
     <h3 id="modal-title"></h3>
     <p class="modal-desc" id="modal-desc"></p>
+    <figure class="modal-preview"><img id="modal-image" alt="" width="960" height="600" decoding="async"><figcaption id="modal-image-caption"></figcaption></figure>
     <div class="modal-sec">
       <div class="modal-sec-h">Before → After</div>
       <div class="modal-change-row before"><span class="lab">Before</span><span class="txt" id="modal-before"></span></div>
       <div class="modal-change-row after"><span class="lab">After</span><span class="txt" id="modal-after"></span></div>
     </div>
     <div class="modal-sec">
-      <div class="modal-sec-h">他にどんな場面で活用できるか</div>
+      <div class="modal-sec-h">応用できる場面（例）</div>
       <ul class="modal-uc-list" id="modal-usecases"></ul>
+    </div><div class="modal-sec"><div class="modal-sec-h">使用技術</div><p class="modal-desc" id="modal-tech"></p></div><div class="modal-actions"><a class="btn-primary" id="modal-open" target="_blank" rel="noopener noreferrer">公開ページを開く ↗</a><a class="btn-secondary" id="modal-consult">この制作物について相談</a>
+
     </div>
   </div>
 </div>
@@ -275,134 +78,196 @@
    実績の追加・差し替えができます。(HTML/CSSは変更不要です) ▼▼▼
 ====================================================================== */
 const SITE = {
-  meta: { title: "田代 裕貴 | 制作実績ポートフォリオ（AI・DXコンサル）" },
-
-  nav: {
-    name: "田代 裕貴<span class=\"role-accent\">(AI・DXコンサル)</span>",
-    role: "制作実績ポートフォリオ",
-    profileLabel: "プロフィール ↗",
-    profileHref: "https://tassy5865-lang.github.io/claude/%E8%87%AA%E5%B7%B1%E7%B4%B9%E4%BB%8BHP/",
-    ctaLabel: "お問い合わせ",
-    ctaHref: "#contact"
+  "meta": {
+    "title": "田代 裕貴 | 制作実績ポートフォリオ（AI・DXコンサル）"
   },
-
-  hero: {
-    badge: "臨床工学技士 / AI活用・業務改善",
-    titlePre: "「あったら助かる」を、",
-    titleAccent: "AI",
-    titlePost: "で形にしてきました。",
-    lead: "紙やExcelでの手作業の管理、毎回同じ手順のくり返し作業——現場で実際に困っていたことを起点に、<b>業務改善ツール</b>や<b>臨床向け計算ツール</b>、<b>ホームページ・LP制作</b>に取り組んできました。ここでは、これまでに形にした制作実績を紹介します。",
-    ctaPrimary: { label: "実績を見る →", href: "#works" },
-    ctaSecondary: { label: "お問い合わせ", href: "#contact" },
-    note: "実績は随時追加しています。",
-    stats: [
-      { num:"auto", unit:"件", label:"公開中の制作実績" },
-      { num:"医療/業務/Web", unit:"", label:"対応領域" },
-      { num:"無料", unit:"", label:"すべて体験可能" }
-    ]
+  "nav": {
+    "name": "田代 裕貴<span class=\"role-accent\">(AI・DXコンサル)</span>",
+    "role": "制作実績ポートフォリオ",
+    "profileLabel": "プロフィール ↗",
+    "profileHref": "https://tassy5865-lang.github.io/claude/%E8%87%AA%E5%B7%B1%E7%B4%B9%E4%BB%8BHP/",
+    "ctaLabel": "相談する",
+    "ctaHref": "#contact"
   },
-
-  pain: {
-    eyebrow: "issues",
-    title: "きっかけは、<br>いつも現場の小さな不便でした。",
-    sub: "現場でよく聞く「困りごと」を起点に、実際に使えるツールとして形にしてきました。",
-    cards: [
-      { icon:"📝", text:"紙やExcelでの管理・集計に、毎回時間がかかっている" },
-      { icon:"🔁", text:"同じような入力作業・振り分け作業をくり返している" },
-      { icon:"👤", text:"担当者しか使い方がわからず、属人化してしまっている" },
-      { icon:"🌐", text:"ホームページ・LPが古いまま、なかなか手をつけられない" }
-    ],
-    quote: "「使えるツール」は、現場の困りごとを理解した上で設計して初めて機能します。だからこそ、要件だけでなく実際の運用に即した形に落とし込むことを大切にしています。"
-  },
-
-  works: {
-    eyebrow: "works",
-    title: "制作実績",
-    sub: "臨床現場・業務改善・Web制作、それぞれの分野で形にしたツールです。タグで絞り込んでご覧いただけます。",
-    stats: [],
-    cards: [
+  "hero": {
+    "featuredIndex": 0,
+    "featuredCaption": "測定値の入力から、指標の確認まで。",
+    "badge": "臨床工学技士 / AI活用・業務改善",
+    "titlePre": "現場の「手間」を、",
+    "titleAccent": "使える仕組み",
+    "titlePost": "へ。",
+    "lead": "臨床工学技士・田代裕貴が手がけた、医療・業務改善・Web制作の実績です。画面と改善内容から、気になるツールをご覧ください。",
+    "ctaPrimary": {
+      "label": "制作実績を見る →",
+      "href": "#works"
+    },
+    "ctaSecondary": {
+      "label": "業務の悩みを相談する",
+      "href": "#contact"
+    },
+    "note": "制作画面・改善内容・活用場面を、実績ごとに紹介しています。",
+    "stats": [
       {
-        tag:"医療・臨床", status:"公開中",
-        title:"透析指標計算・分析ツール",
-        text:"透析患者の1回の治療データから、除水・循環動態・透析効率・貧血/電解質・心機能の各指標を自動計算する臨床用ツール。AIへ考察を依頼するためのプロンプトも自動生成。",
-        tech:"HTML / CSS / JS(単一ファイル・ビルド不要)",
-        href:"https://tassy5865-lang.github.io/claude/%E9%80%8F%E6%9E%90%E6%8C%87%E6%A8%99%E8%A8%88%E7%AE%97%E3%83%BB%E5%88%86%E6%9E%90/index.html",
-        before:"測定値をもとに、除水・透析効率などの指標を都度手計算していた",
-        after:"測定値を入力するだけで、各指標を自動計算できるようになった",
-        useCases:["血液透析以外の検査データの集計・可視化", "施設内の指標管理を統一フォーマット化したい場面", "AIへの考察依頼用プロンプトを毎回書く手間をなくしたい場面"]
+        "num": "auto",
+        "unit": "件",
+        "label": "公開中の制作実績"
       },
       {
-        tag:"医療・臨床", status:"公開中",
-        title:"bv-prr-tool(透析CSV解析)",
-        text:"透析関連の測定CSVを読み込み、患者ごとに指標を集計・グラフ化するWebアプリ。患者名はCSVから自動判定し、単独ビューでも確認できる。",
-        tech:"React / Vite / Recharts",
-        href:"https://tassy5865-lang.github.io/bv-prr-tool/",
-        before:"測定機器から出力されたCSVを、患者ごとにExcelへ手作業で整理・集計していた",
-        after:"CSVを読み込ませるだけで、患者ごとの指標集計・グラフ化ができるようになった",
-        useCases:["複数拠点で出力形式が異なる測定データの統一集計", "経過観察用のグラフを都度作成する手間を減らしたい場面", "特定患者のデータだけを素早く確認したい場面"]
-      },
-      {
-        tag:"業務改善", status:"公開中",
-        title:"FileData(汎用データ管理ツール)",
-        text:"フィールドを自由に定義できる汎用データ管理ツール。複数データベース対応で、用途に合わせてカスタマイズできる台帳管理の仕組み。",
-        tech:"HTML / CSS / JS(単一ファイル・ビルド不要)",
-        href:"https://tassy5865-lang.github.io/claude/%E9%A2%A8%E8%A2%8B%E7%AE%A1%E7%90%86%E3%83%87%E3%83%BC%E3%82%BF%E3%83%84%E3%83%BC%E3%83%AB/index.html",
-        before:"台帳や管理表をExcelやノートで個別管理し、フォーマットがバラバラだった",
-        after:"フィールドを自由に定義できる共通の画面で、複数の台帳を一元管理できるようになった",
-        useCases:["備品・機材管理台帳のデジタル化", "部署ごとに異なる管理項目を統一したい場面", "紙の管理表をなくしペーパーレス化したい場面"]
-      },
-      {
-        tag:"業務改善", status:"公開中",
-        title:"AI-OCR",
-        text:"画像・PDFをアップロードしAI(Gemini)でOCR・文字起こしを行い、その結果を既存のExcel台帳へ自動で振り分け・追記するところまで1つで完結するWebツール。項目マッピングはAIが提案し、テンプレートとして保存・再利用できる。APIキーはブラウザ内保存のみでサーバー送信なし。",
-        tech:"React(CDN) / Tailwind / Gemini API / PDF.js / SheetJS / PapaParse",
-        href:"https://tassy5865-lang.github.io/claude/AI-OCR/index.html",
-        before:"紙の帳票やPDFの内容を目で見ながら手入力で転記し、さらにExcel台帳の該当項目へも手作業で転記していた",
-        after:"画像・PDFをアップロードするだけでAIが文字起こしを行い、項目マッピングをテンプレート化してExcel台帳への振り分けまで自動化できるようになった",
-        useCases:["紙の伝票・申込書のデータ化", "手書き資料のテキスト化", "毎月フォーマットが同じ集計作業の自動化", "複数の担当者間で入力ルールを統一したい場面"]
-      },
-      {
-        tag:"Web制作", status:"公開中",
-        title:"自己紹介HP(プロフィールLP)",
-        text:"経歴・こだわり・取り組み・対応範囲・ご相談の流れを1ページにまとめたプロフィールサイト。検索やSNS共有に向けて構造化データ(JSON-LD)とOGP画像も整備している。",
-        tech:"HTML / CSS / JS(静的マルチファイル・ビルド不要)",
-        href:"https://tassy5865-lang.github.io/claude/%E8%87%AA%E5%B7%B1%E7%B4%B9%E4%BB%8BHP/",
-        before:"経歴やこだわりを伝えるページがなく、都度資料を作って説明していた",
-        after:"本文・デザイン・動作をファイル分割し、内容を追記しやすい常設のプロフィールページができた",
-        useCases:["名刺代わりのプロフィールページが欲しい場面", "独立・副業の実績をまとめて見せたい場面", "制作会社に頼らず自分で内容を更新したい場面"]
+        "num": "3",
+        "unit": "領域",
+        "label": "医療・業務改善・Web"
       }
     ]
   },
-
-  linkout: {
-    eyebrow: "profile",
-    title: "プロフィール",
-    sub: "経歴やこだわりについては、プロフィールページにまとめています。",
-    cardTitle: "田代 裕貴のプロフィールを見る",
-    cardText: "臨床工学技士としての経験と、AIを活用した業務改善への取り組みを紹介しています。",
-    cardLinkLabel: "プロフィールを見る →",
-    cardLinkHref: "https://tassy5865-lang.github.io/claude/%E8%87%AA%E5%B7%B1%E7%B4%B9%E4%BB%8BHP/"
+  "works": {
+    "eyebrow": "works",
+    "title": "制作実績",
+    "sub": "分野で絞り込み、画面と「できること」を比較できます。",
+    "stats": [],
+    "cards": [
+      {
+        "tag": "医療・臨床",
+        "status": "公開中",
+        "title": "透析指標計算・分析ツール",
+        "text": "治療データから各指標を自動計算。AI考察用のプロンプトも生成します。",
+        "tech": "HTML / CSS / JS(単一ファイル・ビルド不要)",
+        "href": "https://tassy5865-lang.github.io/claude/%E9%80%8F%E6%9E%90%E6%8C%87%E6%A8%99%E8%A8%88%E7%AE%97%E3%83%BB%E5%88%86%E6%9E%90/index.html",
+        "before": "測定値をもとに、除水・透析効率などの指標を都度手計算していた",
+        "after": "測定値を入力するだけで、各指標を自動計算できるようになった",
+        "useCases": [
+          "血液透析以外の検査データの集計・可視化",
+          "施設内の指標管理を統一フォーマット化したい場面",
+          "AIへの考察依頼用プロンプトを毎回書く手間をなくしたい場面"
+        ],
+        "image": "../自己紹介HP/assets/work-dialysis.png",
+        "imageAlt": "透析指標の入力・計算画面",
+        "challenge": "測定値から指標を手計算",
+        "benefit": "入力から指標計算までを一画面に"
+      },
+      {
+        "tag": "医療・臨床",
+        "status": "公開中",
+        "title": "透析CSV解析ツール",
+        "text": "測定CSVを患者別に集計し、指標の推移をグラフで確認できます。",
+        "tech": "React / Vite / Recharts",
+        "href": "https://tassy5865-lang.github.io/bv-prr-tool/",
+        "before": "測定機器から出力されたCSVを、患者ごとにExcelへ手作業で整理・集計していた",
+        "after": "CSVを読み込ませるだけで、患者ごとの指標集計・グラフ化ができるようになった",
+        "useCases": [
+          "複数拠点で出力形式が異なる測定データの統一集計",
+          "経過観察用のグラフを都度作成する手間を減らしたい場面",
+          "特定患者のデータだけを素早く確認したい場面"
+        ],
+        "image": "../自己紹介HP/assets/work-csv.png",
+        "imageAlt": "サンプルデータによるCSV読込・解析結果画面",
+        "challenge": "CSVを手作業で整理・集計",
+        "benefit": "読込から集計・グラフ表示まで"
+      },
+      {
+        "tag": "業務改善",
+        "status": "公開中",
+        "title": "FileData｜台帳管理",
+        "text": "管理項目を自由に設定し、用途の異なる複数の台帳をまとめて管理できます。",
+        "tech": "HTML / CSS / JS(単一ファイル・ビルド不要)",
+        "href": "https://tassy5865-lang.github.io/claude/%E9%A2%A8%E8%A2%8B%E7%AE%A1%E7%90%86%E3%83%87%E3%83%BC%E3%82%BF%E3%83%84%E3%83%BC%E3%83%AB/index.html",
+        "before": "台帳や管理表をExcelやノートで個別管理し、フォーマットがバラバラだった",
+        "after": "フィールドを自由に定義できる共通の画面で、複数の台帳を一元管理できるようになった",
+        "useCases": [
+          "備品・機材管理台帳のデジタル化",
+          "部署ごとに異なる管理項目を統一したい場面",
+          "紙の管理表をなくしペーパーレス化したい場面"
+        ],
+        "image": "assets/work-filedata.png",
+        "imageAlt": "FileDataの台帳管理画面（データ登録前）",
+        "challenge": "台帳ごとに異なる管理画面",
+        "benefit": "複数の台帳を共通の操作で管理"
+      },
+      {
+        "tag": "業務改善",
+        "status": "公開中",
+        "title": "AI-OCR｜文字起こし・転記",
+        "text": "画像・PDFの文字起こしから、Excel台帳への振り分け・追記までを支援します。",
+        "tech": "React(CDN) / Tailwind / Gemini API / PDF.js / SheetJS / PapaParse",
+        "href": "https://tassy5865-lang.github.io/claude/AI-OCR/index.html",
+        "before": "紙の帳票やPDFの内容を目で見ながら手入力で転記し、さらにExcel台帳の該当項目へも手作業で転記していた",
+        "after": "画像・PDFから文字を抽出し、項目の対応付けを再利用してExcel台帳への振り分け・追記を支援。",
+        "useCases": [
+          "紙の伝票・申込書のデータ化",
+          "手書き資料のテキスト化",
+          "毎月フォーマットが同じ集計作業の自動化",
+          "複数の担当者間で入力ルールを統一したい場面"
+        ],
+        "image": "../自己紹介HP/assets/work-ocr.png",
+        "imageAlt": "AI-OCRのファイル読込・抽出設定画面",
+        "challenge": "帳票を見ながらExcelへ手入力",
+        "benefit": "文字抽出と台帳への転記を支援"
+      },
+      {
+        "tag": "Web制作",
+        "status": "公開中",
+        "title": "自己紹介HP｜プロフィールサイト",
+        "text": "強み・制作実績・対応内容を一ページにまとめ、相談につながる導線を整えました。",
+        "tech": "HTML / CSS / JS(静的マルチファイル・ビルド不要)",
+        "href": "https://tassy5865-lang.github.io/claude/%E8%87%AA%E5%B7%B1%E7%B4%B9%E4%BB%8BHP/",
+        "before": "経歴やこだわりを伝えるページがなく、都度資料を作って説明していた",
+        "after": "強み・実績・対応内容をまとめた常設ページから、メールやLINEへ相談できるようになった。",
+        "useCases": [
+          "名刺代わりのプロフィールページが欲しい場面",
+          "独立・副業の実績をまとめて見せたい場面",
+          "制作会社に頼らず自分で内容を更新したい場面"
+        ],
+        "image": "assets/work-profile.png",
+        "imageAlt": "田代裕貴の自己紹介HPのトップ画面",
+        "challenge": "活動内容をその都度説明",
+        "benefit": "強みと相談先を一ページで紹介"
+      }
+    ]
   },
-
-  contact: {
-    eyebrow: "contact",
-    title: "お気軽にご連絡ください",
-    ctas: [
-      { label: "Email →", href: "mailto:nexsist88@gmail.com" },
-      { label: "公式LINE →", href: "https://lin.ee/5SAPZeC", showQrOnClick: true }
-    ],
-    note: "ご連絡はメールまたは公式LINEにて承っています。",
-    qr: { caption: "スマホでスキャンして公式LINEを友だち追加" }
+  "linkout": {
+    "eyebrow": "profile",
+    "title": "プロフィール",
+    "sub": "経歴やこだわりについては、プロフィールページにまとめています。",
+    "cardTitle": "田代 裕貴のプロフィールを見る",
+    "cardText": "臨床工学技士としての経験と、AIを活用した業務改善への取り組みを紹介しています。",
+    "cardLinkLabel": "プロフィールを見る →",
+    "cardLinkHref": "https://tassy5865-lang.github.io/claude/%E8%87%AA%E5%B7%B1%E7%B4%B9%E4%BB%8BHP/"
   },
-
-  footer: {
-    left: "田代 裕貴<span class=\"role-accent\">(AI・DXコンサル)</span> | 制作実績ポートフォリオ",
-    links: [
-      { label:"Email", href:"mailto:nexsist88@gmail.com" },
-      { label:"公式LINE", href:"https://lin.ee/5SAPZeC" },
-      { label:"プロフィール", href:"https://tassy5865-lang.github.io/claude/%E8%87%AA%E5%B7%B1%E7%B4%B9%E4%BB%8BHP/" }
+  "contact": {
+    "eyebrow": "contact",
+    "title": "気になった制作物から、ご相談ください",
+    "ctas": [
+      {
+        "label": "メールで相談する →",
+        "href": "mailto:nexsist88@gmail.com"
+      },
+      {
+        "label": "LINEで相談する ↗",
+        "href": "https://lin.ee/5SAPZeC",
+        "showQrOnClick": true
+      }
     ],
-    copyright: "© 2026 田代 裕貴<span class=\"role-accent\">(AI・DXコンサル)</span>"
+    "note": "「このツールを自分の業務でも使いたい」など、制作物名と困っている作業をお知らせください。",
+    "qr": {
+      "caption": "スマホでスキャンして公式LINEを友だち追加"
+    }
+  },
+  "footer": {
+    "left": "田代 裕貴<span class=\"role-accent\">(AI・DXコンサル)</span> | 制作実績ポートフォリオ",
+    "links": [
+      {
+        "label": "Email",
+        "href": "mailto:nexsist88@gmail.com"
+      },
+      {
+        "label": "公式LINE",
+        "href": "https://lin.ee/5SAPZeC"
+      },
+      {
+        "label": "プロフィール",
+        "href": "https://tassy5865-lang.github.io/claude/%E8%87%AA%E5%B7%B1%E7%B4%B9%E4%BB%8BHP/"
+      }
+    ],
+    "copyright": "© 2026 田代 裕貴<span class=\"role-accent\">(AI・DXコンサル)</span>"
   }
 };
 /* ▲▲▲ 編集はここまで。以下は描画ロジックなので触る必要はありません ▲▲▲ */
@@ -442,8 +307,19 @@ function safeHref(value){
   }
 }
 
+function safeImage(value){
+  const image = String(value || '');
+  return /^(?:assets\/work-|\.\.\/自己紹介HP\/assets\/work-)[a-z-]+\.png$/.test(image) ? image : '';
+}
 const statNumber = stat => stat.num === 'auto' ? SITE.works.cards.length : stat.num;
 const externalAttributes = href => safeHref(href).startsWith('https:') ? ' target="_blank" rel="noopener noreferrer"' : '';
+const consultationHref = (title = '') => {
+  const email = SITE.contact.ctas.find(cta => cta.href.startsWith('mailto:'))?.href.split('?')[0];
+  if (!email) return '#contact';
+  const subject = title ? `${title}についての相談` : '業務改善・Web制作についての相談';
+  const body = `田代様\n\n${title ? `「${title}」を見て、ご相談です。` : 'ポートフォリオを見て、ご相談です。'}\n\n【お名前・会社名】\n\n【困っている作業・相談したいこと】\n\n【現在の進め方（Excel・紙など）】\n\n【希望する時期（決まっていれば）】\n`;
+  return email + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+};
 
 document.getElementById('page-title').textContent = SITE.meta.title;
 
@@ -463,7 +339,10 @@ if (SITE.nav.profileLabel) {
   navProfile.remove();
 }
 
+const featuredIndex = SITE.works.cards[SITE.hero.featuredIndex] ? SITE.hero.featuredIndex : 0;
+const featuredWork = SITE.works.cards[featuredIndex];
 document.getElementById('hero-wrap').innerHTML = `
+  <div class="hero-copy">
   <div class="badge"><span class="dot" aria-hidden="true"></span>${escapeHTML(SITE.hero.badge)}</div>
   <h1>${escapeHTML(SITE.hero.titlePre)}<br><span class="accent">${escapeHTML(SITE.hero.titleAccent)}</span>${escapeHTML(SITE.hero.titlePost)}</h1>
   <p class="lead">${sanitizeRichHTML(SITE.hero.lead)}</p>
@@ -475,18 +354,17 @@ document.getElementById('hero-wrap').innerHTML = `
   <div class="stat-row">
     ${SITE.hero.stats.map(s => `<div class="stat"><div class="num">${escapeHTML(statNumber(s))}<span>${escapeHTML(s.unit)}</span></div><div class="label">${escapeHTML(s.label)}</div></div>`).join('')}
   </div>
-`;
-
-document.getElementById('pain-wrap').innerHTML = `
-  <div class="eyebrow center">${escapeHTML(SITE.pain.eyebrow)}</div>
-  <div class="center-text"><h2>${sanitizeRichHTML(SITE.pain.title)}</h2><p class="section-sub">${escapeHTML(SITE.pain.sub)}</p></div>
-  <div class="card-grid">
-    ${SITE.pain.cards.map(c => `<div class="pain-card"><div class="ico" aria-hidden="true">${escapeHTML(c.icon)}</div><p>${escapeHTML(c.text)}</p></div>`).join('')}
   </div>
-  <div class="quote-box"><p>${sanitizeRichHTML(SITE.pain.quote)}</p></div>
+  <figure class="hero-feature">
+    <div class="feature-heading"><span>制作実績から</span><span>${escapeHTML(featuredWork.tag)}</span></div>
+    <button class="work-preview-btn" type="button" data-work-index="${featuredIndex}" aria-label="${escapeHTML(featuredWork.title)}の画面と改善内容を見る">
+      <img src="${escapeHTML(safeImage(featuredWork.image))}" alt="${escapeHTML(featuredWork.imageAlt)}" width="960" height="600" fetchpriority="high" decoding="async">
+    </button>
+    <figcaption><span class="feature-kicker">${escapeHTML(SITE.hero.featuredCaption)}</span><strong>${escapeHTML(featuredWork.title)}</strong><button class="feature-detail" type="button" data-work-index="${featuredIndex}">画面と改善内容を見る <span aria-hidden="true">↗</span></button></figcaption>
+  </figure>
 `;
 
-const workTags = ['ALL', ...new Set(SITE.works.cards.map(c => c.tag))];
+const workTags = ['すべて', ...new Set(SITE.works.cards.map(c => c.tag))];
 document.getElementById('works-wrap').innerHTML = `
   <div class="eyebrow center">${escapeHTML(SITE.works.eyebrow)}</div>
   <div class="center-text"><h2>${escapeHTML(SITE.works.title)}</h2><p class="section-sub">${escapeHTML(SITE.works.sub)}</p></div>
@@ -495,18 +373,20 @@ document.getElementById('works-wrap').innerHTML = `
     ${SITE.works.stats.map(s => `<div class="stat"><div class="num">${escapeHTML(statNumber(s))}<span>${escapeHTML(s.unit)}</span></div><div class="label">${escapeHTML(s.label)}</div></div>`).join('')}
   </div>` : ''}
   <div class="tag-filter" aria-label="制作実績の絞り込み">
-    ${workTags.map((t,i) => `<button type="button" data-filter="${escapeHTML(t)}" aria-controls="work-list" aria-pressed="${i===0?'true':'false'}" class="${i===0?'active':''}">${escapeHTML(t)}</button>`).join('')}
+    ${workTags.map((t,i) => `<button type="button" data-filter="${escapeHTML(t)}" aria-controls="work-list" aria-pressed="${i===0?'true':'false'}" class="${i===0?'active':''}">${escapeHTML(t)} <span>${t === "すべて" ? SITE.works.cards.length : SITE.works.cards.filter(c => c.tag === t).length}</span></button>`).join('')}
   </div>
-  <div class="work-grid" id="work-list" aria-live="polite">
+  <p class="result-count" id="result-count" role="status">全${SITE.works.cards.length}件を表示</p>
+  <div class="work-grid" id="work-list">
     ${SITE.works.cards.map((c,i) => `
       <article class="work-card" data-tag="${escapeHTML(c.tag)}">
+        <figure class="work-visual"><button class="work-preview-btn" type="button" data-work-index="${i}" aria-label="${escapeHTML(c.title)}の画面と改善内容を見る"><img src="${escapeHTML(safeImage(c.image))}" alt="${escapeHTML(c.imageAlt)}" loading="lazy" decoding="async" width="960" height="600"><span class="preview-hint" aria-hidden="true">画面・詳細を見る ↗</span></button></figure>
         <div class="head"><div class="tag">${escapeHTML(c.tag)}</div><div class="status">${escapeHTML(c.status)}</div></div>
         <h3>${escapeHTML(c.title)}</h3>
         <p>${escapeHTML(c.text)}</p>
-        <div class="tech">${escapeHTML(c.tech)}</div>
+        <dl class="work-summary"><div><dt>困りごと</dt><dd>${escapeHTML(c.challenge)}</dd></div><div><dt>できること</dt><dd>${escapeHTML(c.benefit)}</dd></div></dl>
         <div class="actions">
-          <a class="link" href="${escapeHTML(safeHref(c.href))}" target="_blank" rel="noopener noreferrer">実績を見る →</a>
-          <button type="button" class="work-detail-btn" data-index="${i}">詳しく見る</button>
+          <a class="link" href="${escapeHTML(safeHref(c.href))}" target="_blank" rel="noopener noreferrer" aria-label="${escapeHTML(c.title)}を別タブで開く">${c.tag === "Web制作" ? "サイトを開く" : "ツールを開く"} ↗</a>
+          <button type="button" class="work-detail-btn" data-index="${i}" aria-label="${escapeHTML(c.title)}の改善内容を見る">改善内容を見る</button>
         </div>
       </article>
     `).join('')}
@@ -526,10 +406,12 @@ filterButtons.forEach(btn => {
     btn.setAttribute('aria-pressed', 'true');
     const target = btn.dataset.filter;
     workCards.forEach(card => {
-      const show = (target === 'ALL' || card.dataset.tag === target);
+      const show = (target === 'すべて' || card.dataset.tag === target);
       card.classList.toggle('is-hidden', !show);
       card.hidden = !show;
     });
+    const count = [...workCards].filter(card => !card.hidden).length;
+    document.getElementById("result-count").textContent = target === "すべて" ? `全${count}件を表示` : `${target}：${count}件を表示`;
   });
 });
 
@@ -545,6 +427,12 @@ function openWorkModal(index){
   document.getElementById('modal-tag').textContent = c.tag;
   document.getElementById('modal-title').textContent = c.title;
   document.getElementById('modal-desc').textContent = c.text;
+  document.getElementById('modal-image').src = safeImage(c.image);
+  document.getElementById('modal-image').alt = c.imageAlt;
+  document.getElementById('modal-image-caption').textContent = c.imageAlt;
+  document.getElementById('modal-tech').textContent = c.tech;
+  document.getElementById('modal-open').href = safeHref(c.href);
+  document.getElementById('modal-consult').href = consultationHref(c.title);
   document.getElementById('modal-before').textContent = c.before || '';
   document.getElementById('modal-after').textContent = c.after || '';
   const useCaseList = document.getElementById('modal-usecases');
@@ -556,17 +444,23 @@ function openWorkModal(index){
   workModal.classList.add('is-open');
   workModal.setAttribute('aria-hidden', 'false');
   document.body.style.overflow = 'hidden';
+  document.querySelectorAll('nav, main, footer').forEach(el => el.inert = true);
   modalBox.focus();
+  modalBox.scrollTop = 0;
 }
 function closeWorkModal(){
   if (!workModal.classList.contains('is-open')) return;
   workModal.classList.remove('is-open');
   workModal.setAttribute('aria-hidden', 'true');
   document.body.style.overflow = '';
+  document.querySelectorAll('nav, main, footer').forEach(el => el.inert = false);
   lastFocusedElement?.focus();
 }
 document.querySelectorAll('.work-detail-btn').forEach(btn => {
   btn.addEventListener('click', () => openWorkModal(Number(btn.dataset.index)));
+});
+document.querySelectorAll('[data-work-index]').forEach(btn => {
+  btn.addEventListener('click', () => openWorkModal(Number(btn.dataset.workIndex)));
 });
 document.getElementById('modal-close').addEventListener('click', closeWorkModal);
 workModal.addEventListener('click', (e) => { if (e.target === workModal) closeWorkModal(); });
@@ -596,19 +490,18 @@ document.addEventListener('keydown', (event) => {
 
 document.getElementById('linkout-wrap').innerHTML = `
   <div class="eyebrow center">${escapeHTML(SITE.linkout.eyebrow)}</div>
-  <div class="center-text"><h2>${escapeHTML(SITE.linkout.title)}</h2><p class="section-sub">${escapeHTML(SITE.linkout.sub)}</p></div>
   <div class="linkout-card">
-    <div class="txt"><h3>${escapeHTML(SITE.linkout.cardTitle)}</h3><p>${escapeHTML(SITE.linkout.cardText)}</p></div>
+    <div class="txt"><h2>${escapeHTML(SITE.linkout.cardTitle)}</h2><p>${escapeHTML(SITE.linkout.cardText)}</p></div>
     <a class="btn-primary" href="${escapeHTML(safeHref(SITE.linkout.cardLinkHref))}" target="_blank" rel="noopener noreferrer">${escapeHTML(SITE.linkout.cardLinkLabel)}</a>
   </div>
 `;
 
 document.getElementById('cta-wrap').innerHTML = `
   <div class="eyebrow center" style="color:rgba(255,255,255,0.85);">${escapeHTML(SITE.contact.eyebrow)}</div>
-  <h2 id="contact">${escapeHTML(SITE.contact.title)}</h2>
+  <h2>${escapeHTML(SITE.contact.title)}</h2>
   <div class="hero-ctas">
     ${SITE.contact.ctas.map((c,i) => `
-      <a class="${i===0 ? 'btn-primary' : 'btn-line'}"${externalAttributes(c.href)} href="${escapeHTML(safeHref(c.href))}">${escapeHTML(c.label)}</a>
+      <a class="${i===0 ? 'btn-primary' : 'btn-line'}"${externalAttributes(c.href)} href="${escapeHTML(safeHref(c.href.startsWith('mailto:') ? consultationHref() : c.href))}">${escapeHTML(c.label)}</a>
       ${c.showQrOnClick ? '<button class="btn-line qr-toggle" type="button" aria-controls="line-cta-qr" aria-expanded="false">QRコードを表示</button>' : ''}
     `).join('')}
   </div>
