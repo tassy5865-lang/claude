@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>シャント管理と警報アラーム対応</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --primary:#0F6B72;
+    --primary-dark:#0A4F54;
+    --primary-light:#E4F1F1;
+    --danger:#C6423C;
+    --danger-light:#FBEAE9;
+    --caution:#C7891F;
+    --caution-light:#FBF1DF;
+    --bg:#F5F6F8;
+    --surface:#FFFFFF;
+    --text:#1E2A30;
+    --text-muted:#5C6B72;
+    --border:#E1E5E8;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Noto Sans JP','Hiragino Sans','Yu Gothic',sans-serif;
+    overflow:hidden;
+  }
+  .slide-deck{position:relative;width:100vw;height:100vh;overflow:hidden;}
+  @media (min-width:769px){
+    .slide-deck{
+      max-width:calc(100vh * 16 / 9);
+      max-height:calc(100vw * 9 / 16);
+      margin:auto;position:absolute;inset:0;
+      box-shadow:0 0 60px rgba(0,0,0,0.08);
+    }
+  }
+  .slide{
+    position:absolute;width:100%;height:100%;
+    display:flex;flex-direction:column;justify-content:center;align-items:center;
+    padding:56px 72px;opacity:0;visibility:hidden;transition:opacity .35s;
+    background:var(--surface);overflow:hidden;
+  }
+  .slide.active{opacity:1;visibility:visible;}
+  .slide-content{width:100%;max-width:1100px;max-height:100%;overflow:hidden;
+    display:flex;flex-direction:column;justify-content:center;gap:14px;}
+
+  .kicker{
+    display:inline-flex;align-items:center;gap:8px;
+    font-size:13px;font-weight:700;letter-spacing:.12em;color:var(--primary);
+    text-transform:uppercase;
+  }
+  .kicker.danger{color:var(--danger);}
+  .kicker::before{content:"";width:22px;height:3px;background:currentColor;border-radius:2px;display:inline-block;}
+
+  h1.slide-title{
+    font-size:clamp(30px,4.2vw,52px);
+    font-weight:900;line-height:1.3;color:var(--primary-dark);
+  }
+  h2.slide-heading{
+    font-size:clamp(22px,3vw,34px);font-weight:900;color:var(--text);line-height:1.35;
+  }
+  .subtitle{font-size:clamp(14px,1.6vw,19px);color:var(--text-muted);font-weight:500;line-height:1.6;}
+  .lead{font-size:clamp(14px,1.5vw,18px);color:var(--text);line-height:1.75;}
+
+  /* Title slide */
+  .title-slide{align-items:flex-start;text-align:left;}
+  .title-slide .slide-content{align-items:flex-start;}
+  .title-badge{background:var(--primary);color:#fff;padding:6px 16px;border-radius:999px;font-size:13px;font-weight:700;letter-spacing:.05em;}
+  .title-meta{margin-top:28px;font-size:13px;color:var(--text-muted);border-top:1px solid var(--border);padding-top:16px;width:100%;}
+
+  /* generic layout helpers */
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:22px;width:100%;}
+  .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;width:100%;}
+  .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;width:100%;}
+
+  .card{
+    background:var(--surface);border:1px solid var(--border);border-radius:14px;
+    padding:20px 22px;text-align:left;box-shadow:0 2px 8px rgba(20,40,45,0.04);
+  }
+  .card h3{font-size:16px;font-weight:700;color:var(--primary-dark);margin-bottom:8px;}
+  .card p, .card li{font-size:13.5px;color:var(--text-muted);line-height:1.65;}
+  .card.accent{border-left:5px solid var(--primary);}
+  .card.danger{border-left:5px solid var(--danger);background:var(--danger-light);}
+  .card.danger h3{color:var(--danger);}
+  .card.danger p{color:#7A2E2A;}
+  .card.caution{border-left:5px solid var(--caution);background:var(--caution-light);}
+  .card.caution h3{color:var(--caution);}
+
+  table.info-table{width:100%;border-collapse:collapse;text-align:left;font-size:14px;}
+  table.info-table th{
+    background:var(--primary);color:#fff;padding:10px 14px;font-weight:700;font-size:13px;
+  }
+  table.info-table td{padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text);}
+  table.info-table tr:nth-child(even) td{background:#FAFBFC;}
+  table.info-table td.hl{color:var(--primary-dark);font-weight:700;white-space:nowrap;}
+
+  .step-list{list-style:none;width:100%;display:flex;flex-direction:column;gap:10px;}
+  .step-list li{
+    display:flex;gap:14px;align-items:flex-start;background:var(--surface);
+    border:1px solid var(--border);border-radius:10px;padding:12px 16px;font-size:14px;line-height:1.6;
+  }
+  .step-num{
+    flex:none;width:26px;height:26px;border-radius:50%;background:var(--primary);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;
+  }
+
+  .stat-badge{
+    display:inline-block;background:var(--primary-light);color:var(--primary-dark);
+    font-weight:900;padding:2px 10px;border-radius:6px;
+  }
+  .stat-badge.danger{background:var(--danger-light);color:var(--danger);}
+
+  .pill{display:inline-block;font-size:12px;font-weight:700;padding:4px 12px;border-radius:999px;background:var(--primary-light);color:var(--primary-dark);}
+  .pill.danger{background:var(--danger-light);color:var(--danger);}
+
+  /* flowchart */
+  .flow{width:100%;display:flex;flex-direction:column;align-items:center;gap:8px;}
+  .flow-box{
+    width:100%;max-width:640px;border:2px solid var(--primary);border-radius:12px;
+    padding:14px 20px;text-align:center;font-weight:700;font-size:15px;background:var(--primary-light);color:var(--primary-dark);
+  }
+  .flow-arrow{font-size:20px;color:var(--text-muted);}
+  .flow-branch{display:grid;grid-template-columns:1fr 1fr;gap:20px;width:100%;max-width:900px;}
+  .flow-branch .branch-col{display:flex;flex-direction:column;align-items:center;gap:8px;}
+  .branch-label{font-weight:900;font-size:14px;padding:6px 14px;border-radius:999px;}
+  .branch-label.yes{background:var(--danger);color:#fff;}
+  .branch-label.no{background:var(--primary);color:#fff;}
+  .branch-box{width:100%;border-radius:10px;padding:12px 14px;font-size:12.5px;text-align:left;line-height:1.6;}
+  .branch-box.yes{background:var(--danger-light);border:1.5px solid var(--danger);}
+  .branch-box.no{background:var(--primary-light);border:1.5px solid var(--primary);}
+
+  .footer-note{margin-top:6px;font-size:12px;color:var(--text-muted);}
+  .divider-num{font-size:clamp(60px,8vw,110px);font-weight:900;color:var(--primary-light);position:absolute;top:40px;right:56px;line-height:1;}
+  .part-slide{align-items:flex-start;}
+  .part-slide .slide-content{align-items:flex-start;text-align:left;}
+  .part-index{font-size:120px;font-weight:900;color:var(--primary-light);line-height:1;}
+
+  /* Animations */
+  .animate-fade-up{animation:fadeUp .6s ease-out forwards;opacity:0;}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(24px);}to{opacity:1;transform:translateY(0);}}
+  .animate-stagger>*{opacity:0;animation:fadeUp .5s ease-out forwards;}
+  .animate-stagger>*:nth-child(1){animation-delay:.05s;}
+  .animate-stagger>*:nth-child(2){animation-delay:.12s;}
+  .animate-stagger>*:nth-child(3){animation-delay:.19s;}
+  .animate-stagger>*:nth-child(4){animation-delay:.26s;}
+  .animate-stagger>*:nth-child(5){animation-delay:.33s;}
+
+  /* Responsive */
+  @media (max-width:768px){
+    .slide{padding:32px 22px;}
+    .grid-2,.grid-3,.grid-4{grid-template-columns:1fr;}
+    .flow-branch{grid-template-columns:1fr;}
+    table.info-table{font-size:12px;}
+    .part-index{font-size:70px;}
+  }
+  @media (max-width:480px){
+    h1.slide-title{font-size:24px;}
+    h2.slide-heading{font-size:18px;}
+    .card p,.card li{font-size:12px;}
+  }
+
+  /* Nav */
+  .progress-bar{position:fixed;top:0;left:0;height:3px;background:var(--primary);transition:width .3s;z-index:1000;}
+  .nav-controls{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:18px;z-index:1000;}
+  .nav-btn{background:var(--surface);border:1px solid var(--border);color:var(--text);width:38px;height:38px;border-radius:50%;cursor:pointer;font-size:16px;box-shadow:0 2px 6px rgba(0,0,0,0.08);}
+  .nav-btn:hover{background:var(--primary-light);}
+  .slide-counter{color:var(--text-muted);font-size:13px;background:var(--surface);border:1px solid var(--border);padding:4px 12px;border-radius:999px;}
+</style>
+</head>
+<body>
+<div class="progress-bar" id="progressBar"></div>
+<div class="slide-deck">
+
+  <!-- 1. Title -->
+  <div class="slide active title-slide">
+    <div class="slide-content animate-fade-up">
+      <span class="title-badge">透析基礎 研修スライド</span>
+      <h1 class="slide-title" style="margin-top:18px;">シャント管理と<br>警報アラーム対応</h1>
+      <p class="subtitle" style="margin-top:6px;">透析未経験看護師・新人臨床工学技士向け</p>
+      <div class="title-meta">
+        出典: shunt_basics.pptx / 透析警報アラーム研修資料_全体版(修復済み)<br>
+        構成: 09_シャント管理とトラブル対応.md ・ 10_透析中の警報アラーム対応.md を基に作成
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Agenda -->
+  <div class="slide">
+    <div class="slide-content animate-stagger">
+      <span class="kicker">AGENDA</span>
+      <h2 class="slide-heading">本日の内容</h2>
+      <div class="grid-2" style="margin-top:8px;">
+        <div class="card accent">
+          <h3>PART 1. シャント管理とトラブル対応</h3>
+          <p>VAの基礎、視診・触診・聴診による観察、代表的なシャントトラブル(脱血不良・静脈圧上昇・再循環・止血/穿刺困難)</p>
+        </div>
+        <div class="card danger">
+          <h3>PART 2. 透析中の警報アラーム対応</h3>
+          <p>回路の基本構造、各アラームの原因・確認・対応、緊急度別の初動フロー、ヒヤリハット事例</p>
+        </div>
+      </div>
+      <p class="footer-note">体外循環という透析の特性上、シャントと回路の異常はどちらも早期発見・早期対応が患者の安全に直結します。</p>
+    </div>
+  </div>
+
+  <!-- 3. Part1 divider -->
+  <div class="slide part-slide">
+    <div class="slide-content animate-fade-up" style="align-items:flex-start;">
+      <span class="part-index">01</span>
+      <span class="kicker" style="margin-top:10px;">PART 1</span>
+      <h1 class="slide-title">シャント管理と<br>トラブル対応</h1>
+      <p class="subtitle">出典: shunt_basics.pptx</p>
+    </div>
+  </div>
+
+  <!-- 4. VAとは+分類 -->
+  <div class="slide">
+    <div class="slide-content animate-stagger">
+      <span class="kicker">バスキュラーアクセス</span>
+      <h2 class="slide-heading">VA(バスキュラーアクセス)とは</h2>
+      <p class="lead">血液浄化(血液透析など)を施行するために必要な、血液の出入り口。血液透析患者にとって必要不可欠なもの。</p>
+      <div class="grid-3" style="margin-top:4px;">
+        <div class="card accent">
+          <h3>AVF<br><span style="font-weight:400;font-size:12px;">自己血管内シャント</span></h3>
+          <p>動脈と静脈を外科的に吻合。動脈血流が直接静脈へ流入。最も割合が多く、開存性に優れる。</p>
+        </div>
+        <div class="card accent">
+          <h3>AVG<br><span style="font-weight:400;font-size:12px;">人工血管内シャント</span></h3>
+          <p>人工血管を移植して動静脈をそれぞれ吻合。動静脈が細くAVFが作製できない場合に適応。</p>
+        </div>
+        <div class="card accent">
+          <h3>動脈表在化<br><span style="font-weight:400;font-size:12px;">非シャント</span></h3>
+          <p>動脈を皮下浅くに移動し穿刺しやすくする。短絡は作らず返血用静脈が別途必要。心機能不良などで適応。</p>
+        </div>
+      </div>
+      <p class="footer-note">超音波検査はVAの機能・形態を評価し、管理・治療方針に活用する情報を提供する。</p>
+    </div>
+  </div>
+
+  <!-- 5. 血管解剖 -->
+  <div class="slide">
+    <div class="slide-content animate-stagger">
+      <span class="kicker">基礎知識</span>
+      <h2 class="slide-heading">血管解剖(上肢)</h2>
+      <p class="lead">VAの構造・異常部位を把握するための土台となる知識。</p>
+      <div class="grid-2">
+        <div class="card accent">
+          <h3>動脈</h3>
+          <p>鎖骨下動脈 → 腋窩動脈 → 上腕動脈 → 橈骨動脈・尺骨動脈 → 深掌動脈弓・浅掌動脈弓</p>
+        </div>
+        <div class="card accent">
+          <h3>静脈</h3>
+          <p><b>表在静脈</b>(吻合部に使用): 橈側皮静脈(AVFでよく使用)・尺側皮静脈・副橈側皮静脈・肘正中皮静脈</p>
+          <p style="margin-top:8px;"><b>深部静脈</b>: 腕頭静脈 ← 鎖骨下静脈 ← 腋窩静脈 ← 上腕静脈 ← 橈骨静脈・尺骨静脈</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. 観察の基本 overview -->
+  <div class="slide">
+    <div class="slide-content animate-stagger">
+      <span class="kicker">日常観察</span>
+      <h2 class="slide-heading">身体所見によるシャント観察</h2>
+      <p class="lead">視診・触診・聴診によって、血流の程度や病変部位をおおまかに推測できる。</p>
+      <div class="grid-3">
+        <div class="card accent"><h3>👁 視診</h3><p>腫脹・色調・膨隆など、見た目の変化を確認する</p></div>
+        <div class="card accent"><h3>✋ 触診</h3><p>スリル(振動)を3本指で全体評価、1本指で局所評価する</p></div>
+        <div class="card accent"><h3>👂 聴診</h3><p>シャント音の性状(音の高さ・強さ)を聴取する</p></div>
+      </div>
+      <p class="footer-note">所見のみでは確定診断はできない。異常を疑う場合は超音波検査による精密評価と組み合わせる。</p>
+    </div>
+  </div>
+
+  <!-- 7. 視診 -->
+  <div class="slide">
+    <div class="slide-content animate-fade-up">
+      <span class="kicker">観察 1/3</span>
+      <h2 class="slide-heading">視診で見るポイント</h2>
+      <table class="info-table">
+        <tr><th style="width:42%;">所見</th><th>疑われる病態</th></tr>
+        <tr><td class="hl">腫脹・皮下血管拡張・顔面浮腫</td><td>静脈高血圧症</td></tr>
+        <tr><td class="hl">手指の潰瘍形成</td><td>スチール症候群 / 静脈高血圧症(ソアサム症候群)</td></tr>
+        <tr><td class="hl">発赤</td><td>感染 / 血栓性静脈炎 / 接触性皮膚炎</td></tr>
+        <tr><td class="hl">膨隆</td><td>真性瘤 / 仮性瘤 / 血管の蛇行 / 血腫 / 感染</td></tr>
+        <tr><td class="hl">手指・爪の色調不良</td><td>スチール症候群 / 末梢循環障害</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- 8. 触診 -->
+  <div class="slide">
+    <div class="slide-content animate-fade-up">
+      <span class="kicker">観察 2/3</span>
+      <h2 class="slide-heading">触診で見るポイント</h2>
+      <table class="info-table">
+        <tr><th style="width:42%;">所見</th><th>疑われる病態</th></tr>
+        <tr><td class="hl">拍動性(断続的)に触知</td><td>中枢側の狭窄・閉塞</td></tr>
+        <tr><td class="hl">局所のスリルを触知</td><td>その近傍の狭窄(1本指で評価)</td></tr>
+        <tr><td class="hl">スリルの減弱・血管の虚脱</td><td>末梢側の狭窄・閉塞</td></tr>
+        <tr><td class="hl">血管そのものが硬い</td><td>血栓形成・石灰化沈着・壁在血栓</td></tr>
+        <tr><td class="hl">スリル・拍動が消失</td><td>シャント閉塞</td></tr>
+      </table>
+      <p class="footer-note">スリルは3本指で全体評価、1本指で局所評価(狭窄が疑われる部位の特定)を行う。</p>
+    </div>
+  </div>
+
+  <!-- 9. 聴診 -->
+  <div class="slide">
+    <div class="slide-content animate-fade-up">
+      <span class="kicker">観察 3/3</span>
+      <h2 class="slide-heading">聴診で見るポイント</h2>
+      <table class="info-table">
+        <tr><th style="width:42%;">所見</th><th>疑われる病態</th></tr>
+        <tr><td class="hl">高調音</td><td>その部位の狭窄病変</td></tr>
+        <tr><td class="hl">拍動音(断続的)</td><td>中枢側の狭窄・閉塞病変</td></tr>
+        <tr><td class="hl">中枢側まで届く大きな音</td><td>過剰血流</td></tr>
+        <tr><td class="hl">微弱な音</td><td>低血圧 / 脱水 / 動脈硬化 など</td></tr>
+      </table>
+      <p class="footer-note">高調音が聴取されても狭窄がない場合、狭窄があっても高調音を聴取しない場合もあり、所見のみで確定診断はできない。</p>
+    </div>
+  </div>
+
+  <!-- 10. トラブル概観 -->
+  <div class="slide">
+    <div class="slide-content animate-stagger">
+      <span class="kicker">シャントトラブル</span>
+      <h2 class="slide-heading">代表的な4つのトラブル</h2>
+      <div class="grid-4">
+        <div class="card danger"><h3>脱血不良</h3><p>最も多く遭遇する異常所見</p></div>
+        <div class="card danger"><h3>静脈圧上昇</h3><p>返血部位の血管内圧上昇</p></div>
+        <div class="card danger"><h3>再循環</h3><p>返血血液の再脱血、効率低下</p></div>
+        <div class="card danger"><h3>止血・穿刺困難</h3><p>抜針後の止血/穿刺手技の困難</p></div>
+      </div>
+      <p class="footer-note">次のスライドから、それぞれの原因を詳しく見ていきます。</p>
+    </div>
+  </div>
+
+  <!-- 11. 脱血不良 -->
+  <div class="slide">
+    <div class="slide-content animate-fade-up">
+      <span class="kicker danger">トラブル 1/4</span>
+      <h2 class="slide-heading">脱血不良</h2>
+      <p class="lead">所定の血流量がVAから脱血できない状態。<span class="stat-badge danger">透析治療で最も多く遭遇する異常所見のひとつ</span></p>
+      <ul class="step-list">
+        <li><span class="step-num">1</span>穿刺部位の血流量低下(吻合部〜脱血穿刺部位間の狭窄・閉塞、側副静脈の存在、流入動脈・中枢動脈の狭窄・閉塞、脱水・低血圧・心機能低下などの全身状態)</li>
+        <li><span class="step-num">2</span>穿刺針外套が正しく血管内に留置されていない(狭窄部・血栓・血管壁・静脈弁に先端が当たっているなど)</li>
+        <li><span class="step-num">3</span>透析用血液回路内の異常</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 12. 静脈圧上昇 -->
+  <div class="slide">
+    <div class="slide-content animate-fade-up">
+      <span class="kicker danger">トラブル 2/4</span>
+      <h2 class="slide-heading">静脈圧の上昇</h2>
+      <p class="lead">返血部位の血管内圧が上昇すること。</p>
+      <ul class="step-list">
+        <li><span class="step-num">1</span>返血穿刺部(針先近傍)、もしくはより中枢側の狭窄・閉塞</li>
+        <li><span class="step-num">2</span>血液回路内の異常、Qb(血流量)に比して返血穿刺針のサイズが小さい場合</li>
+        <li><span class="step-num">3</span>血管蛇行・隔壁・血管荒廃、または過剰血流による相対的な血管内圧上昇</li>
+      </ul>
+      <div class="card caution" style="margin-top:4px;">
+        <p>脱血部と返血部の間に狭窄病変がある場合、静脈圧の異常所見が出にくいことがある(末梢側での脱血・中枢側での返血では静脈圧は上昇しない)。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 13. 再循環 -->
+  <div class="slide">
+    <div class="slide-content animate-fade-up">
+      <span class="kicker danger">トラブル 3/4</span>
+      <h2 class="slide-heading">再循環</h2>
+      <p class="lead">返血された血液の一部または大半が、脱血部位から再度透析用血液回路側に引き込まれる現象。</p>
+      <div class="grid-2">
+        <div class="card accent">
+          <h3>目安</h3>
+          <p>概ね<span class="stat-badge">10%以上</span>の再循環率がある場合は原因を精査する</p>
+        </div>
+        <div class="card accent">
+          <h3>影響</h3>
+          <p>脱血不良に気づきにくくなる / 除水経過に伴う回路内濃縮 / 著しい透析効率の低下</p>
+        </div>
+      </div>
+      <p class="footer-note">主な要因: 脱血部・返血部の位置関係、その間の血管の狭窄・閉塞など。</p>
+    </div>
+  </div>
+
+  <!-- 14. 止血・穿刺困難 -->
+  <div class="slide">
+    <div class="slide-content animate-fade-up">
+      <span class="kicker danger">トラブル 4/4</span>
+      <h2 class="slide-heading">止血困難・穿刺困難</h2>
+      <div class="grid-2">
+        <div class="card accent">
+          <h3>止血困難</h3>
+          <p>抜針後の止血に要する時間が長くなる。</p>
+          <p style="margin-top:6px;">・穿刺部位より中枢側の狭窄・閉塞(止血部位の血管内圧上昇)<br>・抗凝固薬/抗血小板薬の影響<br>・皮膚の脆弱、血管壁の荒廃、皮膚〜血管の距離が短い等</p>
+        </div>
+        <div class="card accent">
+          <h3>穿刺困難</h3>
+          <p>血管内の適切な位置に穿刺針を留置することが困難。</p>
+          <p style="margin-top:6px;"><b>内針挿入困難:</b>狭窄・閉塞・壁在血栓・石灰化・血管径/深さ・血流低下<br><b>外套が進まない:</b>狭窄・閉塞・血栓・静脈弁・蛇行・隔壁</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 15. Part1まとめ -->
+  <div class="slide">
+    <div class="slide-content animate-stagger">
+      <span class="kicker">PART 1 まとめ</span>
+      <h2 class="slide-heading">シャント管理のポイント</h2>
+      <ul class="step-list">
+        <li><span class="step-num">1</span>VAは血液透析の生命線。シャントが使えなければ透析治療自体が継続できない</li>
+        <li><span class="step-num">2</span>短絡を形成する「シャント(AVF/AVG)」と、短絡のない「非シャント」に大別される</li>
+        <li><span class="step-num">3</span>上肢の血管解剖の理解が、VAの構造・異常部位を把握する土台になる</li>
+        <li><span class="step-num">4</span>視診・触診・聴診による日常観察が、トラブルの早期発見につながる</li>
+        <li><span class="step-num">5</span>基礎知識の多職種共有 + 超音波検査による精密評価が、安全な透析管理を支える</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 16. Part2 divider -->
+  <div class="slide part-slide">
+    <div class="slide-content animate-fade-up" style="align-items:flex-start;">
+      <span class="part-index">02</span>
+      <span class="kicker danger" style="margin-top:10px;">PART 2</span>
+      <h1 class="slide-title">透析中の<br>警報アラーム対応</h1>
+      <p class="subtitle">出典: 透析警報アラーム研修資料_全体版(修復済み)</p>
+    </div>
+  </div>
+
+  <!-- 17. なぜ学ぶか -->
+  <div class="slide">
+    <div class="slide-content animate-stagger">
+      <span class="kicker danger">なぜ学ぶのか</span>
+      <h2 class="slide-heading">対応の遅れが致死的合併症につながる</h2>
+      <p class="lead">透析は体外循環という特性上、対応の遅れがそのまま致死的な合併症につながり得る。</p>
+      <div class="grid-4">
+        <div class="card danger"><h3>大量出血</h3><p>抜針・回路離断で短時間に大量出血</p></div>
+        <div class="card danger"><h3>回路閉塞・凝血</h3><p>対応が遅れると血液浄化自体が不可能に</p></div>
+        <div class="card danger"><h3>空気塞栓</h3><p>微量の気泡でも心臓・脳に達すれば重篤化</p></div>
+        <div class="card danger"><h3>血圧低下・ショック</h3><p>除水・体外循環による急な循環動態変化</p></div>
+      </div>
+      <p class="footer-note" style="font-weight:700;color:var(--danger);">アラームは、これらの致死的合併症を未然に防ぐための「最後の砦」。</p>
+    </div>
+  </div>
+
+  <!-- 18. 回路構造 -->
+  <div class="slide">
+    <div class="slide-content animate-fade-up">
+      <span class="kicker">前提知識</span>
+      <h2 class="slide-heading">透析回路の基本構造</h2>
+      <table class="info-table">
+        <tr><th style="width:30%;">構成</th><th>役割</th></tr>
+        <tr><td class="hl">脱血側(動脈側・A)</td><td>患者から血液を体外に引き出すライン。血液ポンプの吸引力がかかる区間</td></tr>
+        <tr><td class="hl">返血側(静脈側・V)</td><td>ダイアライザを通った血液を体内に戻すライン</td></tr>
+        <tr><td class="hl">ダイアライザ(人工腎臓)</td><td>半透膜を介して老廃物・余分な水分を除去する回路の中心部品</td></tr>
+        <tr><td class="hl">安全装置</td><td>気泡検知器・血液漏れ検知器など。異常を検知し自動でポンプを停止</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- 19. 静脈圧上限アラーム -->
+  <div class="slide">
+    <div class="slide-content animate-fade-up">
+      <span class="kicker danger">アラーム 1/2</span>
+      <h2 class="slide-heading">静脈圧上限アラーム(圧力系)</h2>
+      <p class="lead">静脈側(返血路)のどこかで抵抗が生じている可能性(屈曲・穿刺針の位置ずれ・凝血など)</p>
+      <ul class="step-list">
+        <li><span class="step-num">1</span>回路の屈曲・腕の角度 → 屈曲を解除、腕を伸ばす</li>
+        <li><span class="step-num">2</span>Vチャンバの凝血(<span class="stat-badge danger">穿刺トラブルが原因の8割</span>とも) → 軽度なら生食洗浄、完全凝固ならV側回路のみ交換</li>
+        <li><span class="step-num">3</span>針先の凝血・血管壁への接触 → 生食洗浄・向き調整、改善なければ再穿刺</li>
+        <li><span class="step-num">4</span>穿刺部より中枢側の狭窄 → 穿刺部変更、エコー評価のうえPTA検討</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 20. 静脈圧下限アラーム -->
+  <div class="slide">
+    <div class="slide-content animate-fade-up">
+      <span class="kicker danger">アラーム 2/2</span>
+      <h2 class="slide-heading">静脈圧下限アラーム(圧力系)</h2>
+      <p class="lead">穿刺針の抜けかけ・回路接続部の外れなど、<b>出血につながる異常</b>の可能性がある。</p>
+      <ul class="step-list">
+        <li><span class="step-num">1</span>脱血不良(穿刺トラブル・抜針) — 血圧低下→循環血流速低下→脱血不良の経路もあり、バイタルも併せて確認</li>
+        <li><span class="step-num">2</span>Vチャンバまでの回路の屈曲 → 屈曲を解除</li>
+        <li><span class="step-num">3</span>Vチャンバまでの凝固(ダイアライザ内含む) → 膜素材/ヘパリン量を見直し</li>
+        <li><span class="step-num">4</span>回路接続の緩み・クランプ忘れ → 接続とクランプを確認・是正</li>
+      </ul>
+      <div class="card danger" style="margin-top:2px;"><p><b>出血があれば直ちに圧迫止血・ポンプ停止。</b>改善なければ医師へ報告。</p></div>
+    </div>
+  </div>
+
+  <!-- 21. その他アラーム -->
+  <div class="slide">
+    <div class="slide-content animate-fade-up">
+      <span class="kicker danger">その他の主要アラーム</span>
+      <h2 class="slide-heading">透析液系・安全装置系のアラーム</h2>
+      <table class="info-table">
+        <tr><th style="width:26%;">アラーム</th><th style="width:37%;">原因</th><th>対応</th></tr>
+        <tr><td class="hl">透析液圧低下</td><td>脱血不良、透析液回路のリーク、供給ポンプ故障</td><td>針先修正/再穿刺、補液速度を落とす、機器点検</td></tr>
+        <tr><td class="hl">気泡検知器作動</td><td>接続部の緩み、脱血不良による微小気泡、補液ボトルの空打ち</td><td>ポンプ自動停止を確認 → 気泡を安全に除去</td></tr>
+        <tr><td class="hl">TMP異常上昇</td><td>ダイアライザ内凝血・除水量設定過多・フィルター目詰まり</td><td>抗凝固剤の見直し、改善なければダイアライザ交換</td></tr>
+        <tr><td class="hl">血液漏れ検知器作動</td><td>ダイアライザの膜破損、気泡による誤検知</td><td>排液の血性確認 → 陽性ならダイアライザ交換</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- 22. 緊急度別初動フロー -->
+  <div class="slide">
+    <div class="slide-content animate-fade-up">
+      <span class="kicker danger">初動判断</span>
+      <h2 class="slide-heading">緊急度別の初動フローチャート</h2>
+      <div class="flow">
+        <div class="flow-box">アラームが鳴った</div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-box" style="background:#fff;border-style:dashed;">生命に関わる兆候があるか?<br><span style="font-weight:400;font-size:12.5px;">(出血・意識レベル低下・重度血圧低下 など)</span></div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-branch">
+          <div class="branch-col">
+            <span class="branch-label yes">はい → 緊急対応(ただちに)</span>
+            <div class="branch-box yes">・ただちに血液ポンプを停止<br>・圧迫止血・体位保持など応急処置<br>・医師・当直CEへ緊急連絡<br>・バイタルサインを測定・記録</div>
+          </div>
+          <div class="branch-col">
+            <span class="branch-label no">いいえ → 通常対応(まず確認→是正)</span>
+            <div class="branch-box no">・表示内容と回路を確認<br>・該当箇所を是正(屈曲直し・接続確認等)<br>・是正後にポンプを再開<br>・改善しなければ医師/CEへ報告</div>
+          </div>
+        </div>
+      </div>
+      <p class="footer-note" style="font-weight:700;color:var(--danger);text-align:center;width:100%;">判断に迷ったら、常に「緊急対応」を優先する。</p>
+    </div>
+  </div>
+
+  <!-- 23. ヒヤリハット -->
+  <div class="slide">
+    <div class="slide-content animate-stagger">
+      <span class="kicker danger">ヒヤリハット事例</span>
+      <h2 class="slide-heading">よくある誤対応</h2>
+      <p class="lead">「よくあること」という思い込みが、対応の遅れにつながる。</p>
+      <div class="grid-2">
+        <div class="card caution"><h3>抜針アラームへの対応遅れ</h3><p>「体動による誤作動だろう」と判断し目視確認を後回しに<br><b>教訓:</b>確認より先に「止める・見る」を最優先</p></div>
+        <div class="card caution"><h3>頻回の静脈圧上昇を軽視</h3><p>毎回鳴るからと原因確認せずリセットを繰り返す<br><b>教訓:</b>頻回のアラームこそ根本原因を都度見直す</p></div>
+        <div class="card caution"><h3>エア検知後クランプ確認省略</h3><p>ポンプ停止だけ確認しクランプを見ずに気泡除去<br><b>教訓:</b>「ポンプ停止」と「クランプ確認」は必ずセットで</p></div>
+        <div class="card caution"><h3>原因を確認せずにリセット</h3><p>表示をリセットして再開を優先し原因を確認しない<br><b>教訓:</b>リセット前に「なぜ鳴ったか」を一呼吸おいて確認</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 24. Closing -->
+  <div class="slide title-slide">
+    <div class="slide-content animate-fade-up">
+      <span class="kicker">まとめ</span>
+      <h2 class="slide-heading">本日のポイント</h2>
+      <ul class="step-list" style="margin-top:6px;">
+        <li><span class="step-num">1</span>シャント(VA)は透析の生命線。日々の視診・触診・聴診による観察が異常の早期発見につながる</li>
+        <li><span class="step-num">2</span>脱血不良・静脈圧上昇・再循環・止血/穿刺困難、それぞれの原因を整理して初動対応する</li>
+        <li><span class="step-num">3</span>アラームは致死的合併症を防ぐ「最後の砦」。原因→確認→対応の流れで落ち着いて対処する</li>
+        <li><span class="step-num">4</span>生命に関わる兆候があれば、判断に迷わずただちに緊急対応を優先する</li>
+      </ul>
+      <p class="footer-note" style="margin-top:10px;">詳細は 09_シャント管理とトラブル対応.md / 10_透析中の警報アラーム対応.md を参照。</p>
+    </div>
+  </div>
+
+</div><!-- /.slide-deck -->
+
+<div class="nav-controls">
+  <button class="nav-btn" onclick="prevSlide()">←</button>
+  <span class="slide-counter"><span id="current">1</span> / <span id="total">1</span></span>
+  <button class="nav-btn" onclick="nextSlide()">→</button>
+</div>
+
+<script>
+  let current = 1;
+  const total = document.querySelectorAll('.slide').length;
+  document.getElementById('total').textContent = total;
+
+  function showSlide(n){
+    if(n < 1) n = 1;
+    if(n > total) n = total;
+    current = n;
+    document.querySelectorAll('.slide').forEach((s,i)=>{
+      s.classList.toggle('active', i === n-1);
+    });
+    document.getElementById('current').textContent = n;
+    document.getElementById('progressBar').style.width = (n/total*100)+'%';
+  }
+  function nextSlide(){ showSlide(current+1); }
+  function prevSlide(){ showSlide(current-1); }
+
+  document.addEventListener('keydown',(e)=>{
+    if(e.key==='ArrowRight' || e.key===' '){ e.preventDefault(); nextSlide(); }
+    if(e.key==='ArrowLeft'){ e.preventDefault(); prevSlide(); }
+  });
+  document.addEventListener('click',(e)=>{
+    if(!e.target.closest('.nav-controls')) nextSlide();
+  });
+
+  showSlide(1);
+</script>
+</body>
+</html>

@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DCS-100NX BV計まとめ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --primary:#0F6B72;
+    --primary-dark:#0A4F54;
+    --primary-light:#E4F1F1;
+    --danger:#C6423C;
+    --danger-light:#FBEAE9;
+    --caution:#C7891F;
+    --caution-light:#FBF1DF;
+    --bg:#F5F6F8;
+    --surface:#FFFFFF;
+    --text:#1E2A30;
+    --text-muted:#5C6B72;
+    --border:#E1E5E8;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Noto Sans JP','Hiragino Sans','Yu Gothic',sans-serif;
+    overflow:hidden;
+  }
+  .slide-deck{position:relative;width:100vw;height:100vh;overflow:hidden;}
+  @media (min-width:769px){
+    .slide-deck{
+      max-width:calc(100vh * 16 / 9);
+      max-height:calc(100vw * 9 / 16);
+      margin:auto;position:absolute;inset:0;
+      box-shadow:0 0 60px rgba(0,0,0,0.08);
+    }
+  }
+  .slide{
+    position:absolute;width:100%;height:100%;
+    display:flex;flex-direction:column;justify-content:center;align-items:center;
+    padding:52px 68px;opacity:0;visibility:hidden;transition:opacity .35s;
+    background:var(--surface);overflow:hidden;
+  }
+  .slide.active{opacity:1;visibility:visible;}
+  .slide-content{width:100%;max-width:1100px;max-height:100%;overflow:hidden;
+    display:flex;flex-direction:column;justify-content:center;gap:12px;}
+
+  .kicker{
+    display:inline-flex;align-items:center;gap:8px;
+    font-size:12.5px;font-weight:700;letter-spacing:.12em;color:var(--primary);
+    text-transform:uppercase;
+  }
+  .kicker.danger{color:var(--danger);}
+  .kicker.caution{color:var(--caution);}
+  .kicker::before{content:"";width:22px;height:3px;background:currentColor;border-radius:2px;display:inline-block;}
+
+  h1.slide-title{font-size:clamp(28px,4vw,48px);font-weight:900;line-height:1.3;color:var(--primary-dark);}
+  h2.slide-heading{font-size:clamp(20px,2.7vw,30px);font-weight:900;color:var(--text);line-height:1.35;}
+  .subtitle{font-size:clamp(13px,1.5vw,18px);color:var(--text-muted);font-weight:500;line-height:1.6;}
+  .lead{font-size:clamp(13px,1.4vw,16.5px);color:var(--text);line-height:1.7;}
+
+  .title-slide{align-items:flex-start;text-align:left;}
+  .title-slide .slide-content{align-items:flex-start;}
+  .title-badge{background:var(--primary);color:#fff;padding:6px 16px;border-radius:999px;font-size:12.5px;font-weight:700;letter-spacing:.05em;}
+  .title-meta{margin-top:24px;font-size:12.5px;color:var(--text-muted);border-top:1px solid var(--border);padding-top:14px;width:100%;line-height:1.6;}
+
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:20px;width:100%;}
+  .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;width:100%;}
+  .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;width:100%;}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 20px;text-align:left;box-shadow:0 2px 8px rgba(20,40,45,0.04);}
+  .card h3{font-size:15px;font-weight:700;color:var(--primary-dark);margin-bottom:6px;}
+  .card p, .card li{font-size:12.5px;color:var(--text-muted);line-height:1.6;}
+  .card.accent{border-left:5px solid var(--primary);}
+  .card.danger{border-left:5px solid var(--danger);background:var(--danger-light);}
+  .card.danger h3{color:var(--danger);}
+  .card.danger p{color:#7A2E2A;}
+  .card.caution{border-left:5px solid var(--caution);background:var(--caution-light);}
+  .card.caution h3{color:var(--caution);}
+  .card.caution p{color:#6B4E10;}
+
+  table.info-table{width:100%;border-collapse:collapse;text-align:left;font-size:13px;}
+  table.info-table th{background:var(--primary);color:#fff;padding:9px 13px;font-weight:700;font-size:12px;}
+  table.info-table td{padding:9px 13px;border-bottom:1px solid var(--border);color:var(--text);}
+  table.info-table tr:nth-child(even) td{background:#FAFBFC;}
+  table.info-table td.hl{color:var(--primary-dark);font-weight:700;white-space:nowrap;}
+  table.info-table td.num{font-weight:700;text-align:center;}
+
+  .step-list{list-style:none;width:100%;display:flex;flex-direction:column;gap:9px;}
+  .step-list li{display:flex;gap:12px;align-items:flex-start;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:11px 15px;font-size:13px;line-height:1.6;}
+  .step-num{flex:none;width:24px;height:24px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;}
+
+  .stat-badge{display:inline-block;background:var(--primary-light);color:var(--primary-dark);font-weight:900;padding:2px 10px;border-radius:6px;}
+  .stat-badge.danger{background:var(--danger-light);color:var(--danger);}
+
+  .formula-box{width:100%;background:var(--primary-light);border:1.5px solid var(--primary);border-radius:12px;padding:18px 22px;font-size:14.5px;color:var(--primary-dark);line-height:1.9;font-weight:600;text-align:left;}
+  .formula-box .sub{font-size:12px;color:var(--text-muted);font-weight:400;}
+
+  .quote-box{width:100%;background:#F4F0E6;border-left:5px solid var(--caution);border-radius:8px;padding:16px 20px;font-size:14px;color:#5A4A1E;line-height:1.7;font-style:italic;text-align:left;}
+
+  .footer-note{margin-top:4px;font-size:11.5px;color:var(--text-muted);}
+  .part-index{font-size:110px;font-weight:900;color:var(--primary-light);line-height:1;}
+
+  .link-list{list-style:none;width:100%;display:flex;flex-direction:column;gap:6px;}
+  .link-list li{font-size:11.5px;color:var(--text-muted);line-height:1.5;padding-left:14px;position:relative;}
+  .link-list li::before{content:"→";position:absolute;left:0;color:var(--primary);}
+  .link-list b{color:var(--text);font-weight:700;}
+
+  .animate-fade-up{animation:fadeUp .6s ease-out forwards;opacity:0;}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(24px);}to{opacity:1;transform:translateY(0);}}
+  .animate-stagger>*{opacity:0;animation:fadeUp .5s ease-out forwards;}
+  .animate-stagger>*:nth-child(1){animation-delay:.05s;}
+  .animate-stagger>*:nth-child(2){animation-delay:.12s;}
+  .animate-stagger>*:nth-child(3){animation-delay:.19s;}
+  .animate-stagger>*:nth-child(4){animation-delay:.26s;}
+
+  @media (max-width:768px){
+    .slide{padding:28px 20px;}
+    .grid-2,.grid-3,.grid-4{grid-template-columns:1fr;}
+    table.info-table{font-size:11px;}
+    .part-index{font-size:64px;}
+  }
+  @media (max-width:480px){
+    h1.slide-title{font-size:22px;}
+    h2.slide-heading{font-size:17px;}
+    .card p,.card li{font-size:11px;}
+  }
+
+  .progress-bar{position:fixed;top:0;left:0;height:3px;background:var(--primary);transition:width .3s;z-index:1000;}
+  .nav-controls{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:16px;z-index:1000;}
+  .nav-btn{background:var(--surface);border:1px solid var(--border);color:var(--text);width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:15px;box-shadow:0 2px 6px rgba(0,0,0,0.08);}
+  .nav-btn:hover{background:var(--primary-light);}
+  .slide-counter{color:var(--text-muted);font-size:12px;background:var(--surface);border:1px solid var(--border);padding:4px 11px;border-radius:999px;}
+</style>
+</head>
+<body>
+<div class="progress-bar" id="progressBar"></div>
+<div class="slide-deck">
+
+  <!-- 1. Title -->
+  <div class="slide active title-slide">
+    <div class="slide-content animate-fade-up">
+      <span class="title-badge">透析基礎 機器編</span>
+      <h1 class="slide-title" style="margin-top:16px;">日機装 DCS-100NX の<br>BV計(血液量モニター)</h1>
+      <p class="subtitle" style="margin-top:6px;">測定原理・機能・臨床評価・活用事例まとめ</p>
+      <div class="title-meta">
+        出典: 東邦大学医療センター大森病院 臨床工学部の評価報告 / 尾道市立市民病院 症例報告 / 日機装関連サイト 他<br>
+        構成: DCS-100NX_BV計.md を基に作成
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Agenda -->
+  <div class="slide">
+    <div class="slide-content animate-stagger">
+      <span class="kicker">AGENDA</span>
+      <h2 class="slide-heading">本日の内容</h2>
+      <div class="grid-2" style="margin-top:6px;">
+        <div class="card accent">
+          <h3>BV計の基礎</h3>
+          <p>DCS-100NXの概要、測定原理(近赤外光反射方式)、BVplusでの機能拡充、BV-PLUSの7機能</p>
+        </div>
+        <div class="card accent">
+          <h3>臨床評価・活用事例</h3>
+          <p>東邦大学の再循環率・推定血流量モニタ評価、尾道市立市民病院の血圧低下改善事例、使用上の注意点</p>
+        </div>
+      </div>
+      <p class="footer-note">BV計はDCS-100NXに標準搭載されている血液濃縮度モニタリング機能。仕組みと限界の両方を正しく理解することが安全な活用につながる。</p>
+    </div>
+  </div>
+
+  <!-- 3. DCS-100NXとは -->
+  <div class="slide">
+    <div class="slide-content animate-stagger">
+      <span class="kicker">概要</span>
+      <h2 class="slide-heading">DCS-100NXとは</h2>
+      <p class="lead">日機装株式会社の多用途透析用監視装置(コンソール)。</p>
+      <div class="grid-2">
+        <div class="card accent">
+          <h3>主な設計</h3>
+          <p>デュアルポンプ方式による密閉容量制御、D-FAS(透析開始〜終了の操作支援)、生体情報モニタリング機能を搭載</p>
+        </div>
+        <div class="card accent">
+          <h3>省電力設計</h3>
+          <p>熱交換器を搭載し透析排液の熱エネルギーを供給液側に再利用。他社比較試験では全工程消費電力が最も低い結果(1.17kWh vs 他社1.5〜1.6kWh台)</p>
+        </div>
+      </div>
+      <p class="footer-note">出典: 株式会社北斗医理科 製品ページ / 医療法人社団スマイル博愛クリニック 消費電力比較報告</p>
+    </div>
+  </div>
+
+  <!-- 4. 測定原理 -->
+  <div class="slide">
+    <div class="slide-content animate-stagger">
+      <span class="kicker">測定原理</span>
+      <h2 class="slide-heading">BV計はどう測っているか</h2>
+      <div class="card accent">
+        <h3>近赤外光反射方式</h3>
+        <p>血液回路に近赤外線を照射し、<b>反射光の強度変化</b>から循環血液量の変化(血液濃縮度)をモニタリングする。</p>
+      </div>
+      <div class="grid-2" style="margin-top:4px;">
+        <div class="card accent"><h3>簡便性</h3><p>薬剤(生理食塩水)や専用回路が不要。コンソール本体の<b>キー操作のみ</b>で測定できる</p></div>
+        <div class="card danger"><h3>制約</h3><p><b>シングルニードル(単針)透析中は使用不可</b>という制約がある</p></div>
+      </div>
+      <p class="footer-note">出典: dcs-100nx.com「BV(ブラッドボリューム)計による再循環率測定」/ 東邦大学医療センター大森病院 評価報告</p>
+    </div>
+  </div>
+
+  <!-- 5. BVplusでの機能拡充 -->
+  <div class="slide">
+    <div class="slide-content animate-stagger">
+      <span class="kicker">技術の進化</span>
+      <h2 class="slide-heading">BVplus(新型)での機能拡充</h2>
+      <div class="grid-2">
+        <div class="card accent">
+          <h3>従来型</h3>
+          <p>近赤外光の<b>反射光のみ</b>を利用。<br>測定できるのは ΔBV(血液濃縮度の変化率)と再循環率にとどまり、実血流量は測定できなかった。</p>
+        </div>
+        <div class="card accent">
+          <h3>BVplus(新型)</h3>
+          <p><b>レーザードップラー方式</b>を追加搭載。<br>実血流量(LDQb)とヘマトクリット値(Ht)の測定を装置一体型で可能にした。</p>
+        </div>
+      </div>
+      <p class="footer-note">出典: 「DCS-100NXに新機能!?」(oompa-de-loompa.blogspot.com, 2018年8月)</p>
+    </div>
+  </div>
+
+  <!-- 6. BV-PLUSの7機能 -->
+  <div class="slide">
+    <div class="slide-content animate-fade-up">
+      <span class="kicker">機能一覧</span>
+      <h2 class="slide-heading">BV-PLUSの7機能</h2>
+      <table class="info-table">
+        <tr><th style="width:8%;">#</th><th style="width:32%;">機能</th><th>内容</th></tr>
+        <tr><td class="num">①</td><td class="hl">ΔBV測定</td><td>循環血液量の変化率を測定。設定値で警報発生も可能</td></tr>
+        <tr><td class="num">②</td><td class="hl">ΔBVリファレンスエリア表示</td><td>標準的なΔBVの範囲を画面上に表示</td></tr>
+        <tr><td class="num">③</td><td class="hl">PRR算出</td><td>血管外から血管内への水分の移動速度を算出</td></tr>
+        <tr><td class="num">④</td><td class="hl">VA再循環率測定</td><td>バスキュラーアクセスの再循環率を測定し狭窄等を確認</td></tr>
+        <tr><td class="num">⑤</td><td class="hl">BV-UFC</td><td>設定ΔBVに実際のΔBVが近づくよう除水速度を自動制御</td></tr>
+        <tr><td class="num">⑥</td><td class="hl">LDQb測定</td><td>近赤外レーザー光の反射光から求めた体外循環血流量</td></tr>
+        <tr><td class="num">⑦</td><td class="hl">ヘマトクリット値測定</td><td>近赤外レーザー光の透過光強度変化から算出</td></tr>
+      </table>
+      <p class="footer-note">出典: 楢原ほか「日機装社製血液量モニター(BV-PLUS)の活用により血圧低下および除水困難症例が改善した1例」尾道市立市民病院(尾道市病医誌 Vol.36 No.2, 2023)。同院報告はDCS-200Si導入時のものだが、DCS-100NXも同系統のBV-PLUS機能を搭載する。</p>
+    </div>
+  </div>
+
+  <!-- 7. PRR計算式 -->
+  <div class="slide">
+    <div class="slide-content animate-fade-up">
+      <span class="kicker">計算式</span>
+      <h2 class="slide-heading">PRR(Plasma Refilling Rate)</h2>
+      <p class="lead">血管外から血管内への水分の移動速度。除水速度をコントロールする際の重要な指標。</p>
+      <div class="formula-box">
+        PRR = (測定区間の除水量 + 測定区間の循環血液量増加量) ÷ 測定区間の時間<br>
+        <span class="sub">測定区間の循環血液量増加量 = 循環血流量 × 測定区間のΔBV変化率</span><br>
+        <span class="sub">測定区間の時間 = 60秒(固定)</span>
+      </div>
+      <p class="footer-note">出典: 日機装株式会社 多用途透析用監視装置 DCS-200Si 操作マニュアル(尾道市立市民病院の報告より引用)</p>
+    </div>
+  </div>
+
+  <!-- 8. Toho divider -->
+  <div class="slide title-slide">
+    <div class="slide-content animate-fade-up" style="align-items:flex-start;">
+      <span class="part-index">01</span>
+      <span class="kicker" style="margin-top:8px;">臨床評価</span>
+      <h1 class="slide-title">東邦大学医療センター<br>大森病院の評価報告</h1>
+      <p class="subtitle">DCS-100NX装備の再循環率・推定血流量モニタの使用評価</p>
+    </div>
+  </div>
+
+  <!-- 9. 対象方法 -->
+  <div class="slide">
+    <div class="slide-content animate-stagger">
+      <span class="kicker">対象・方法</span>
+      <h2 class="slide-heading">評価の対象・方法</h2>
+      <ul class="step-list">
+        <li><span class="step-num">1</span>バスキュラーアクセスに問題のない透析患者が対象</li>
+        <li><span class="step-num">2</span>再循環率測定: 10症例(透析開始1時間後に除水を停止し、同一患者で濃縮法・希釈法の両方を測定)</li>
+        <li><span class="step-num">3</span>推定血流量測定: 25症例(血流量150/200/250/280 mL/minの設定に対し、開始〜終了まで30分毎に測定)</li>
+        <li><span class="step-num">4</span>比較対照として専用機器HD02による再循環率・実血流量も同時測定</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 10. 再循環率結果 -->
+  <div class="slide">
+    <div class="slide-content animate-fade-up">
+      <span class="kicker">結果 1/2</span>
+      <h2 class="slide-heading">再循環率測定の結果</h2>
+      <table class="info-table">
+        <tr><th>測定法</th><th>平均再循環率</th></tr>
+        <tr><td class="hl">DCS-100NX 濃縮法</td><td class="num">0.6%</td></tr>
+        <tr><td class="hl">DCS-100NX 希釈法</td><td class="num">3.9%</td></tr>
+        <tr><td class="hl">HD02(対照)</td><td class="num">0.0%</td></tr>
+      </table>
+      <div class="grid-2" style="margin-top:4px;">
+        <div class="card accent"><p><span class="stat-badge">濃縮法はHD02と同等</span>の結果</p></div>
+        <div class="card caution"><p>希釈法は他の2法より<b>高い値</b>(過大評価傾向)</p></div>
+      </div>
+      <p class="footer-note">濃縮法は薬剤・専用回路不要でキー操作のみ測定でき、簡便性からスクリーニングに有効と考察されている。</p>
+    </div>
+  </div>
+
+  <!-- 11. 推定血流量の限界 -->
+  <div class="slide">
+    <div class="slide-content animate-stagger">
+      <span class="kicker danger">結果 2/2</span>
+      <h2 class="slide-heading">推定血流量モニタの限界</h2>
+      <div class="card danger">
+        <h3>過大評価の傾向</h3>
+        <p>推定血流量は、いずれの設定流量(150〜280 mL/min)においても<b>実流量より高い値</b>で推移することが確認された。</p>
+      </div>
+      <div class="grid-2" style="margin-top:4px;">
+        <div class="card caution"><h3>臨床的示唆①</h3><p>軽微な脱血不良状態ではモニタは感知しにくい</p></div>
+        <div class="card caution"><h3>臨床的示唆②</h3><p>モニタで脱血不良を感知した場合、表示値より高い脱血不良が実際には起きている可能性</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 12. 結語 -->
+  <div class="slide">
+    <div class="slide-content animate-fade-up">
+      <span class="kicker">結語</span>
+      <h2 class="slide-heading">東邦大学の評価まとめ</h2>
+      <div class="quote-box">
+        「100NXの再循環率は有用だが、推定血流量は実血流に対し過大評価であることを認識した上で活用する必要がある。」
+      </div>
+      <p class="footer-note">出典: 髙橋ほか「日機装社製DCS-100NX装備の再循環率および推定血流量モニタの使用評価の検討」東邦大学医療センター大森病院 臨床工学部・腎センター(第48回東京都透析医会学術集会)</p>
+    </div>
+  </div>
+
+  <!-- 13. Onomichi divider -->
+  <div class="slide title-slide">
+    <div class="slide-content animate-fade-up" style="align-items:flex-start;">
+      <span class="part-index">02</span>
+      <span class="kicker" style="margin-top:8px;">活用事例</span>
+      <h1 class="slide-title">尾道市立市民病院の<br>症例報告</h1>
+      <p class="subtitle">BV-PLUS活用による血圧低下・除水困難の改善</p>
+    </div>
+  </div>
+
+  <!-- 14. 症例 -->
+  <div class="slide">
+    <div class="slide-content animate-stagger">
+      <span class="kicker">症例概要</span>
+      <h2 class="slide-heading">血圧低下・除水困難への活用</h2>
+      <p class="lead">生活環境の変化により体重増加量が増大し、除水困難・血圧低下が発生していた81歳男性の症例。</p>
+      <ul class="step-list">
+        <li><span class="step-num">1</span>ΔBV低下警報を−12%→−10%に引き上げ、PRRと除水速度が乖離しないよう監視を強化</li>
+        <li><span class="step-num">2</span>治療開始2時間時点でΔBV −10%付近となった際、設定除水速度0.86L/hに対しPRRが0.52L/hしかなく、除水速度を0.50L/hへ変更</li>
+        <li><span class="step-num">3</span>以降PRR・ΔBV・血圧経過を注視しながら除水速度をコントロール</li>
+      </ul>
+      <div class="card accent" style="margin-top:2px;"><p><b>結果:</b> 急激な血圧低下なく、予定時間通りに治療を完遂できた</p></div>
+    </div>
+  </div>
+
+  <!-- 15. 注意点 -->
+  <div class="slide">
+    <div class="slide-content animate-stagger">
+      <span class="kicker caution">使用上の注意</span>
+      <h2 class="slide-heading">BV計 活用時の注意点</h2>
+      <ul class="step-list">
+        <li><span class="step-num">1</span>シングルニードル透析中はBV計を使用できない</li>
+        <li><span class="step-num">2</span>推定血流量モニタは実血流量より過大評価される傾向があるため、脱血不良の検知には注意(表示値以上に脱血不良が進んでいる可能性)</li>
+        <li><span class="step-num">3</span>濃縮法による再循環率測定はスクリーニングとして有用だが、希釈法は過大評価傾向があるため解釈に注意</li>
+        <li><span class="step-num">4</span>BV-UFC(自動除水制御)を使う場合も、PRR・ΔBVの推移を見ながら手動調整が必要になる場面がある</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 16. Closing -->
+  <div class="slide title-slide">
+    <div class="slide-content animate-fade-up">
+      <span class="kicker">まとめ</span>
+      <h2 class="slide-heading">本日のポイント</h2>
+      <ul class="step-list" style="margin-top:4px;">
+        <li><span class="step-num">1</span>BV計は近赤外光を使い、薬剤・専用回路なしで血液濃縮度・再循環率・実血流量・Htを測定できる</li>
+        <li><span class="step-num">2</span>濃縮法の再循環率測定と実血流量(BVplus)は臨床的に有用だが、推定血流量は過大評価される限界がある</li>
+        <li><span class="step-num">3</span>ΔBV・PRRを併用した除水速度コントロールは、血圧低下・除水困難の改善に活用できる</li>
+        <li><span class="step-num">4</span>限界を理解したうえで、日々の透析管理に組み込むことが安全な活用につながる</li>
+      </ul>
+      <p class="footer-note" style="margin-top:8px;">詳細は DCS-100NX_BV計.md を参照。</p>
+    </div>
+  </div>
+
+</div><!-- /.slide-deck -->
+
+<div class="nav-controls">
+  <button class="nav-btn" onclick="prevSlide()">←</button>
+  <span class="slide-counter"><span id="current">1</span> / <span id="total">1</span></span>
+  <button class="nav-btn" onclick="nextSlide()">→</button>
+</div>
+
+<script>
+  let current = 1;
+  const total = document.querySelectorAll('.slide').length;
+  document.getElementById('total').textContent = total;
+
+  function showSlide(n){
+    if(n < 1) n = 1;
+    if(n > total) n = total;
+    current = n;
+    document.querySelectorAll('.slide').forEach((s,i)=>{
+      s.classList.toggle('active', i === n-1);
+    });
+    document.getElementById('current').textContent = n;
+    document.getElementById('progressBar').style.width = (n/total*100)+'%';
+  }
+  function nextSlide(){ showSlide(current+1); }
+  function prevSlide(){ showSlide(current-1); }
+
+  document.addEventListener('keydown',(e)=>{
+    if(e.key==='ArrowRight' || e.key===' '){ e.preventDefault(); nextSlide(); }
+    if(e.key==='ArrowLeft'){ e.preventDefault(); prevSlide(); }
+  });
+  document.addEventListener('click',(e)=>{
+    if(!e.target.closest('.nav-controls')) nextSlide();
+  });
+
+  showSlide(1);
+</script>
+</body>
+</html>
