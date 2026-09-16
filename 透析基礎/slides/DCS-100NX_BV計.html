@@ -146,9 +146,9 @@
     <div class="slide-content animate-fade-up">
       <span class="title-badge">透析基礎 機器編</span>
       <h1 class="slide-title" style="margin-top:16px;">日機装 DCS-100NX の<br>BV計(血液量モニター)</h1>
-      <p class="subtitle" style="margin-top:6px;">測定原理・機能・臨床評価・活用事例まとめ</p>
+      <p class="subtitle" style="margin-top:6px;">測定原理・ΔBV評価の生理学的背景・臨床評価・活用事例まとめ</p>
       <div class="title-meta">
-        出典: 東邦大学医療センター大森病院 臨床工学部の評価報告 / 尾道市立市民病院 症例報告 / 日機装関連サイト 他<br>
+        出典: 東邦大学医療センター大森病院 臨床工学部の評価報告 / 尾道市立市民病院 症例報告 / 日機装セミナー資料 / IDH関連総説(2018〜2025年) / 日機装関連サイト 他<br>
         構成: DCS-100NX_BV計.md を基に作成
       </div>
     </div>
@@ -159,10 +159,14 @@
     <div class="slide-content animate-stagger">
       <span class="kicker">AGENDA</span>
       <h2 class="slide-heading">本日の内容</h2>
-      <div class="grid-2" style="margin-top:6px;">
+      <div class="grid-3" style="margin-top:6px;">
         <div class="card accent">
           <h3>BV計の基礎</h3>
           <p>DCS-100NXの概要、測定原理(近赤外光反射方式)、BVplusでの機能拡充、BV-PLUSの7機能</p>
+        </div>
+        <div class="card accent">
+          <h3>ΔBV評価の生理学的背景</h3>
+          <p>体液分布・プラズマリフィリング・血管内脱水の代償反応・ΔBV代替評価法</p>
         </div>
         <div class="card accent">
           <h3>臨床評価・活用事例</h3>
@@ -263,10 +267,171 @@
     </div>
   </div>
 
-  <!-- 8. Toho divider -->
+  <!-- 8. Physiology divider -->
   <div class="slide title-slide">
     <div class="slide-content animate-fade-up" style="align-items:flex-start;">
       <span class="part-index">01</span>
+      <span class="kicker" style="margin-top:8px;">生理学的背景</span>
+      <h1 class="slide-title">なぜΔBVを測るのか<br>血管内脱水と代償反応</h1>
+      <p class="subtitle">日機装セミナー資料+IDH(透析中低血圧)関連総説(2018〜2025年)に基づく</p>
+    </div>
+  </div>
+
+  <!-- 9. 体液分布 -->
+  <div class="slide">
+    <div class="slide-content animate-stagger">
+      <span class="kicker">体液分布</span>
+      <h2 class="slide-heading">透析患者の体液はどこに溜まるか</h2>
+      <p class="lead">体液は「血液(血管内)」「間質」「細胞内液」の3つに大別される。尿量が低下し体内に水分が貯留する透析患者では、貯留する水分の多くは<b>間質</b>に溜まることが分かっている。</p>
+      <div class="card accent">
+        <h3>除水のメカニズム</h3>
+        <p>除水は血管内(血漿)から直接水分を抜く操作だが、それに伴い間質の水分が血管内へ移動する(<b>プラズマリフィリング</b>)ことで、間質の余剰水分を間接的に除去しつつ循環動態を安定させる、というのが透析除水の基本原理。</p>
+      </div>
+      <p class="footer-note">出典: 日機装セミナー資料(講師名・開催回未特定)</p>
+    </div>
+  </div>
+
+  <!-- 10. プラズマリフィリング -->
+  <div class="slide">
+    <div class="slide-content animate-stagger">
+      <span class="kicker">プラズマリフィリング</span>
+      <h2 class="slide-heading">膠質浸透圧とPRRの大小</h2>
+      <p class="lead">除水で血液が濃縮すると<b>膠質浸透圧</b>(アルブミンなど)が上昇し、間質から血管内への水分移動(プラズマリフィリング)を促進する。</p>
+      <div class="grid-2">
+        <div class="card accent"><h3>PRRが大きい場合</h3><p>間質からの水分補充が速く、除水しても血管内脱水は<b>軽度</b>で済む</p></div>
+        <div class="card danger"><h3>PRRが小さい場合</h3><p>水分補充が追いつかず、血管内脱水・<b>血圧低下</b>が生じやすい</p></div>
+      </div>
+      <p class="footer-note">出典: 日機装セミナー資料</p>
+    </div>
+  </div>
+
+  <!-- 11. 代償反応 全体像 -->
+  <div class="slide">
+    <div class="slide-content animate-stagger">
+      <span class="kicker">代償反応</span>
+      <h2 class="slide-heading">血管内脱水に対する代償反応(全体像)</h2>
+      <p class="lead">週3回・4時間の透析は生体腎に比べ急激な変化を強いるため血管内脱水が生じやすい。IDH(透析中低血圧)関連の近年の総説では、<b>圧受容器反射</b>を起点に「静脈系→内臓血流→心臓→動脈系」の順に代償機構が動員されるとされる。</p>
+      <div class="formula-box">
+        血圧低下は直線的ではなく、透析開始から最初の1/4程度でより急峻に低下し、その後は緩やかになる傾向<br>
+        <span class="sub">初期は除水量そのものより、急激な血漿浸透圧低下や代償機構の立ち上がりの遅れが主要因と考えられている</span>
+      </div>
+      <p class="footer-note">出典: Reeves &amp; Mc Causland (CJASN 2018) / Kanbay et al. (Clin Kidney J 2020) / Sars et al. (Blood Purif 2020) / Habas et al. (Blood Press 2025)</p>
+    </div>
+  </div>
+
+  <!-- 12. 圧受容器・静脈系 -->
+  <div class="slide">
+    <div class="slide-content animate-stagger">
+      <span class="kicker">Step 1-2</span>
+      <h2 class="slide-heading">圧受容器の活性化 → 静脈系の代償</h2>
+      <div class="grid-2">
+        <div class="card accent">
+          <h3>① 圧受容器・交感神経</h3>
+          <p>心肺圧受容器・動脈圧受容器(大動脈弓・頸動脈洞)が血液量減少を感知→交感神経系の緊張抑制が解除。<br><b>まず骨格筋・皮膚の細動脈収縮</b>→続いて心拍数・心収縮力増加の順で生じる。</p>
+        </div>
+        <div class="card accent">
+          <h3>② 静脈系(容量血管)</h3>
+          <p>全身血液量の<b>約65〜70%</b>は静脈系に存在。交感神経亢進で細動脈が収縮し静脈床への血流が減ると、静脈内圧が下がり血管壁の弾性収縮で静脈還流が増加(<b>DeJager-Krogh現象</b>)。</p>
+        </div>
+      </div>
+      <p class="footer-note">出典: Reeves &amp; Mc Causland (CJASN 2018) / Sars et al. (Blood Purif 2020)</p>
+    </div>
+  </div>
+
+  <!-- 13. 内臓血流シフト・心臓 -->
+  <div class="slide">
+    <div class="slide-content animate-stagger">
+      <span class="kicker">Step 3-4</span>
+      <h2 class="slide-heading">内臓血流のシフト → 心臓の代償</h2>
+      <div class="grid-2">
+        <div class="card accent">
+          <h3>③ 内臓血流シフト</h3>
+          <p>除水開始から比較的早期(30分以内)に、脾臓・消化管などの血液プールから中心循環へ血液が再配分される。自律神経障害がある患者ではこのシフトが起こりにくい。食後は逆に内臓血流が増え血圧が下がりやすい(食後性低血圧)。</p>
+        </div>
+        <div class="card caution">
+          <h3>④ 心臓(心拍出量維持)</h3>
+          <p>心拍数・心収縮力の増加が代償の基本だが、β遮断薬使用や拡張機能障害(透析患者の左室肥大 約74%)があると前負荷のわずかな低下で心拍出量・血圧が大きく落ちやすい。</p>
+        </div>
+      </div>
+      <p class="footer-note">出典: Reeves &amp; Mc Causland (CJASN 2018) / Kanbay et al. (Clin Kidney J 2020)</p>
+    </div>
+  </div>
+
+  <!-- 14. 動脈系・ホルモン -->
+  <div class="slide">
+    <div class="slide-content animate-stagger">
+      <span class="kicker">Step 5</span>
+      <h2 class="slide-heading">動脈系の代償とホルモン応答</h2>
+      <div class="grid-2">
+        <div class="card accent">
+          <h3>末梢血管抵抗の上昇</h3>
+          <p>細動脈の収縮により末梢血管抵抗が上昇する</p>
+        </div>
+        <div class="card accent">
+          <h3>バソプレシン(AVP)</h3>
+          <p>血漿浸透圧上昇・有意な脱水でV1受容体を介し血管平滑筋を収縮させる重要なホルモンだが、<b>血圧が下がりやすい透析患者では反応が鈍化</b>しているとの報告がある</p>
+        </div>
+      </div>
+      <p class="lead" style="margin-top:2px;">レニン・アンジオテンシン・アルドステロン系(RAAS)も血管収縮反応の一部として関与するとされる。</p>
+      <p class="footer-note">出典: Reeves &amp; Mc Causland (CJASN 2018)</p>
+    </div>
+  </div>
+
+  <!-- 15. 代償破綻の理由 -->
+  <div class="slide">
+    <div class="slide-content animate-stagger">
+      <span class="kicker danger">代償の破綻</span>
+      <h2 class="slide-heading">透析患者で代償機構が破綻しやすい理由</h2>
+      <div class="card danger">
+        <h3>尿毒症性自律神経障害 + Bezold-Jarisch反射</h3>
+        <p>急激な血圧低下の直前にパラドキシカルに交感神経活動が低下する患者がいる。心室充満不全を心臓の機械受容器が感知→迷走神経求心路→脳幹心血管中枢の交感神経活動を急激に抑制→<b>細動脈拡張・徐脈・血圧低下</b>、という機序が仮説として挙げられている。</p>
+      </div>
+      <div class="grid-2" style="margin-top:2px;">
+        <div class="card caution"><p>心不全・拡張機能障害の高い合併率により、前負荷低下への耐容力が低い</p></div>
+        <div class="card caution"><p>圧受容器反射感受性の低下・起立時の交感神経応答障害が近年の総説で確認されている</p></div>
+      </div>
+      <p class="footer-note">出典: Reeves &amp; Mc Causland (CJASN 2018) / Habas et al. (Blood Press 2025)</p>
+    </div>
+  </div>
+
+  <!-- 16. ΔBV評価の前提とパターン解釈 -->
+  <div class="slide">
+    <div class="slide-content animate-stagger">
+      <span class="kicker">ΔBVの読み方</span>
+      <h2 class="slide-heading">ΔBV評価の前提条件とパターン解釈</h2>
+      <div class="card danger">
+        <h3>前提条件</h3>
+        <p>ΔBVは血漿成分減少による赤血球割合の相対的増加を利用した指標。<b>血球成分量が変化しないこと</b>が前提のため、輸血・出血がある場合は評価できない。</p>
+      </div>
+      <div class="grid-2" style="margin-top:4px;">
+        <div class="card accent"><h3>変化が小さい場合</h3><p>除水速度が低い、または体液過剰でプラズマリフィリングが良好(間質水分が多い)</p></div>
+        <div class="card caution"><h3>変化が大きい(急激な濃縮)場合</h3><p>除水速度が速い/移動すべき間質水分が少ない/膠質浸透圧が低い/炎症等で血管内に水分を維持しにくい</p></div>
+      </div>
+      <p class="footer-note">出典: 日機装セミナー資料</p>
+    </div>
+  </div>
+
+  <!-- 17. ΔBV計がない場合の代替評価 -->
+  <div class="slide">
+    <div class="slide-content animate-stagger">
+      <span class="kicker">代替評価法</span>
+      <h2 class="slide-heading">ΔBV計がない場合の代替評価</h2>
+      <div class="card accent">
+        <h3>総タンパク(TP)濃度による推定</h3>
+        <p>透析前後のTP濃度から血漿量の変化量を計算できるとする報告がある。Ht濃縮率は「血液量」変化、TP濃縮率は「血漿量」変化を反映するため、同一除水量でもTP濃縮率の方が高くなる。TP濃縮率からのHt予測はやや過大評価になるが、相関はあるためある程度の評価は可能。</p>
+      </div>
+      <div class="card accent">
+        <h3>プラズマウォーターインデックス</h3>
+        <p>血漿タンパク濃縮率 ÷ 体重変化率 で算出し、ドライウェイト評価の指標になり得るとする報告がある。</p>
+      </div>
+      <p class="footer-note">出典: 日機装セミナー資料(著者・誌名は未特定、DCS-100NX_BV計.mdの未確認項目を参照)</p>
+    </div>
+  </div>
+
+  <!-- 18. Toho divider -->
+  <div class="slide title-slide">
+    <div class="slide-content animate-fade-up" style="align-items:flex-start;">
+      <span class="part-index">02</span>
       <span class="kicker" style="margin-top:8px;">臨床評価</span>
       <h1 class="slide-title">東邦大学医療センター<br>大森病院の評価報告</h1>
       <p class="subtitle">DCS-100NX装備の再循環率・推定血流量モニタの使用評価</p>
@@ -337,7 +502,7 @@
   <!-- 13. Onomichi divider -->
   <div class="slide title-slide">
     <div class="slide-content animate-fade-up" style="align-items:flex-start;">
-      <span class="part-index">02</span>
+      <span class="part-index">03</span>
       <span class="kicker" style="margin-top:8px;">活用事例</span>
       <h1 class="slide-title">尾道市立市民病院の<br>症例報告</h1>
       <p class="subtitle">BV-PLUS活用による血圧低下・除水困難の改善</p>
@@ -380,9 +545,10 @@
       <h2 class="slide-heading">本日のポイント</h2>
       <ul class="step-list" style="margin-top:4px;">
         <li><span class="step-num">1</span>BV計は近赤外光を使い、薬剤・専用回路なしで血液濃縮度・再循環率・実血流量・Htを測定できる</li>
-        <li><span class="step-num">2</span>濃縮法の再循環率測定と実血流量(BVplus)は臨床的に有用だが、推定血流量は過大評価される限界がある</li>
-        <li><span class="step-num">3</span>ΔBV・PRRを併用した除水速度コントロールは、血圧低下・除水困難の改善に活用できる</li>
-        <li><span class="step-num">4</span>限界を理解したうえで、日々の透析管理に組み込むことが安全な活用につながる</li>
+        <li><span class="step-num">2</span>ΔBVは除水に伴う体液移動の指標。血管内脱水は圧受容器→静脈系→内臓血流→心臓→動脈系の順で代償されるが、透析患者はこの経路が障害されやすい</li>
+        <li><span class="step-num">3</span>濃縮法の再循環率測定と実血流量(BVplus)は臨床的に有用だが、推定血流量は過大評価される限界がある</li>
+        <li><span class="step-num">4</span>ΔBV・PRRを併用した除水速度コントロールは、血圧低下・除水困難の改善に活用できる</li>
+        <li><span class="step-num">5</span>限界と生理学的背景の両方を理解したうえで、日々の透析管理に組み込むことが安全な活用につながる</li>
       </ul>
       <p class="footer-note" style="margin-top:8px;">詳細は DCS-100NX_BV計.md を参照。</p>
     </div>
