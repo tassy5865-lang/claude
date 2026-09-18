@@ -6,6 +6,7 @@
 
 - `index.html` — 公開用のメインページ。本文はSEO・耐障害性を考慮して静的HTMLで記述
 - `styles.css` — レイアウト、配色、レスポンシブ、フォーカス表示
+- `redesign.css` — Inspoを参考にした現行デザイン。深緑・アイボリーの配色、実績表示、モバイルナビゲーション（styles.cssの後に読み込み）
 - `main.js` — ナビゲーション、LINE QR表示
 - `assets/work-*.png` — 代表実績3件の静止プレビュー（公開ツールの画面。CSV解析はデモデータ）
 - `assets/profile-mark.svg` — 顔写真へ差し替え可能な仮プロフィール画像
