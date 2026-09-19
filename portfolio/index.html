@@ -6,7 +6,7 @@
 <title id="page-title">田代 裕貴 | 制作実績ポートフォリオ（AI・DXコンサル）</title>
 <meta name="description" content="臨床工学技士・AI/DXコンサルタント田代裕貴の制作実績。医療・臨床、業務改善、Web制作のツールをBefore/Afterとともに紹介します。">
 <meta name="robots" content="index,follow,max-image-preview:large">
-<meta name="theme-color" content="#1E3A5F">
+<meta name="theme-color" content="#214e3f">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <link rel="canonical" href="https://tassy5865-lang.github.io/claude/portfolio/">
 <meta property="og:type" content="website">
@@ -33,6 +33,10 @@
 }
 </script>
 <link rel="stylesheet" href="styles.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@600&family=Noto+Sans+JP:wght@400;600;700&family=Shippori+Mincho:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="redesign.css">
 <link rel="stylesheet" href="../site-assets/motion.css">
 <script src="../site-assets/motion.js" defer></script>
 </head>
@@ -344,9 +348,11 @@ if (SITE.nav.profileLabel) {
 const featuredIndex = SITE.works.cards[SITE.hero.featuredIndex] ? SITE.hero.featuredIndex : 0;
 const featuredWork = SITE.works.cards[featuredIndex];
 document.getElementById('hero-wrap').innerHTML = `
+  <div class="hero-edition"><span>YUKI TASHIRO / SELECTED WORKS</span><span>医療の現場から、使える仕組みを。</span></div>
   <div class="hero-copy">
   <div class="badge"><span class="dot" aria-hidden="true"></span>${escapeHTML(SITE.hero.badge)}</div>
   <h1>${escapeHTML(SITE.hero.titlePre)}<br><span class="accent">${escapeHTML(SITE.hero.titleAccent)}</span>${escapeHTML(SITE.hero.titlePost)}</h1>
+  <p class="hero-script" lang="en">From everyday challenges to working solutions.</p>
   <p class="lead">${sanitizeRichHTML(SITE.hero.lead)}</p>
   <div class="hero-ctas">
     <a class="btn-primary" href="${escapeHTML(safeHref(SITE.hero.ctaPrimary.href))}">${escapeHTML(SITE.hero.ctaPrimary.label)}</a>
@@ -358,7 +364,9 @@ document.getElementById('hero-wrap').innerHTML = `
   </div>
   </div>
   <figure class="hero-feature">
-    <div class="feature-heading"><span>制作実績から</span><span>${escapeHTML(featuredWork.tag)}</span></div>
+    <div class="feature-heading"><span>FROM THE FIELD</span><span aria-hidden="true">✳</span></div>
+    <div class="field-note"><span>現場で見つけた、小さな課題。</span><p>${escapeHTML(featuredWork.challenge)}</p><small>${escapeHTML(featuredWork.tag)}</small></div>
+    <div class="feature-connection" aria-hidden="true">↓ <span>使える仕組みへ</span></div>
     <button class="work-preview-btn" type="button" data-work-index="${featuredIndex}" aria-label="${escapeHTML(featuredWork.title)}の画面と改善内容を見る">
       <img src="${escapeHTML(safeImage(featuredWork.image))}" alt="${escapeHTML(featuredWork.imageAlt)}" width="960" height="600" fetchpriority="high" decoding="async">
     </button>
@@ -368,8 +376,10 @@ document.getElementById('hero-wrap').innerHTML = `
 
 const workTags = ['すべて', ...new Set(SITE.works.cards.map(c => c.tag))];
 document.getElementById('works-wrap').innerHTML = `
+  <div class="works-heading">
   <div class="eyebrow center">${escapeHTML(SITE.works.eyebrow)}</div>
   <div class="center-text"><h2>${escapeHTML(SITE.works.title)}</h2><p class="section-sub">${escapeHTML(SITE.works.sub)}</p></div>
+  </div>
   ${SITE.works.stats.length ? `
   <div class="stat-row">
     ${SITE.works.stats.map(s => `<div class="stat"><div class="num">${escapeHTML(statNumber(s))}<span>${escapeHTML(s.unit)}</span></div><div class="label">${escapeHTML(s.label)}</div></div>`).join('')}

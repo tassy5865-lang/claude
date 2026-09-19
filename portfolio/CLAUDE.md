@@ -1,5 +1,13 @@
 # portfolio
 
+## 現行デザイン（2026-09-19）
+
+- `自己紹介HP/redesign.css` のInspo由来のデザインに統一。アイボリー `#f6f5ee`、深緑 `#214e3f`、本文色 `#253c32` を使用。
+- `styles.css` の後に `redesign.css` を読み込み、配色・余白・明朝見出し・実績カード・問い合わせ欄を上書きする。
+- 自己紹介HPと同じGoogle Fonts（Noto Sans JP / Shippori Mincho / IBM Plex Mono）を使用。下記の旧記載と異なりWebフォントを読み込む。
+- トップはアーチ型の背景と課題メモ・実績画面で構成。既存の `SITE` データ、絞り込み、詳細モーダル、相談リンクを利用。
+- デザインを調整する際は `redesign.css`、構成を調整する際は `index.html` 内の描画テンプレートを編集する。以下には旧デザインの記録も含まれる。
+
 田代裕貴さん(臨床工学技士 / AI・DXコンサル)の制作実績ポートフォリオ。単一HTMLファイルのランディングページ。
 
 参考にしたサイト: https://sasukewebjob-ai.github.io/portfolio/ (Before→After形式の実績カード、タグ絞り込み、プロフィール導線という構成を踏襲)
