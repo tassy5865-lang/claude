@@ -89,3 +89,9 @@ html:not([data-js]) .menu-toggle{display:none}
 .preview-evidence{font-size:13px;line-height:1.8;color:#214e3f;border-left:2px solid #8da07e;padding:5px 0 5px 12px;margin:16px 0}
 .work-figure figcaption{font-size:12px;line-height:1.8}
 @media(max-width:600px){.profile-practice{grid-template-columns:1fr;gap:15px;margin-top:10px}.profile-practice h3{font-size:22px}.profile-practice dl>div{grid-template-columns:1fr;gap:7px}.preview-evidence{font-size:13px}}
+
+.profile-copy .profile-story-lead{font-family:'Shippori Mincho',serif;font-size:25px;font-weight:600;line-height:1.7;color:#214e3f;margin-top:0;text-wrap:balance}
+.profile-context{display:flex;gap:30px;margin:30px 0 12px;padding-top:24px;border-top:1px solid var(--line)}
+.profile-context dt{font-size:12px;color:#667364}.profile-context dd{font-family:'Shippori Mincho',serif;font-size:34px;color:#214e3f;margin:4px 0 0}.profile-context dd span{font-size:15px;margin-left:5px}
+.profile-context-note{font-size:12px;line-height:1.8;color:#667364}.profile-practice h3{text-wrap:balance}
+@media(max-width:600px){.profile-copy .profile-story-lead{font-size:21px}.profile-context{gap:28px}.profile-context dd{font-size:30px}}
