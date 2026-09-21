@@ -14,7 +14,7 @@
 - `main.js` — スムーススクロール・フォーム送信（GAS_ENDPOINT未設定時はLINE誘導メッセージを表示）
 - `assets/profile-qr.png` — LINE公式QR（自己紹介HPから流用）
 - `assets/social-card.png` — OGP画像(1200x630)。`assets/build-og-card.py` で再生成（`python build-og-card.py social-card.png`、Pillow+Windows日本語フォント使用）
-- `gas/contact-form.gs` — 問い合わせフォーム受信用GAS Web Appソース
+- `gas/contact-form.gs` — 問い合わせフォーム受信用GAS Web Appソース（スプレッドシートに追記＋通知メール。宛先は既定でデプロイした本人、`NOTIFY_TO` で変更可。修正したらGAS側へ貼り直し、エディタで `testNotify` を1回実行して権限承認→「デプロイを管理」で新バージョンに更新）
 
 ## 状態
 - 全8セクション実装済み・PC/スマホ幅で表示確認済み（2026-09-20）
