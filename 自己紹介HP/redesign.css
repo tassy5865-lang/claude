@@ -55,7 +55,7 @@ html:not([data-js]) .menu-toggle{display:none}
 .board-footer{margin-top:22px;font-size:8px}.board-footer span:last-child{font-size:14px}
 .hero-topics{padding-block:19px}.hero-topics span:not(.topics-label){padding-left:20px;border-left:1px solid var(--line)}
 #profile{background:var(--bg);border-bottom:1px solid var(--line);padding-block:94px}
-.profile-intro{grid-template-columns:1.1fr 1fr;gap:14%}.profile-intro h2{font-size:clamp(30px,3.2vw,43px);line-height:1.55}
+.profile-intro{grid-template-columns:1.1fr 1fr;column-gap:14%;row-gap:0}.profile-intro h2{font-size:clamp(30px,3.2vw,43px);line-height:1.55}
 .profile-copy{padding-top:40px}.profile-copy p{font-size:15px;line-height:2.1}
 .profile-signature{display:flex;align-items:center;gap:16px;margin-top:30px;font-size:13px}
 .signature-mark{font:italic 43px Georgia,serif;color:var(--brand);width:51px;height:51px;display:grid;place-items:center;border:1px solid #c4cebe;border-radius:50%}
