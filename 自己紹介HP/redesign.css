@@ -95,3 +95,10 @@ html:not([data-js]) .menu-toggle{display:none}
 .profile-context dt{font-size:12px;color:#667364}.profile-context dd{font-family:'Shippori Mincho',serif;font-size:34px;color:#214e3f;margin:4px 0 0}.profile-context dd span{font-size:15px;margin-left:5px}
 .profile-context-note{font-size:12px;line-height:1.8;color:#667364}.profile-practice h3{text-wrap:balance}
 @media(max-width:600px){.profile-copy .profile-story-lead{font-size:21px}.profile-context{gap:28px}.profile-context dd{font-size:30px}}
+
+/* 職務経歴に基づく経験とスキル */
+.profile-career{grid-column:1/-1;display:grid;grid-template-columns:1fr 1.2fr;gap:32px 8%;margin-top:36px;padding-top:36px;border-top:1px solid var(--line)}
+.career-heading h3{font-family:'Shippori Mincho',serif;font-size:28px;line-height:1.7;margin:16px 0}.career-heading p{font-size:14px;line-height:1.9}.career-license{color:#214e3f;font-weight:600}
+.career-timeline{list-style:none;margin:0;padding:0 0 0 22px;border-left:1px solid #9da994}.career-timeline li{position:relative;padding:0 0 28px}.career-timeline li:last-child{padding-bottom:0}.career-timeline li::before{content:'';width:7px;height:7px;border-radius:50%;background:#214e3f;position:absolute;left:-26px;top:7px}.career-timeline time{font-size:12px;color:#53634f}.career-timeline h4{font-size:16px;margin:8px 0}.career-timeline p{font-size:14px;line-height:1.9;margin:0}
+.career-skills{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:28px;margin:0;padding:25px 0;border-top:1px solid var(--line)}.career-skills dt{font-size:14px;font-weight:700;color:#214e3f;margin-bottom:9px}.career-skills dd{margin:0;font-size:14px;line-height:1.9}
+@media(max-width:600px){.profile-career{grid-template-columns:1fr;gap:28px;margin-top:12px}.career-heading h3{font-size:25px}.career-skills{grid-template-columns:1fr;gap:22px}}
