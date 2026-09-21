@@ -94,3 +94,13 @@ footer .role-accent{color:#b7cbb9}.flinks{gap:24px}
 @media(max-width:860px){.wrap{width:calc(100% - 48px)}nav{padding:14px 24px;gap:16px;min-height:72px}.nav-actions{gap:14px}section{padding:76px 0}#hero-wrap{gap:0 24px}#hero h1{font-size:36px}.hero-script{font-size:19px}.hero-feature{padding:30px 18px 22px}.field-note{margin-inline:0;padding:15px}.field-note p{font-size:18px}.hero-feature>.work-preview-btn{margin-left:12px;width:calc(100% - 12px)}.work-grid{gap:40px 24px}.work-visual{padding:20px}.works-heading .center-text{gap:35px}.linkout-card{gap:24px}footer{padding-inline:24px}}
 @media(max-width:760px){#hero{padding:20px 0 36px}#hero-wrap{grid-template-columns:1fr;gap:32px}.hero-edition{padding:0;font-size:9px}.hero-edition span:last-child{display:none}.hero-copy{max-width:none}#hero h1{font-size:clamp(33px,7vw,49px)}.hero-script{font-size:22px}.hero-feature{justify-self:center;max-width:350px;margin:0}.work-grid{grid-template-columns:1fr;max-width:none}.works-heading .center-text{grid-template-columns:1fr;gap:20px}.works-heading h2{font-size:34px}.works-heading .section-sub{font-size:13px}.work-card h3{font-size:21px}.work-visual{padding:24px}.nav-works{display:none}.linkout-card h2{font-size:29px}#cta{padding-block:72px}#cta h2{font-size:31px}.cta-note{font-size:13px}}
 @media(max-width:420px){nav{gap:10px;padding:12px 18px}.nav-brand{grid-template-columns:22px auto;column-gap:6px}.nav-brand::before{font-size:31px}.nav-name{font-size:15px}.nav-actions{gap:10px}.nav-link{font-size:11px}.nav-cta{padding:10px 15px;font-size:11px}.hero-ctas>a{width:auto}.hero-ctas{gap:12px}.btn-primary,.btn-secondary{padding:14px 20px}.work-card{padding:0}.work-visual{margin:0 0 23px}.badge{font-size:10px}.stat-row{gap:24px}.stat .label{font-size:11px}.tag-filter button{font-size:11px;padding:9px 14px}#cta .hero-ctas>*{width:auto}.hero-feature{max-width:100%}}
+
+/* 実績の背景と、サンプルで確認した内容 */
+.work-caption{font-size:12px;line-height:1.8;color:var(--ink-soft);padding:12px 4px 0}
+.work-proof{border-left:2px solid #8da07e;padding:5px 0 5px 14px;margin:18px 0;color:var(--gold);font-size:14px;line-height:1.8}
+.case-facts{margin:24px 0 30px;border-top:1px solid var(--line)}
+.case-facts>div{display:grid;grid-template-columns:120px 1fr;gap:20px;padding:17px 0;border-bottom:1px solid var(--line)}
+.case-facts dt{font-size:13px;font-weight:700;color:var(--gold)}
+.case-facts dd{margin:0;font-size:14px;line-height:1.9;color:var(--ink-soft)}
+.modal-preview img{height:auto;max-height:none;object-fit:contain}
+@media(max-width:600px){.case-facts>div{grid-template-columns:1fr;gap:7px}.work-caption{font-size:12px}.work-proof{font-size:13px}}

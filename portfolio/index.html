@@ -63,6 +63,7 @@
     <div class="modal-tag" id="modal-tag"></div>
     <h3 id="modal-title"></h3>
     <p class="modal-desc" id="modal-desc"></p>
+    <dl class="case-facts" id="modal-facts"></dl>
     <figure class="modal-preview"><img id="modal-image" alt="" width="960" height="600" decoding="async"><figcaption id="modal-image-caption"></figcaption></figure>
     <div class="modal-sec">
       <div class="modal-sec-h">Before → After</div>
@@ -128,7 +129,7 @@ const SITE = {
   "works": {
     "eyebrow": "works",
     "title": "制作実績",
-    "sub": "分野で絞り込み、画面と「できること」を比較できます。",
+    "sub": "画面と制作背景、サンプルで確認したことから、ご自身の業務に近いものをご覧ください。",
     "stats": [],
     "cards": [
       {
@@ -146,13 +147,20 @@ const SITE = {
           "AIへの考察依頼用プロンプトを毎回書く手間をなくしたい場面"
         ],
         "image": "../自己紹介HP/assets/work-dialysis.png",
-        "imageAlt": "透析指標の入力・計算画面",
+        "imageAlt": "内蔵デモデータから計算した透析指標の結果画面",
         "challenge": "測定値から指標を手計算",
-        "benefit": "入力から指標計算までを一画面に"
+        "benefit": "入力から指標計算までを一画面に",
+        "background": "開発のきっかけは、現職で約90人分の採血データや内服薬などを出力し、1人あたり10〜20分かけてExcelに手入力していた経験です。残業しながら進める負担からAIでの効率化を考え、このツールでは透析指標の入力・計算を一画面にまとめています。",
+        "usage": "公開ツールとして体験できます。掲載画面は内蔵のデモデータによるものです。",
+        "verified": "デモデータを読み込み、体重差・除水速度・PWI・mean Krが同じ画面に表示されることを確認しました。",
+        "limits": "画面表示の動作確認です。臨床での妥当性や作業時間の短縮を実証するものではありません。",
+        "imageCaption": "内蔵デモデータの計算結果。実際の患者データではありません。",
+        "summary": "サンプルで確認：入力から複数の指標を一覧表示。",
+        "verifiedDate": "2026-09-20"
       },
       {
         "tag": "医療・臨床",
-        "status": "公開中",
+        "status": "公開中・院内で活用",
         "title": "透析CSV解析ツール",
         "text": "測定CSVを患者別に集計し、指標の推移をグラフで確認できます。",
         "tech": "React / Vite / Recharts",
@@ -165,9 +173,17 @@ const SITE = {
           "特定患者のデータだけを素早く確認したい場面"
         ],
         "image": "../自己紹介HP/assets/work-csv.png",
-        "imageAlt": "サンプルデータによるCSV読込・解析結果画面",
+        "imageAlt": "架空のデモデータによる集計値とΔBV・PRR・除水速度のグラフ",
         "challenge": "CSVを手作業で整理・集計",
-        "benefit": "読込から集計・グラフ表示まで"
+        "benefit": "読込から集計・グラフ表示まで",
+        "background": "測定CSVをExcelで整形し、グラフを作る作業をまとめるためのツールです。データを読み込んだ後、対象者ごとの指標と時間変化を見られるようにしています。",
+        "usage": "勤務先クリニックで、患者ごとのΔBV・PRRや循環動態を時系列に比較・評価する業務に活用しています。公開版では架空の2名×3回分を体験できます。",
+        "verified": "内蔵サンプル6件の読み込み後、指標の集計値とΔBV・PRR・除水速度のグラフ表示を確認しました。",
+        "limits": "院内での活用・効果は本人の職務経歴に基づく事例です。短縮時間の数値は掲載していません。画像は内蔵デモデータです。",
+        "imageCaption": "内蔵サンプル6件のうち1回分の集計・グラフ。実際の患者データではありません。",
+        "summary": "院内で活用：CSVの抽出・グラフ作成を自動化。",
+        "verifiedDate": "2026-09-20",
+        "effect": "CSVをExcelへ変換し、必要データの抽出・グラフ・比較表を手作業で作る工程を自動化。本人の実務では、複数データ処理時の抽出・転記ミスの低減と作業時間の短縮につながっています。"
       },
       {
         "tag": "業務改善",
@@ -184,13 +200,21 @@ const SITE = {
           "紙の管理表をなくしペーパーレス化したい場面"
         ],
         "image": "assets/work-filedata.png",
-        "imageAlt": "FileDataの台帳管理画面（データ登録前）",
+        "imageAlt": "架空の備品データを登録したFileDataの台帳一覧",
         "challenge": "台帳ごとに異なる管理画面",
-        "benefit": "複数の台帳を共通の操作で管理"
+        "benefit": "複数の台帳を共通の操作で管理",
+        "background": "用途ごとに異なる管理表を、同じ操作で扱えるようにするためのツールです。品名・保管場所・在庫数など、業務に合わせた項目で台帳を構成できます。",
+        "usage": "公開版FileDataは、用途に合わせて項目を設定できる台帳ツールです。関連する院内の取り組みとして、患者風袋管理ツールを開発・導入した経験があります。",
+        "verified": "架空の備品5件を一覧表示し、「手袋」の検索で該当する2件に絞り込めることを確認しました。",
+        "limits": "院内の患者風袋管理事例と、公開版FileDataのサンプル確認を紹介しています。掲載画像は架空の備品台帳で、実際の患者風袋管理画面ではありません。",
+        "imageCaption": "品名・保管場所・在庫数を設定したサンプル台帳。すべて架空のデータです。",
+        "summary": "サンプルで確認：備品5件から検索で2件に絞り込み。",
+        "verifiedDate": "2026-09-20",
+        "effect": "患者風袋管理では、紙の管理をデジタル化し、計算・データの振り分け・五十音順の整列を実装。本人の実務では、紛失、計算ミス、記載漏れ・誤り、検索の負担を改善しました。"
       },
       {
         "tag": "業務改善",
-        "status": "公開中",
+        "status": "公開中・院内で活用",
         "title": "AI-OCR｜文字起こし・転記",
         "text": "画像・PDFの文字起こしから、Excel台帳への振り分け・追記までを支援します。",
         "tech": "React(CDN) / Tailwind / Gemini API / PDF.js / SheetJS / PapaParse",
@@ -204,9 +228,17 @@ const SITE = {
           "複数の担当者間で入力ルールを統一したい場面"
         ],
         "image": "../自己紹介HP/assets/work-ocr.png",
-        "imageAlt": "AI-OCRのファイル読込・抽出設定画面",
+        "imageAlt": "架空の備品CSV3件を保存済みマッピングで振り分けた結果画面",
         "challenge": "帳票を見ながらExcelへ手入力",
-        "benefit": "文字抽出と台帳への転記を支援"
+        "benefit": "文字抽出と台帳への転記を支援",
+        "background": "現職でデータを一人ひとりExcelに手入力していた経験から、転記の負担を減らすことを開発のテーマにしています。このツールでは、帳票の文字抽出とExcelへの振り分け・追記を支援し、項目の対応を再利用できるようにしています。",
+        "usage": "勤務先で医療機器のシリアルナンバー・型式・購入年月日等を画像から読み取り、CSV化して既存のExcel管理ファイルへ転記する工程に活用しています。",
+        "verified": "サンプルCSVの3件を4項目へ振り分け、既存1行の台帳に追記して4行になることを確認しました。",
+        "limits": "時間短縮は本人の実務事例（2026年9月時点）です。掲載画像はサンプルCSVの保存済みマッピング適用例で、AI文字認識の結果ではありません。今回の画面確認では文字認識精度は検証していません。",
+        "imageCaption": "サンプルCSVを保存済みマッピングで振り分けた例。AI文字認識の結果ではありません。",
+        "summary": "医療機器管理の入力作業：約30分〜1時間 → 約10分（本人の実務事例）。",
+        "verifiedDate": "2026-09-20",
+        "effect": "従来約30分〜1時間かかっていた入力作業を約10分へ短縮。手入力の負担軽減と転記ミスの低減につながりました。本人の医療機器管理業務での一事例で、処理対象や条件によって所要時間は異なります。"
       },
       {
         "tag": "Web制作",
@@ -215,17 +247,24 @@ const SITE = {
         "text": "強み・制作実績・対応内容を一ページにまとめ、相談につながる導線を整えました。",
         "tech": "HTML / CSS / JS(静的マルチファイル・ビルド不要)",
         "href": "https://tassy5865-lang.github.io/claude/%E8%87%AA%E5%B7%B1%E7%B4%B9%E4%BB%8BHP/",
-        "before": "経歴やこだわりを伝えるページがなく、都度資料を作って説明していた",
-        "after": "強み・実績・対応内容をまとめた常設ページから、メールやLINEへ相談できるようになった。",
+        "before": "活動内容や対応できることが、口頭や個別の資料だけでは伝わりにくい",
+        "after": "強み・実績・対応内容をまとめた常設ページから、メールやLINEへ相談できる",
         "useCases": [
           "名刺代わりのプロフィールページが欲しい場面",
           "独立・副業の実績をまとめて見せたい場面",
           "制作会社に頼らず自分で内容を更新したい場面"
         ],
         "image": "assets/work-profile.png",
-        "imageAlt": "田代裕貴の自己紹介HPのトップ画面",
+        "imageAlt": "田代裕貴のプロフィールサイトの公開用トップ画面",
         "challenge": "活動内容をその都度説明",
-        "benefit": "強みと相談先を一ページで紹介"
+        "benefit": "強みと相談先を一ページで紹介",
+        "background": "活動内容や相談できることを、その都度説明する負担を減らすためのプロフィールサイトです。人物紹介・制作物・依頼の流れを一続きにまとめています。",
+        "usage": "本人のプロフィールサイトとして公開中です。ポートフォリオと相互に行き来できます。",
+        "verified": "制作実績・サービスへのページ内移動、FAQの開閉、メール・LINEの相談先リンクを確認しました。",
+        "limits": "問い合わせ件数や成約率の変化は計測・掲載していません。",
+        "imageCaption": "プロフィールサイトのトップ画面。掲載内容と相談先を一ページに集約。",
+        "summary": "画面で確認：実績・対応内容・相談先を一ページに集約。",
+        "verifiedDate": "2026-09-20"
       }
     ]
   },
@@ -399,11 +438,12 @@ document.getElementById('works-wrap').innerHTML = `
   <div class="work-grid" id="work-list">
     ${SITE.works.cards.map((c,i) => `
       <article class="work-card" data-tag="${escapeHTML(c.tag)}">
-        <figure class="work-visual"><button class="work-preview-btn" type="button" data-work-index="${i}" aria-label="${escapeHTML(c.title)}の画面と改善内容を見る"><img src="${escapeHTML(safeImage(c.image))}" alt="${escapeHTML(c.imageAlt)}" loading="lazy" decoding="async" width="960" height="600"><span class="preview-hint" aria-hidden="true">画面・詳細を見る ↗</span></button></figure>
+        <figure class="work-visual"><button class="work-preview-btn" type="button" data-work-index="${i}" aria-label="${escapeHTML(c.title)}の画面と改善内容を見る"><img src="${escapeHTML(safeImage(c.image))}" alt="${escapeHTML(c.imageAlt)}" loading="lazy" decoding="async" width="960" height="600"><span class="preview-hint" aria-hidden="true">画面・詳細を見る ↗</span></button><figcaption class="work-caption">${escapeHTML(c.imageCaption)}</figcaption></figure>
         <div class="head"><div class="tag">${escapeHTML(c.tag)}</div><div class="status">${escapeHTML(c.status)}</div></div>
         <h3>${escapeHTML(c.title)}</h3>
         <p>${escapeHTML(c.text)}</p>
         <dl class="work-summary"><div><dt>困りごと</dt><dd>${escapeHTML(c.challenge)}</dd></div><div><dt>できること</dt><dd>${escapeHTML(c.benefit)}</dd></div></dl>
+        <p class="work-proof">${escapeHTML(c.summary)}</p>
         <div class="actions">
           <a class="link" href="${escapeHTML(safeHref(c.href))}" target="_blank" rel="noopener noreferrer" aria-label="${escapeHTML(c.title)}を別タブで開く">${c.tag === "Web制作" ? "サイトを開く" : "ツールを開く"} ↗</a>
           <button type="button" class="work-detail-btn" data-index="${i}" aria-label="${escapeHTML(c.title)}の改善内容を見る">改善内容を見る</button>
@@ -449,10 +489,21 @@ function openWorkModal(index){
   document.getElementById('modal-desc').textContent = c.text;
   document.getElementById('modal-image').src = safeImage(c.image);
   document.getElementById('modal-image').alt = c.imageAlt;
-  document.getElementById('modal-image-caption').textContent = c.imageAlt;
+  document.getElementById('modal-image-caption').textContent = c.imageCaption || c.imageAlt;
   document.getElementById('modal-tech').textContent = c.tech;
   document.getElementById('modal-open').href = safeHref(c.href);
   document.getElementById('modal-consult').href = consultationHref(c.title);
+  const facts = [['制作の背景', c.background], ['公開・利用状況', c.usage], ...(c.effect ? [['現場での活用・効果', c.effect]] : []), ['サンプル・画面での確認', c.verified], ['確認の範囲', c.limits], ['確認日', c.verifiedDate]];
+  const factsList = document.getElementById('modal-facts');
+  factsList.replaceChildren(...facts.map(([label, value]) => {
+    const row = document.createElement('div');
+    const term = document.createElement('dt');
+    const detail = document.createElement('dd');
+    term.textContent = label;
+    detail.textContent = value;
+    row.append(term, detail);
+    return row;
+  }));
   document.getElementById('modal-before').textContent = c.before || '';
   document.getElementById('modal-after').textContent = c.after || '';
   const useCaseList = document.getElementById('modal-usecases');
