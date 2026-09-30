@@ -67,36 +67,55 @@
     markers.forEach(el => el.classList.add('in'));
   }
 
-  /* count-up in hero */
-  const counter = $('[data-count]');
-  if (counter && !reduce) {
-    const end = +counter.dataset.count;
-    const t0 = performance.now();
-    const step = t => {
-      const k = Math.min(1, (t - t0 - 800) / 1200);
-      if (k > 0) counter.textContent = `約${Math.round(end * (1 - Math.pow(1 - k, 3)))}`;
-      if (k < 1) requestAnimationFrame(step);
+  /* hero: particle wave (a dotted surface seen in perspective) */
+  const pwave = $('#pwave');
+  if (pwave) {
+    const ctx = pwave.getContext('2d');
+    const small = matchMedia('(max-width:860px)').matches;
+    const COLS = small ? 40 : 84, ROWS = small ? 16 : 26;
+    let w = 0, h = 0, on = true;
+    const size = () => {
+      const dpr = Math.min(devicePixelRatio || 1, 2);
+      w = pwave.clientWidth; h = pwave.clientHeight;
+      pwave.width = w * dpr; pwave.height = h * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
-    counter.textContent = '約0';
-    requestAnimationFrame(step);
-  }
-
-  /* flow diagram: highlight each output in turn */
-  const viz = $('#flowviz');
-  if (viz) {
-    const outs = $$('.out', viz);
-    const svg = $('svg', viz);
+    const draw = t => {
+      ctx.clearRect(0, 0, w, h);
+      for (let j = 0; j < ROWS; j++) {
+        const d = j / (ROWS - 1);
+        const rowY = h * 0.5 + d * d * h * 0.56;
+        const spread = w * (0.7 + 1.5 * d);
+        const amp = 6 + 26 * d;
+        const r = 0.6 + 1.5 * d;
+        for (let i = 0; i < COLS; i++) {
+          const u = i / (COLS - 1) - 0.5;
+          const k = Math.sin(i * 0.32 + t * 0.9 + j * 0.25) + Math.sin(j * 0.5 - t * 0.6 + i * 0.11);
+          const x = w / 2 + u * spread;
+          if (x < -4 || x > w + 4) continue;
+          const a = (0.1 + 0.5 * d) * (0.55 + 0.225 * (k + 2));
+          ctx.fillStyle = k > 1.25 ? `rgba(226,160,120,${a})` : `rgba(143,179,222,${a})`;
+          ctx.beginPath();
+          ctx.arc(x, rowY - k * amp, r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    };
+    const loop = t => {
+      if (!on) return;
+      draw(t / 1000);
+      requestAnimationFrame(loop);
+    };
+    size();
+    addEventListener('resize', () => { size(); if (reduce) draw(0); });
     if (reduce) {
-      outs.forEach(o => o.classList.add('on'));
-      svg.pauseAnimations && svg.pauseAnimations();
+      draw(0);
     } else {
-      let n = 0;
-      const step = () => {
-        outs.forEach((o, i) => o.classList.toggle('on', i === n % outs.length));
-        n++;
-      };
-      step();
-      setInterval(step, 1800);
+      new IntersectionObserver(([en]) => {
+        const was = on; on = en.isIntersecting;
+        if (on && !was) requestAnimationFrame(loop);
+      }).observe(pwave);
+      requestAnimationFrame(loop);
     }
   }
 
@@ -166,6 +185,5 @@
     }).observe(canvas);
     requestAnimationFrame(frame);
   };
-  wave($('#monitor'), { color: 'rgba(15,33,54,.28)', dot: '#b4643a', width: 1.2, period: 260, speed: 3 });
   wave($('#cta-wave'), { color: 'rgba(143,179,222,.35)', dot: '#8fb3de', width: 1.2, period: 320, speed: 2 });
 })();

@@ -11,11 +11,29 @@
 <link rel="icon" href="../assets/profile-mark.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@1,400;1,500&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Zen+Old+Mincho:wght@600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=4">
-<script>document.documentElement.classList.add('js')</script>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Zen+Old+Mincho:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css?v=5">
+<script>
+(function(){
+  var d=document.documentElement,m='full';
+  d.classList.add('js');
+  try{
+    if(matchMedia('(prefers-reduced-motion: reduce)').matches)m='';
+    else if(sessionStorage.getItem('v2intro'))m='short';
+  }catch(e){}
+  if(location.hash&&location.hash!=='#top')m='';
+  /* preview: ?intro=full replays the full opening, ?intro=keys holds a close-up of the laptop */
+  var q=/[?&]intro=(full|keys)/.exec(location.search);if(q)m=q[1];
+  if(m){
+    d.classList.add('intro-on');d.dataset.intro=m;
+    /* never leave the page hidden if intro.js fails to load or start */
+    setTimeout(function(){if(!window.__introStarted)d.classList.remove('intro-on')},4000);
+  }
+})();
+</script>
 </head>
 <body>
+<div id="page">
 <div class="progress" id="progress" aria-hidden="true"></div>
 <a class="skip" href="#main">本文へ移動</a>
 
@@ -34,80 +52,17 @@
 <main id="main">
 
   <section class="hero" id="top">
-    <div class="hero-grid wrap">
-      <div class="hero-copy">
-        <ul class="chips" aria-label="肩書き">
-          <li><span class="pulse" aria-hidden="true"></span>臨床工学技士</li>
-          <li>AI活用・業務改善</li>
-        </ul>
-        <h1 class="hero-title">
-          <span class="line"><span>現場の課題を、</span></span>
-          <span class="line"><span>AIで<em class="mark">形にする</em>。</span></span>
-        </h1>
-        <p class="hero-lead">記録も、集計も、確認作業も。医療現場で働く田代裕貴が、自分の経験をもとに毎日の手間を減らす仕組みをつくります。</p>
-        <div class="hero-actions">
-          <a class="btn-fill" href="#works">制作実績を見る<span aria-hidden="true">→</span></a>
-          <a class="btn-line" href="#contact">相談する</a>
-        </div>
-        <dl class="origin">
-          <div><dt>開発のきっかけ</dt><dd><b data-count="90">約90</b>人分の手入力</dd></div>
-          <div><dt>1人あたり</dt><dd><b>10〜20</b>分の転記作業</dd></div>
-        </dl>
+    <canvas class="pwave" id="pwave" aria-hidden="true"></canvas>
+    <div class="hero-inner wrap">
+      <p class="hero-eyebrow"><span class="pulse" aria-hidden="true"></span>Portfolio — Nexsist.cs</p>
+      <h1 class="hero-title" aria-label="Yuki Tashiro（田代 裕貴）"><span class="line"><span>YUKI TASHIRO</span></span></h1>
+      <p class="hero-role">Clinical Engineer × AI / DX</p>
+      <p class="hero-lead">医療の現場から、<br>よりよい未来の仕組みをつくる。</p>
+      <div class="hero-actions">
+        <a class="btn-fill" href="#works">制作実績を見る<span aria-hidden="true">→</span></a>
+        <a class="btn-line" href="#contact">相談する</a>
       </div>
-
-      <figure class="flowviz" id="flowviz" aria-label="紙・画像・CSVの記録をAIで整理し、使える仕組みにする流れの図">
-        <svg viewBox="0 0 440 540" role="img" aria-hidden="true">
-          <defs>
-            <path id="route" d="M150 150 C150 215 220 200 220 270 C220 345 300 330 300 392"/>
-          </defs>
-
-          <g class="stage-label">
-            <line x1="12" y1="36" x2="44" y2="36"/><text x="52" y="40">Input</text>
-            <line x1="12" y1="270" x2="44" y2="270"/><text x="52" y="274">Process</text>
-            <line x1="12" y1="410" x2="44" y2="410"/><text x="52" y="414">Output</text>
-          </g>
-
-          <g class="sheets">
-            <g class="sheet s3" transform="translate(96 56) rotate(-7)"><rect width="130" height="88"/><path d="M14 20h70M14 36h96M14 52h58M14 68h84"/></g>
-            <g class="sheet s2" transform="translate(110 50) rotate(4)"><rect width="130" height="88"/><path d="M14 20h86M14 36h60M14 52h92M14 68h48"/></g>
-            <g class="sheet s1" transform="translate(88 64)"><rect width="130" height="88"/><path d="M14 20h96M14 36h74M14 52h88M14 68h56"/><circle cx="112" cy="70" r="7"/></g>
-            <text class="cap" x="258" y="102">紙の記録</text>
-            <text class="cap" x="258" y="124">画像・PDF・CSV</text>
-          </g>
-
-          <use href="#route" class="route-base"/>
-          <use href="#route" class="route-draw"/>
-
-          <g class="particles">
-            <circle r="4"><animateMotion dur="3.6s" repeatCount="indefinite" begin="0s"><mpath href="#route"/></animateMotion><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.1;.85;1" dur="3.6s" repeatCount="indefinite" begin="0s"/></circle>
-            <circle r="3"><animateMotion dur="3.6s" repeatCount="indefinite" begin="1.2s"><mpath href="#route"/></animateMotion><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.1;.85;1" dur="3.6s" repeatCount="indefinite" begin="1.2s"/></circle>
-            <circle r="3.5"><animateMotion dur="3.6s" repeatCount="indefinite" begin="2.4s"><mpath href="#route"/></animateMotion><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.1;.85;1" dur="3.6s" repeatCount="indefinite" begin="2.4s"/></circle>
-          </g>
-
-          <g class="node" transform="translate(220 270)">
-            <circle class="wave" r="54"/>
-            <circle class="wave w2" r="54"/>
-            <circle class="ring" r="68"/>
-            <circle class="core" r="50"/>
-            <text class="ai" y="12">AI</text>
-          </g>
-          <text class="cap" x="298" y="262">整理・抽出</text>
-          <text class="cap" x="298" y="284">計算・判定</text>
-
-
-          <g class="card" transform="translate(150 392)">
-            <rect class="card-bg" width="276" height="132"/>
-            <text class="card-title" x="18" y="30">使える仕組みに</text>
-            <polyline class="spark" points="196,32 210,22 222,27 236,12 250,18 262,8"/>
-            <g class="out o1" transform="translate(18 56)"><circle cx="6" cy="-5" r="6"/><path d="M3 -5l2.4 2.4 4-4.6"/><text x="22" y="0">指標の自動計算</text></g>
-            <g class="out o2" transform="translate(18 82)"><circle cx="6" cy="-5" r="6"/><path d="M3 -5l2.4 2.4 4-4.6"/><text x="22" y="0">CSVの集計・グラフ化</text></g>
-            <g class="out o3" transform="translate(18 108)"><circle cx="6" cy="-5" r="6"/><path d="M3 -5l2.4 2.4 4-4.6"/><text x="22" y="0">台帳への振り分け</text></g>
-          </g>
-        </svg>
-        <figcaption>記録を、AIで整理して、毎日使える形へ。</figcaption>
-      </figure>
     </div>
-    <canvas class="monitor" id="monitor" aria-hidden="true"></canvas>
   </section>
 
   <section class="gate" id="for" aria-label="ご相談の入口">
@@ -304,6 +259,15 @@
   <p class="wrap small">© 2026 田代 裕貴</p>
 </footer>
 
-<script src="main.js?v=6"></script>
+<div class="boot" id="boot" aria-hidden="true">
+  <p class="boot-name">YUKI TASHIRO</p>
+  <p class="boot-sub">PORTFOLIO</p>
+  <p class="boot-init">INITIALIZING<span>...</span></p>
+  <span class="boot-bar"><i></i></span>
+</div>
+</div>
+
+<script src="main.js?v=7"></script>
+<script src="intro.js?v=7"></script>
 </body>
 </html>
