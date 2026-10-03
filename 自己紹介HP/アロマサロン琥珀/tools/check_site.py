@@ -31,6 +31,32 @@ MUST_NOT_CONTAIN = [
     "TODO", "TBD", "tel:", "お電話", "治る", "治ります", "痩せる", "必ず効果", "口コミ",
     "アロマサロン琥珀",
 ]
+ROWS = [
+    ("よもぎ蒸し 30分", "¥3,500"),
+    ("温活よもぎコース 30分", "¥4,400"),
+    ("よもぎペア蒸し 30分", "¥6,000"),
+    ("ペア蒸し × フットまたは頭ほぐし", "¥12,000"),
+    ("よもぎ蒸し 30分 × アロマトリートメントまたは頭ほぐし 30分", "¥6,300"),
+    ("よもぎ蒸し × 頭ほぐし 45分", "¥7,800"),
+    ("よもぎ蒸し × 背面 30分", "¥8,500"),
+    ("よもぎ蒸し 30分 × アロマトリートメント 60分", "¥9,800"),
+    ("よもぎ蒸し × 背面 30分 × 選べるアロマ 30分", "¥11,500"),
+    ("背面コース 30分", "¥5,500"),
+    ("アロマトリートメント 40分", "¥4,000"),
+    ("アロマトリートメント 60分", "¥6,800"),
+    ("アロマトリートメント 80分", "¥9,000"),
+    ("頭ほぐし 30分", "¥3,300"),
+    ("頭ほぐし 45分", "¥4,800"),
+    ("お誕生日クーポン(お誕生日の月のみ)", "¥8,000"),
+]
+MUST_CONTAIN_MORE = [
+    "100分", "当日キャンセル", "2週間以内", "妊娠の可能性がある時期", "妊活中", "授乳中",
+    "生理中", "お誕生日の月のみ", "予約サイトのカレンダー",
+]
+FORBIDDEN_RE = [
+    (r"0\d{1,4}[-ー−]\d{1,4}[-ー−]\d{3,4}", "電話番号らしき数字"),
+    (r"(改善|デトックス|効果|効能|お客様の声|★|☆|おやすみ処|でありたいと考えています|頑張りすぎるあなた)", "効能・口コミ・出典のない語"),
+]
 SECTION_IDS = ["top", "worries", "about", "flow", "kodawari", "menu", "notice", "faq", "access"]
 
 
@@ -103,6 +129,52 @@ def main():
     for sid in SECTION_IDS:
         if sid not in scan.ids:
             errors.append(f"セクションidがありません: #{sid}")
+    for s_ in MUST_CONTAIN_MORE:
+        if squashed(s_) not in text:
+            errors.append(f"本文にありません: {s_}")
+    for pat, label in FORBIDDEN_RE:
+        m = re.search(pat, raw)
+        if m:
+            errors.append(f"{label}: {m.group(0)}")
+    rows = [(re.sub(r"\s+", " ", n).strip(), y.strip()) for n, y in
+            re.findall(r'<span class="name">(.*?)</span><span class="yen">(.*?)</span>', raw)]
+    if sorted(rows) != sorted(ROWS):
+        errors.append(f"料金表の行が仕様と違います(行数 {len(rows)} / 期待 {len(ROWS)})")
+    ids = re.findall(r'id="([^"]+)"', raw)
+    for dup in {i for i in ids if ids.count(i) > 1}:
+        errors.append(f"idが重複: {dup}")
+    for ref in re.findall(r'aria-controls="([^"]+)"', raw):
+        if ref not in ids:
+            errors.append(f"aria-controls の参照先がありません: {ref}")
+    heads = [int(x) for x in re.findall(r"<h([1-6])", raw)]
+    for a, b in zip(heads, heads[1:]):
+        if b > a + 1:
+            errors.append(f"見出し階層が飛んでいます: h{a} → h{b}")
+    if re.search(r"<(title|meta)[^>]*>[^<]*&(?!amp;|#)", raw) or re.search(r"<title>[^<]*&(?!amp;|#)", raw):
+        errors.append("title / meta の & が &amp; になっていません")
+    if 'class="nav-toggle"' in raw and "role=" not in raw.split('class="sticky-cta"')[-1][:80]:
+        errors.append("固定CTAに role がありません")
+    css = (ROOT / "styles.css").read_text(encoding="utf-8")
+    js = (ROOT / "main.js").read_text(encoding="utf-8")
+    for needle, why in [
+        (".js .nav-toggle", "JSなしでは「メニュー」ボタンを出さない"),
+        (".js .nav {", "JSなしではナビを常時表示する(JS有効時だけ折りたたむ)"),
+        ("visibility: hidden", "隠れた固定CTAにキーボードフォーカスが入らないようにする"),
+        ("@media print", "印刷時に本文が消えないようにする"),
+    ]:
+        if needle not in css:
+            errors.append(f"styles.css: {why}")
+    if "threshold: 0.12" in js:
+        errors.append("main.js: 背の高い要素が表示されない恐れ(threshold を 0 に)")
+    for color in ("#8a9a7b", "#c08a3e"):
+        for m in re.finditer(r"([^{}]+)\{([^}]*)\}", css):
+            sel, body = m.group(1).strip(), m.group(2)
+            if re.search(r"(^|;|\s)color:\s*(var\(--sage\)|var\(--amber\)|%s)" % color, body):
+                errors.append(f"styles.css: 文字色に低コントラストの色: {sel}")
+    if "--publish" in sys.argv:
+        for needle in ('rel="canonical"', 'property="og:url"', 'property="og:image"', '"url"'):
+            if needle not in raw:
+                errors.append(f"公開前に必要: {needle}")
     if scan.h1 != 1:
         errors.append(f"h1は1つだけ(現在 {scan.h1})")
 

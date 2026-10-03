@@ -7,6 +7,8 @@
   --rose-deep: #9c5f56;
   --sage: #8a9a7b;
   --amber: #c08a3e;
+  --sage-deep: #5f6e51;
+  --focus: #7a5217;
   --line: #e4d8ca;
   --radius: 18px;
   --serif: "Noto Serif JP", "Yu Mincho", "Hiragino Mincho ProN", serif;
@@ -29,12 +31,12 @@ img { max-width: 100%; height: auto; display: block; }
 a { color: var(--rose-deep); }
 h1, h2, h3 { font-family: var(--serif); font-weight: 500; line-height: 1.5; margin: 0; }
 p { margin: 0 0 1em; }
-:focus-visible { outline: 3px solid var(--amber); outline-offset: 3px; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
 
 .container { width: min(100% - 32px, 1040px); margin-inline: auto; }
 .section { padding: 72px 0; }
 .section--alt { background: var(--bg-alt); }
-.eyebrow { color: var(--sage); font-size: 13px; letter-spacing: .24em; margin: 0 0 8px; }
+.eyebrow { color: var(--sage-deep); font-size: 13px; letter-spacing: .24em; margin: 0 0 8px; }
 .section h2 { font-size: clamp(24px, 5vw, 34px); margin-bottom: 28px; }
 .lead { color: var(--ink-soft); max-width: 36em; }
 
@@ -58,17 +60,21 @@ p { margin: 0 0 1em; }
   background: rgba(250, 246, 240, .94); backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--line);
 }
-.site-header .container { display: flex; align-items: center; justify-content: space-between; min-height: 64px; }
+.site-header .container { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; min-height: 64px; }
 .brand { font-family: var(--serif); font-size: 22px; letter-spacing: .12em; text-decoration: none; color: var(--ink); }
 .brand small { font-size: 12px; letter-spacing: .1em; color: var(--ink-soft); margin-left: 6px; }
-.nav { display: none; }
-.nav.is-open {
-  display: block; position: absolute; left: 0; right: 0; top: 64px;
+.nav { display: flex; flex-wrap: wrap; gap: 0 16px; width: 100%; order: 3; padding-bottom: 8px; }
+.nav a { padding: 6px 0; font-size: 14px; color: var(--ink); text-decoration: none; }
+/* JS有効時だけ折りたたみ式にする(JSなしでは常時表示) */
+.js .nav { display: none; }
+.js .nav.is-open {
+  display: block; position: absolute; left: 0; right: 0; top: 64px; width: auto;
   background: var(--bg); border-bottom: 1px solid var(--line); padding: 8px 16px 16px;
 }
-.nav a { display: block; padding: 12px 4px; color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--line); }
-.nav-toggle {
-  min-height: 44px; min-width: 44px; border: 1px solid var(--line); border-radius: 12px;
+.js .nav a { display: block; padding: 12px 4px; font-size: 16px; border-bottom: 1px solid var(--line); }
+.nav-toggle { display: none; }
+.js .nav-toggle {
+  display: inline-block; min-height: 44px; min-width: 44px; border: 1px solid var(--line); border-radius: 12px;
   background: transparent; color: var(--ink); font: inherit; cursor: pointer;
 }
 .header-cta { display: none; }
@@ -77,7 +83,7 @@ p { margin: 0 0 1em; }
 .hero { padding: 48px 0 64px; background: linear-gradient(180deg, var(--bg-alt), var(--bg)); }
 .hero .container { display: grid; gap: 32px; }
 .hero h1 { font-size: clamp(32px, 8vw, 52px); letter-spacing: .08em; }
-.hero h1 small { display: block; font-size: 15px; letter-spacing: .2em; color: var(--rose); margin-bottom: 10px; }
+.hero h1 small { display: block; font-size: 15px; letter-spacing: .2em; color: var(--rose-deep); margin-bottom: 10px; }
 .hero__tag { font-family: var(--serif); font-size: clamp(18px, 4.4vw, 24px); margin: 18px 0 8px; }
 .hero__chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 0; margin: 18px 0 0; list-style: none; }
 .hero__chips li { background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 4px 14px; font-size: 14px; }
@@ -112,7 +118,7 @@ p { margin: 0 0 1em; }
 
 /* メニュー・料金 */
 .price-card { background: #fff; border: 2px solid var(--amber); border-radius: var(--radius); padding: 24px; margin-bottom: 36px; }
-.badge { display: inline-block; background: var(--amber); color: #fff; font-size: 13px; padding: 2px 12px; border-radius: 999px; margin-bottom: 10px; }
+.badge { display: inline-block; background: var(--amber); color: var(--ink); font-size: 13px; padding: 2px 12px; border-radius: 999px; margin-bottom: 10px; }
 .price-card h3 { font-size: 20px; margin-bottom: 8px; }
 .price-card .price { font-family: var(--serif); font-size: 30px; color: var(--rose-deep); }
 .price-card .price s { font-size: 16px; color: var(--ink-soft); margin-right: 8px; }
@@ -146,8 +152,8 @@ p { margin: 0 0 1em; }
   border-top: 1px solid var(--line); transform: translateY(0); transition: transform .3s;
 }
 .sticky-cta .btn { flex: 1 1 0; min-height: 46px; padding: 0 8px; font-size: 15px; }
-.js .sticky-cta { transform: translateY(110%); }
-.js .sticky-cta.is-visible { transform: translateY(0); }
+.js .sticky-cta { transform: translateY(110%); visibility: hidden; transition: transform .3s, visibility 0s .3s; }
+.js .sticky-cta.is-visible { transform: translateY(0); visibility: visible; transition: transform .3s; }
 
 /* フェード(JS有効時のみ。本文はJSなしなら最初から見える) */
 .js .reveal { opacity: 0; transform: translateY(14px); transition: opacity .7s, transform .7s; }
@@ -156,9 +162,9 @@ p { margin: 0 0 1em; }
 @media (min-width: 820px) {
   body { padding-bottom: 0; }
   .sticky-cta { display: none; }
-  .nav-toggle { display: none; }
-  .nav { display: flex; gap: 22px; }
-  .nav a { border: 0; padding: 8px 0; font-size: 14px; }
+  .nav-toggle, .js .nav-toggle { display: none; }
+  .nav, .js .nav { display: flex; position: static; width: auto; order: 0; gap: 22px; padding: 0; background: none; border: 0; }
+  .nav a, .js .nav a { border: 0; padding: 8px 0; font-size: 14px; }
   .header-cta { display: inline-flex; min-height: 40px; padding: 0 20px; }
   .hero .container { grid-template-columns: 1.2fr 1fr; align-items: center; }
   .cards { grid-template-columns: repeat(3, 1fr); }
@@ -172,4 +178,9 @@ p { margin: 0 0 1em; }
   html { scroll-behavior: auto; }
   .btn, .sticky-cta, .js .reveal { transition: none; }
   .js .reveal { opacity: 1; transform: none; }
+}
+
+@media print {
+  .js .reveal { opacity: 1; transform: none; }
+  .sticky-cta, .site-header { display: none; }
 }
