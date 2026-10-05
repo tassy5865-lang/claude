@@ -53,12 +53,18 @@ main{flex:1;padding:0 0 24px}
 h2{font-family:var(--serif);font-weight:500;font-size:19px;color:var(--brown);margin:26px 20px 12px;letter-spacing:.06em}
 h3{font-size:13px;color:var(--muted);font-weight:500;margin:0 0 8px}
 
-/* hero */
-.hero{padding:44px 24px 40px;background:
-  radial-gradient(80% 110% at 85% 0%,rgba(200,138,66,.13),rgba(247,243,237,0) 68%),
-  linear-gradient(180deg,#F7F3ED,#FFFDFC)}
-.hero p{margin:0;font-family:var(--serif);font-size:22px;line-height:2;color:var(--ink);letter-spacing:.1em}
-.hero small{display:block;margin-top:18px;font-size:13px;color:var(--muted)}
+/* hero(写真 + 暖色のグラデーション + 白い丸ボタン) */
+.hero{position:relative;display:flex;flex-direction:column;justify-content:center;min-height:min(74vh,520px);overflow:hidden;background:#6B4A2F;color:#fff}
+.hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 40%}
+.hero::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(58,36,18,.74),rgba(58,36,18,.36) 72%,rgba(58,36,18,.12)),linear-gradient(0deg,rgba(58,36,18,.38),rgba(58,36,18,0) 45%)}
+.hero .in{position:relative;z-index:1;padding:48px 24px}
+.hero p{margin:0;font-family:var(--serif);font-size:23px;line-height:2;color:#fff;letter-spacing:.1em;text-shadow:0 1px 14px rgba(40,24,10,.45)}
+.btn-pill{display:inline-flex;align-items:center;gap:8px;margin-top:30px;min-height:48px;padding:0 30px;border:0;border-radius:999px;background:#fff;color:var(--brown);font-family:var(--sans);font-size:15px;font-weight:500;letter-spacing:.04em;box-shadow:0 4px 18px rgba(40,24,10,.25)}
+.btn-pill:focus-visible{outline:3px solid #fff;outline-offset:3px}
+/* トップのヘッダー: ロゴ左寄せ */
+.hd.is-top .hd-row>.hd-side:first-child{display:none}
+.hd.is-top .brand{text-align:left;padding-left:20px}
+.hd.is-top .brand b,.hd.is-top .brand small{padding-left:0}
 
 /* category list */
 .cats{list-style:none;margin:0;padding:0 20px}
@@ -438,7 +444,7 @@ function dayOpen(ds){
 const screens = {
   top(){
     return `
-    <section class="hero"><p>香りに包まれ、<br>ふっと力を抜いて、<br>本来の自分に戻る時間。</p><small>ご希望から選んで、そのままご予約いただけます。</small></section>
+    <section class="hero"><img src="images/hero.jpg" width="825" height="1100" alt="" fetchpriority="high"><div class="in"><p>香りに包まれ、<br>ふっと力を抜いて、<br>本来の自分に戻る時間。</p><button class="btn-pill" type="button" data-act="start">予約をはじめる <span aria-hidden="true">→</span></button></div></section>
     <h2>ご予約はこちらから</h2>
     <ul class="cats">${CATS.map(c => `<li><button class="cat" data-act="cat" data-v="${c.id}"><span class="n"><b>${c.name}</b><span>${c.sub}</span></span></button></li>`).join('')}</ul>
     <h2>ご予約済みの方</h2>
@@ -710,7 +716,7 @@ function render(){
   if(S.screen==='date' && !S.busy && !S.loading && !S.availErr){ loadAvail(); return; }
   const st = STEPS[S.screen];
   app.innerHTML = `
-    <header class="hd">
+    <header class="hd${S.screen==='top' ? ' is-top' : ''}">
       ${CONFIG.GAS_URL ? '' : '<div class="demo">デモ表示中:予約データは保存されません</div>'}
       <div class="hd-row">
         <div class="hd-side">${['top','done','my'].includes(S.screen) ? '' : '<button class="back" data-act="back" aria-label="戻る"></button>'}</div>
@@ -939,6 +945,7 @@ app.addEventListener('click', e => {
   const t = e.target.closest('[data-act]'); if(!t || t.disabled) return;
   const v = t.dataset.v;
   switch(t.dataset.act){
+    case 'start': S.cat = 'first'; go('menu'); break;
     case 'cat':   S.cat = v; if(S.screen==='top') go('menu'); else render(); break;
     case 'pick':  S.menu = MENU.find(m => m.id===v); S.opts = []; S.date = null; S.time = null; go('detail'); break;
     case 'back':  history.back(); break;
