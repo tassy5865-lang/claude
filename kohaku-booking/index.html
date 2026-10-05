@@ -1,0 +1,1001 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>琥珀 ご予約</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Noto+Serif+JP:wght@400;500&family=Cormorant+Garamond:ital,wght@1,500&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* 公開サイト(自己紹介HP/アロマサロン琥珀/styles.css)と共通のトークン */
+  --cream:#F7F3ED; --paper:#FFFDFC; --sand:#EDE4DA; --line:#DDD0C3;
+  --caramel:#C88A42; --brown:#8E5B32; --ink:#4B443F; --muted:#746A62;
+  --moss:#44593F; --danger:#A5473A;
+  --serif:'Noto Serif JP','Shippori Mincho','Hiragino Mincho ProN','Yu Mincho',serif;
+  --sans:'Noto Sans JP','Hiragino Sans','Yu Gothic',sans-serif;
+  --script:'Cormorant Garamond','Noto Serif JP',serif;
+  --radius:2px;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--cream);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.7}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--moss);outline-offset:2px}
+#app{max-width:520px;min-height:100vh;margin:0 auto;background:var(--paper);display:flex;flex-direction:column;box-shadow:0 0 0 1px var(--line)}
+
+/* header */
+.hd{position:sticky;top:0;z-index:5;background:var(--paper);padding-top:env(safe-area-inset-top,0px)}
+.hd-row{display:flex;align-items:center;height:56px;padding:0 6px}
+.hd-side{width:48px;display:flex;justify-content:center}
+.back{width:44px;height:44px;border:0;background:none;display:flex;align-items:center;justify-content:center}
+.back::before{content:"";width:10px;height:10px;border-left:2px solid var(--brown);border-bottom:2px solid var(--brown);transform:rotate(45deg);margin-left:4px}
+.brand{flex:1;text-align:center;line-height:1.1}
+.brand b{display:block;font-family:var(--serif);font-weight:500;font-size:23px;letter-spacing:.16em;color:var(--brown);padding-left:.16em}
+.brand small{display:block;font-size:8px;letter-spacing:.5em;color:var(--caramel);padding-left:.5em;margin-top:3px}
+.stepper{list-style:none;margin:0;padding:10px 20px 12px;display:flex;align-items:center}
+.stepper li{display:flex;align-items:center;flex:none;font-size:11.5px;letter-spacing:.06em;color:var(--muted)}
+.stepper li b{font-family:var(--script);font-style:italic;font-weight:500;font-size:17px;margin-right:6px;color:var(--muted)}
+.stepper li+li{flex:1}
+.stepper li+li::before{content:"";flex:1;height:1px;background:var(--line);margin:0 8px;min-width:10px}
+.stepper li.is-done b{color:var(--caramel)}
+.stepper li.is-done+li::before,.stepper li.is-current::before{background:var(--caramel)}
+.stepper li.is-current{color:var(--ink)}
+.stepper li.is-current b{color:var(--brown)}
+.stepper li span{white-space:nowrap}
+@media (max-width:360px){.stepper li:not(.is-current) span{display:none}}
+.demo{background:var(--sand);color:var(--brown);font-size:12px;text-align:center;padding:4px 10px}
+
+main{flex:1;padding:0 0 24px}
+.pad{padding:0 20px}
+h2{font-family:var(--serif);font-weight:500;font-size:19px;color:var(--brown);margin:26px 20px 12px;letter-spacing:.06em}
+h3{font-size:13px;color:var(--muted);font-weight:500;margin:0 0 8px}
+
+/* hero */
+.hero{padding:44px 24px 40px;background:
+  radial-gradient(80% 110% at 85% 0%,rgba(200,138,66,.13),rgba(247,243,237,0) 68%),
+  linear-gradient(180deg,#F7F3ED,#FFFDFC)}
+.hero p{margin:0;font-family:var(--serif);font-size:22px;line-height:2;color:var(--ink);letter-spacing:.1em}
+.hero small{display:block;margin-top:18px;font-size:13px;color:var(--muted)}
+
+/* category list */
+.cats{list-style:none;margin:0;padding:0 20px}
+.cats li+li{border-top:1px solid var(--line)}
+.cat{width:100%;display:flex;align-items:center;gap:12px;padding:16px 2px;background:none;border:0;text-align:left}
+.cat .n{flex:1}
+.cat .n b{display:block;font-family:var(--serif);font-weight:500;font-size:18px;color:var(--ink);letter-spacing:.05em}
+.cat .n span{font-size:12.5px;color:var(--muted)}
+.cat::after{content:"";width:8px;height:8px;border-right:2px solid var(--caramel);border-top:2px solid var(--caramel);transform:rotate(45deg);margin-right:4px}
+
+/* tabs */
+.tabs{display:flex;gap:8px;overflow-x:auto;padding:14px 20px 4px;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:none;padding:7px 15px;border-radius:var(--radius);border:1px solid var(--line);background:var(--paper);color:var(--muted);font-size:13.5px}
+.tab[aria-selected=true]{background:var(--brown);border-color:var(--brown);color:#fff}
+.catdesc{margin:12px 20px 4px;color:var(--muted);font-size:13.5px}
+
+/* menu card */
+.mlist{list-style:none;margin:8px 20px 0;padding:0;display:grid;gap:12px}
+.mcard{width:100%;display:flex;gap:14px;text-align:left;background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:10px;align-items:stretch}
+.thumb{flex:none;width:84px;min-height:84px;border-radius:var(--radius);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:19px;color:rgba(255,255,255,.95);letter-spacing:.04em;background:var(--g,linear-gradient(135deg,#C9A27A,#7B5535))}
+.thumb.aroma{--g:linear-gradient(140deg,#D2AD83,#7B5535)}
+.thumb.facial{--g:linear-gradient(140deg,#E4B7AC,#A86E69)}
+.thumb.steam{--g:linear-gradient(140deg,#A9B58F,#4F6446)}
+.thumb.pair{--g:linear-gradient(140deg,#DDC29B,#8C6A47)}
+.thumb.omakase{--g:linear-gradient(140deg,#E3D2B5,#B58553)}
+.mcard .b{flex:1;display:flex;flex-direction:column;justify-content:center;min-width:0}
+.mcard .b b{font-weight:700;font-size:15px;line-height:1.5}
+.mcard .b span{font-size:12.5px;color:var(--muted);line-height:1.5}
+.mcard .b em{font-style:normal;font-family:var(--serif);font-size:18px;color:var(--brown);margin-top:2px}
+
+/* detail */
+.dhead{margin:18px 20px 0}
+.dhead .thumb{width:100%;min-height:128px;font-size:30px}
+.dhead h1{font-family:var(--serif);font-weight:500;font-size:22px;color:var(--brown);margin:14px 0 2px;line-height:1.5;letter-spacing:.04em}
+.dhead p{margin:0;color:var(--muted);font-size:13.5px}
+.dprice{font-family:var(--serif);font-size:24px;color:var(--brown);margin:6px 0 0}
+.dprice small{font-family:var(--sans);font-size:13px;color:var(--muted);margin-left:6px}
+.rows{margin:0 20px;border-top:1px solid var(--line)}
+.row{display:flex;align-items:center;gap:12px;padding:14px 2px;border-bottom:1px solid var(--line);cursor:pointer}
+.row input{width:20px;height:20px;accent-color:var(--brown);flex:none}
+.row .t{flex:1}
+.row .t small{color:var(--muted);margin-left:6px}
+.row .p{font-family:var(--serif);color:var(--brown)}
+.note{margin:10px 20px 0;font-size:12.5px;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:0 20px}
+.chip{position:relative}
+.chip input{position:absolute;opacity:0;inset:0;cursor:pointer}
+.chip span{display:block;padding:8px 15px;border:1px solid var(--line);border-radius:var(--radius);font-size:14px;color:var(--muted)}
+.chip input:checked+span{background:var(--brown);border-color:var(--brown);color:#fff}
+.chip input:focus-visible+span{outline:2px solid var(--moss);outline-offset:2px}
+
+/* calendar */
+.cal{margin:8px 20px 0}
+.cal-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.cal-h b{font-family:var(--serif);font-weight:500;font-size:18px;color:var(--brown)}
+.mv{width:44px;height:44px;border:0;background:none;font-size:22px;color:var(--brown)}
+.mv:disabled{color:#CDBFAA;cursor:default}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
+.grid .w{font-size:12px;color:var(--muted);padding:4px 0}
+.grid .w:first-child{color:var(--danger)}
+.day{height:44px;border:0;border-radius:50%;background:none;font-size:15px;color:var(--ink);width:44px;margin:0 auto}
+.day:disabled{color:#CDBFAA;cursor:default}
+.day.sel{background:var(--brown);color:#fff}
+.day.ok{font-weight:700}
+.slots{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 20px}
+.slot{padding:11px 0;border:1px solid var(--line);border-radius:var(--radius);background:var(--paper);display:flex;justify-content:center;gap:8px;font-size:15px}
+.slot i{font-style:normal;color:var(--moss)}
+.slot:disabled{color:#CDBFAA;background:#FAF5EC;cursor:default}
+.slot:disabled i{color:#CDBFAA}
+.slot.sel{background:var(--brown);border-color:var(--brown);color:#fff}
+.slot.sel i{color:#fff}
+.loading{margin:30px 20px;text-align:center;color:var(--muted);font-size:14px}
+.alert{margin:14px 20px 0;padding:11px 14px;border-radius:var(--radius);background:#F8E9E4;color:var(--danger);font-size:13.5px}
+
+/* form */
+.f{margin:0 20px 16px}
+.f label,.f legend{display:block;font-size:13.5px;font-weight:700;margin-bottom:6px;padding:0}
+.f label i,.f legend i{font-style:normal;font-weight:400;font-size:11.5px;color:var(--danger);margin-left:6px}
+.f input[type=text],.f input[type=tel],.f input[type=email],.f textarea{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;font-size:16px}
+.f textarea{min-height:92px;resize:vertical}
+.f fieldset{border:0;margin:0;padding:0}
+.f .er{color:var(--danger);font-size:12.5px;margin-top:4px}
+.f input.bad,.f textarea.bad{border-color:var(--danger)}
+.hp{position:absolute;left:-9999px;height:0;overflow:hidden}
+
+/* confirm */
+.sum{margin:0 20px;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.sum dl{margin:0;padding:6px 16px}
+.sum .r{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}
+.sum .r:last-child{border-bottom:0}
+.sum dt{flex:none;width:84px;font-size:12.5px;color:var(--muted);padding-top:2px}
+.sum dd{margin:0;flex:1;word-break:break-word}
+.sum .tot{background:#FAF3E7;padding:14px 16px;display:flex;justify-content:space-between;align-items:baseline}
+.sum .tot b{font-family:var(--serif);font-size:24px;color:var(--brown);font-weight:500}
+.lnk{border:0;background:none;color:var(--brown);text-decoration:underline;font-size:12.5px;padding:2px 0}
+
+/* done */
+.done{text-align:center;padding:44px 24px 0}
+.check{width:64px;height:64px;border-radius:50%;background:var(--moss);margin:0 auto 18px;position:relative}
+.check::after{content:"";position:absolute;left:23px;top:15px;width:12px;height:24px;border-right:3px solid #fff;border-bottom:3px solid #fff;transform:rotate(40deg)}
+.done h1{font-family:var(--serif);font-weight:500;font-size:22px;color:var(--brown);margin:0 0 6px;letter-spacing:.06em}
+.done .when{font-family:var(--serif);font-size:19px;margin:18px 0 2px}
+.done .id{font-size:13px;color:var(--muted)}
+.actions{display:grid;gap:10px;margin:28px 20px 0}
+
+/* buttons / bar */
+.btn{display:block;width:100%;text-align:center;text-decoration:none;padding:15px;border-radius:var(--radius);border:1px solid var(--brown);background:var(--brown);color:#fff;font-weight:700;font-size:15.5px;letter-spacing:.04em}
+.btn:disabled{opacity:.4;cursor:default}
+.btn.ghost{background:var(--paper);color:var(--brown)}
+.bar{position:sticky;bottom:0;z-index:4;background:var(--paper);border-top:1px solid var(--line);padding:10px 20px calc(10px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;gap:14px}
+.bar .s{flex:none;line-height:1.35}
+.bar .s small{display:block;font-size:11.5px;color:var(--muted)}
+.bar .s b{font-family:var(--serif);font-size:19px;color:var(--brown);font-weight:500}
+.bar .btn{flex:1}
+/* My Kohaku */
+.hd-side.r{justify-content:center}
+.iconbtn{width:44px;height:44px;border:0;background:none;display:flex;align-items:center;justify-content:center;color:var(--brown)}
+.mk-name{font-family:var(--serif);font-size:21px;color:var(--brown);margin:22px 20px 0;letter-spacing:.05em}
+.mk-lead{margin:6px 20px 0;color:var(--muted);font-size:13.5px}
+.bk{margin:0 20px 12px;border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;background:var(--paper)}
+.bk .d{font-family:var(--serif);font-size:19px;color:var(--brown)}
+.bk .m{font-weight:700;margin-top:4px;line-height:1.5}
+.bk .s{font-size:12.5px;color:var(--muted)}
+.bk .f2{display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:10px}
+.bk .f2 span{font-family:var(--serif);color:var(--brown)}
+.tag{display:inline-block;font-family:var(--sans);font-size:11.5px;padding:1px 9px;border-radius:var(--radius);background:var(--sand);color:var(--brown);margin-left:8px;vertical-align:middle}
+.tag.x{background:#F0E4E0;color:var(--danger)}
+.btn.sm{display:inline-block;width:auto;padding:8px 14px;font-size:13.5px}
+.cp{margin:0 20px 12px;border:1px dashed var(--caramel);border-radius:var(--radius);padding:14px 16px;background:#FBF4E6}
+.cp b{font-family:var(--serif);font-size:18px;color:var(--brown);font-weight:500}
+.cp p{margin:2px 0 0;font-size:13.5px}
+.cp code{display:inline-block;margin-top:8px;padding:2px 10px;background:#fff;border:1px solid var(--line);border-radius:4px;letter-spacing:.12em;font-size:14px}
+.empty{margin:34px 20px 18px;text-align:center;color:var(--muted)}
+.ro{padding:13px 14px;border:1px solid var(--line);border-radius:6px;background:#F8F2E8;color:var(--muted)}
+.msg{margin:14px 20px 0;padding:11px 14px;border-radius:6px;background:#EEF2E8;color:var(--moss);font-size:13.5px}
+.links{display:grid;gap:10px;margin:22px 20px 0}
+.sep{margin:26px 20px 0;padding-top:18px;border-top:1px solid var(--line)}
+
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+/* =========================================================
+   設定  ― GAS_URL を入れると Googleカレンダー/スプレッドシート連携が有効になります。
+   空のままならデモ表示(予約は保存されません)。
+   ========================================================= */
+const CONFIG = {
+  GAS_URL: '',                 // 例: 'https://script.google.com/macros/s/xxxxxxxx/exec'
+  LIFF_ID: '',                 // LINE連携を使う場合に設定(例: '1234567890-AbCdEfGh')。空ならLINE機能は無効
+  SALON: '琥珀',
+  OPEN: '10:00', CLOSE: '20:00',   // 営業時間(終了時刻までに施術が終わる枠のみ表示)
+  STEP_MIN: 30,                    // 予約枠の刻み
+  BUFFER_MIN: 15,                  // 施術前後の準備・片付け時間
+  CAPACITY: 1,                     // 同時に受けられる予約数
+  CLOSED_WEEKDAYS: [3],            // 定休曜日 (0=日 … 6=土) ※仮: 水曜
+  MIN_ADVANCE_HOURS: 3,            // 何時間先から予約可能か
+  MAX_DAYS_AHEAD: 60,              // 何日先まで予約可能か
+  LOCATION: '',                    // カレンダー追加時の場所(住所)
+  NOTICE: 'ご変更・キャンセルはお電話またはLINEにてご連絡ください。'
+};
+
+/* ---------- データ(後でスプレッドシート管理に移行できます) ---------- */
+const CATS = [
+  {id:'first',  name:'はじめての方', sub:'初めてご来店の方に',            desc:'はじめての方に選ばれているコースです。'},
+  {id:'rec',    name:'おすすめ',     sub:'人気のコース',                  desc:'当サロンで人気のコースです。'},
+  {id:'aroma',  name:'アロマ',       sub:'植物の香りに包まれて',          desc:'植物の香りに包まれながら、心と体をゆるめる時間。'},
+  {id:'facial', name:'フェイシャル', sub:'ローズの香りの贅沢ケア',        desc:'ローズの香りに包まれた、贅沢なフェイシャルケア。'},
+  {id:'steam',  name:'蒸し',         sub:'よもぎ・まこも・セットコース',  desc:'じんわり芯から温まる蒸しと、アロマとのセットコース。'},
+  {id:'pair',   name:'ペア',         sub:'大切な人と一緒に',              desc:'大切な人と、ゆったり過ごすひととき。(料金は2名分)'},
+  {id:'omakase',name:'おまかせ',     sub:'セラピストに相談して決める',    desc:'メニュー選びに迷っている方へ。'}
+];
+// 予備: GAS の menu API が使えないとき(デモ・取得失敗)に使う。内容は gas/Code.gs の SEED_MENU(表示ON)と同じにすること
+let MENU = [
+  {id:'first100', name:'アロマボディトリートメント × まこも蒸し(初回限定)', min:100, price:10000, desc:'体質診断チェック付き / 通常 ¥12,000', cats:['first'], g:'steam'},
+  {id:'aroma60',  name:'Relax アロマボディトリートメント', min:60,  price:7000,  desc:'やさしい香りと心地よいタッチで',   cats:['aroma','first'], g:'aroma'},
+  {id:'aroma80',  name:'満足 アロマボディトリートメント',  min:80,  price:9000,  desc:'たっぷりの時間で全身をゆるめる', cats:['aroma'],         g:'aroma'},
+  {id:'aroma100', name:'疲労回復 アロマボディトリートメント', min:100, price:11000, desc:'溜まった疲れをほどき、巡りのよい体へ', cats:['aroma','rec'], g:'aroma'},
+  {id:'f-light',  name:'ローズフェイシャル A', min:40, price:5600,  desc:'フェイシャル30分(シートパック付き)+ 頭ほぐし10分', cats:['facial','first'], g:'facial'},
+  {id:'f-relax',  name:'ローズフェイシャル B', min:65, price:8100,  desc:'フェイシャル30分(シートパック付き)+ 頭ほぐし35分(上衣に着替えます)', cats:['facial','rec'], g:'facial'},
+  {id:'f-onkatsu',name:'ローズフェイシャル C', min:70, price:11600, desc:'フェイシャル30分(シートパック付き)+ 頭ほぐし10分 + よもぎ蒸し', cats:['facial'], g:'facial'},
+  {id:'f-premium',name:'ローズフェイシャル D', min:95, price:14100, desc:'フェイシャル30分(シートパック付き)+ 頭ほぐし35分 + よもぎ蒸し', cats:['facial','rec'], g:'facial'},
+  {id:'set90',    name:'Relax アロマボディトリートメント + よもぎ蒸し', min:90,  price:10000, desc:'アロマボディ + よもぎ蒸し', cats:['steam','rec'], g:'steam'},
+  {id:'set110',   name:'満足 アロマボディトリートメント + よもぎ蒸し',  min:110, price:12000, desc:'アロマボディ + よもぎ蒸し', cats:['steam'],       g:'steam'},
+  {id:'set130',   name:'疲労回復 アロマボディトリートメント + よもぎ蒸し', min:130, price:14000, desc:'アロマボディ + よもぎ蒸し', cats:['steam'],    g:'steam'},
+  {id:'course110',name:'全身満たされる110分コース', min:110, price:13000, desc:'ボディ50分 + ローズフェイシャル + よもぎ蒸し(おすすめ)', cats:['steam','rec'], g:'steam'},
+  {id:'course140',name:'全身満たされる140分コース', min:140, price:18600, desc:'ボディ80分 + ローズフェイシャル + まこも蒸し',             cats:['steam'],       g:'steam'},
+  {id:'p-yomogi',      name:'ペア よもぎ蒸し(2名分)',                  min:40, price:6000,  desc:'大切な人と一緒に',        cats:['pair'], g:'pair', kind:'pair'},
+  {id:'p-makomo',      name:'ペア まこも蒸し(2名分)',                  min:40, price:12000, desc:'大切な人と一緒に',        cats:['pair'], g:'pair', kind:'pair'},
+  {id:'p-yomogi-foot', name:'ペア よもぎ蒸し + フットまたは頭ほぐし30分(2名分)', min:70, price:12000, desc:'蒸しのあとに足と頭を癒す', cats:['pair'], g:'pair', kind:'pair'},
+  {id:'p-makomo-foot', name:'ペア まこも蒸し + フットまたは頭ほぐし30分(2名分)', min:70, price:18000, desc:'蒸しのあとに足と頭を癒す', cats:['pair'], g:'pair', kind:'pair'},
+  {id:'omakase', name:'おまかせ相談予約', min:60, price:null, desc:'セラピストに相談して、その日の内容を決めるコースです。', cats:['omakase'], g:'omakase', kind:'omakase'}
+];
+let OPTIONS = [
+  {id:'head', name:'頭ほぐし',   min:10, price:1500},
+  {id:'foot', name:'フット',     min:10, price:1500},
+  {id:'hand', name:'ハンド',     min:10, price:1500},
+  {id:'stone',name:'ホットストーン', min:0, price:2000},
+  {id:'bath', name:'フットバス', min:0,  price:1000}
+];
+const OMAKASE_MINS = [60,90,120];
+let MENU_LOADING = !!CONFIG.GAS_URL;
+const MENU_TIMEOUT_MS = 8000;
+/** スプレッドシートのメニューを取得して差し替える。失敗・無応答のときは予備配列のまま。fresh=true はGAS側のキャッシュを使わない */
+async function loadMenu(fresh){
+  if(!CONFIG.GAS_URL){ MENU_LOADING = false; return; }
+  try{
+    const req = (async () => (await fetch(`${CONFIG.GAS_URL}?action=menu${fresh ? '&fresh=1' : ''}`)).json())();
+    const j = await Promise.race([req, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), MENU_TIMEOUT_MS))]);
+    if(j.ok && Array.isArray(j.menu)){
+      MENU = j.menu; OPTIONS = Array.isArray(j.options) ? j.options : [];
+      // 選択中のメニュー・オプションを新しい内容に合わせる(消えていたら外す)
+      if(S.menu) S.menu = MENU.find(m => m.id === S.menu.id) || null;
+      S.opts = S.opts.filter(id => OPTIONS.some(o => o.id === id));
+    }
+  }catch(e){ /* 予備配列で続行 */ }
+  MENU_LOADING = false;
+  if(['top','menu','detail','date','confirm'].includes(S.screen)) render();   // 入力中の画面は再描画しない
+}
+const CONCERNS = ['疲労','肩・首','冷え','むくみ','睡眠','ストレス','肌','その他'];
+const STEPS = {menu:[1,'メニューを選ぶ'], detail:[2,'オプションを選ぶ'], date:[3,'日時を選ぶ'], info:[4,'お客様情報'], confirm:[5,'内容のご確認'], done:[6,'予約完了']};
+
+/* ---------- ユーティリティ ---------- */
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const yen = n => '¥' + n.toLocaleString('ja-JP');
+const pad = n => String(n).padStart(2,'0');
+const WD = ['日','月','火','水','木','金','土'];
+const ymd = (y,m,d) => `${y}-${pad(m+1)}-${pad(d)}`;
+const jst = (d,t) => new Date(`${d}T${t}:00+09:00`);
+const toMin = t => { const [h,m] = t.split(':').map(Number); return h*60+m; };
+const fromMin = n => `${pad(Math.floor(n/60))}:${pad(n%60)}`;
+const daysIn = (y,m) => new Date(Date.UTC(y,m+1,0)).getUTCDate();
+const dow = ds => new Date(ds+'T00:00:00Z').getUTCDay();
+const fmtDate = ds => { const [y,m,d] = ds.split('-').map(Number); return `${y}年${m}月${d}日(${WD[dow(ds)]})`; };
+const TODAY = new Date(Date.now()+9*3600e3).toISOString().slice(0,10);
+const [TY,TM] = TODAY.split('-').map(Number);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/* ---------- 状態 ---------- */
+const fresh = () => ({
+  screen:'top', cat:'first', menu:null, opts:[], omakase:{mins:60, concerns:[]},
+  y:TY, m:TM-1, date:null, time:null, busy:null, loading:false, availErr:false,
+  info:{name:'', kana:'', tel:'', email:'', visit:'first', note:'', website:''},
+  errors:{}, banner:'', submitting:false, result:null
+});
+let S = fresh();
+// My Kohaku(ログイン状態は予約フローのリセットとは別に保持)
+const MY = {email:'', code:'', token:'', data:null, tab:'next', msg:'', ok:'', loading:false, failed:false, busy:false, prof:null, errors:{}};
+try{ MY.token = sessionStorage.getItem('kohaku_token') || ''; MY.email = sessionStorage.getItem('kohaku_email') || ''; }catch(e){}
+const saveSess = () => { try{ sessionStorage.setItem('kohaku_token', MY.token); sessionStorage.setItem('kohaku_email', MY.email); }catch(e){} };
+MY.pending = null;   // LINEのボタンから開いたときの「この予約を操作する」指定
+const RS = {b:null, y:TY, m:TM-1, date:null, time:null, busy:null, loading:false, failed:false, msg:'', submitting:false};   // 日時変更の状態
+
+const mult = () => S.menu.kind === 'pair' ? 2 : 1;
+const optOf = id => OPTIONS.find(o => o.id === id) || {id, name:'', min:0, price:0};
+const duration = () => S.menu.kind === 'omakase' ? S.omakase.mins : S.menu.min + S.opts.reduce((a,id)=>a+optOf(id).min,0);
+const total = () => S.menu.price == null ? null : S.menu.price + S.opts.reduce((a,id)=>a+optOf(id).price,0) * mult();
+const endTime = () => fromMin(toMin(S.time) + duration());
+
+/* ---------- My Kohaku API ---------- */
+const DEMO_CODE = '123456';
+const demoDB = (() => {
+  const add = n => new Date(Date.now()+9*3600e3+n*864e5).toISOString().slice(0,10);
+  return {
+    profile:{customerId:'C000012', name:'山田 花子', kana:'ヤマダ ハナコ', tel:'090-1234-5678', email:'hanako@example.com', lineLinked:false},
+    upcoming:[{id:'K2610040001', status:'確定', date:add(9), time:'11:00', end:'13:00', menuId:'set110', menuName:'アロマ × 蒸し セット', options:'頭ほぐし', total:13500, minutes:120, canCancel:true}],
+    history:[
+      {id:'K2609010002', status:'確定', date:add(-33), time:'14:00', end:'15:40', menuId:'aroma100', menuName:'アロマボディトリートメント', options:'なし', total:11000, minutes:100, canCancel:false},
+      {id:'K2607150003', status:'キャンセル', date:add(-81), time:'10:30', end:'11:35', menuId:'f-relax', menuName:'リラックスフェイシャル', options:'なし', total:8100, minutes:65, canCancel:false}
+    ],
+    coupons:[
+      {code:'WELCOME500', name:'ご来店ありがとうクーポン', desc:'オプション1つサービス', expire:add(60)},
+      {code:'AUTUMN10', name:'秋のリピートクーポン', desc:'次回のご利用が10%OFF', expire:add(30)}
+    ]
+  };
+})();
+async function api(action, extra = {}){
+  if(CONFIG.GAS_URL){
+    const r = await fetch(CONFIG.GAS_URL, {method:'POST', body:JSON.stringify({action, token:MY.token, ...extra})});
+    return r.json();
+  }
+  await sleep(400);   // デモ
+  switch(action){
+    case 'sendCode': return {ok:true};
+    case 'verifyCode': return extra.code === DEMO_CODE ? {ok:true, token:'demo'} : {ok:false, error:'bad_code'};
+    case 'me': return {ok:true, ...JSON.parse(JSON.stringify(demoDB)), cancelDeadlineHours:24};
+    case 'cancel': {
+      const i = demoDB.upcoming.findIndex(b => b.id === extra.id);
+      if(i < 0) return {ok:false, error:'not_found'};
+      const b = demoDB.upcoming.splice(i,1)[0]; b.status = 'キャンセル'; b.canCancel = false; demoDB.history.unshift(b); return {ok:true};
+    }
+    case 'updateProfile': Object.assign(demoDB.profile, {name:extra.name, kana:extra.kana, tel:extra.tel}); return {ok:true, profile:{...demoDB.profile}};
+    case 'reschedule': {
+      const b = demoDB.upcoming.find(x => x.id === extra.id); if(!b) return {ok:false, error:'not_found'};
+      b.date = extra.date; b.time = extra.time; b.end = fromMin(toMin(extra.time) + b.minutes); return {ok:true};
+    }
+    case 'lineLinkCode': return {ok:true, code:'DEMO0000'};
+    case 'lineUnlink': demoDB.profile.lineLinked = false; return {ok:true};
+    case 'logout': return {ok:true};
+  }
+  return {ok:false, error:'unknown_action'};
+}
+async function loadMy(){
+  MY.loading = true; MY.failed = false; render();
+  try{
+    const j = await api('me');
+    if(!j.ok){ if(j.error === 'auth'){ doLogout(true); return; } throw new Error(j.error); }
+    MY.data = j; MY.prof = {...j.profile};
+  } catch(e){ MY.failed = true; }
+  MY.loading = false; render();
+  runPending();
+}
+function doLogout(expired){
+  if(!expired) api('logout').catch(()=>{});
+  MY.token = ''; MY.data = null; MY.code = ''; MY.tab = 'next'; MY.failed = false; MY.loading = false;
+  MY.msg = expired ? 'ログインの有効期限が切れました。もう一度ログインしてください。' : ''; MY.ok = '';
+  saveSess(); S.screen = 'login'; history.pushState({screen:'login'}, ''); render(); window.scrollTo(0,0);
+}
+
+/* ---------- 空き状況 ---------- */
+const availCache = {};
+function demoBusy(from,to){
+  const out = []; let d = new Date(from+'T00:00:00Z'); const end = new Date(to+'T00:00:00Z');
+  while(d <= end){
+    const ds = d.toISOString().slice(0,10);
+    let seed = [...ds].reduce((a,c)=>(a*31+c.charCodeAt(0))>>>0, 7);
+    const rnd = () => (seed = (seed*1664525+1013904223)>>>0) / 4294967296;
+    const n = Math.floor(rnd()*4)+1;
+    for(let i=0;i<n;i++){
+      const s = 10*60 + Math.floor(rnd()*14)*30, len = [60,80,100,120][Math.floor(rnd()*4)];
+      out.push([jst(ds,fromMin(s)).getTime(), jst(ds,fromMin(s+len)).getTime()]);
+    }
+    d = new Date(d.getTime()+864e5);
+  }
+  return out;
+}
+async function loadMonth(y,m){
+  const key = `${y}-${pad(m+1)}`;
+  if(availCache[key]) return availCache[key];
+  const from = ymd(y,m,1), to = ymd(y,m,daysIn(y,m));
+  let busy;
+  if(!CONFIG.GAS_URL){ await sleep(350); busy = demoBusy(from,to); }
+  else {
+    const r = await fetch(`${CONFIG.GAS_URL}?action=availability&from=${from}&to=${to}`);
+    const j = await r.json();
+    if(!j.ok) throw new Error(j.error || 'availability');
+    busy = j.busy.map(b => [new Date(b.start).getTime(), new Date(b.end).getTime()]);
+  }
+  return availCache[key] = busy;
+}
+async function loadAvail(){
+  const {y,m} = S; S.loading = true; S.availErr = false; S.busy = null; render();
+  try{ const b = await loadMonth(y,m); if(S.y===y && S.m===m){ S.busy = b; } }
+  catch(e){ if(S.y===y && S.m===m) S.availErr = true; }
+  if(S.y===y && S.m===m){ S.loading = false; render(); }
+}
+function slotsFor(ds, dur, busy){
+  const res = [], minStart = Date.now() + CONFIG.MIN_ADVANCE_HOURS*3600e3, buf = CONFIG.BUFFER_MIN*60e3;
+  for(let t = toMin(CONFIG.OPEN); t + dur <= toMin(CONFIG.CLOSE); t += CONFIG.STEP_MIN){
+    const s = jst(ds,fromMin(t)).getTime(), e = s + dur*60e3;
+    let ok = s >= minStart;
+    if(ok) ok = busy.filter(([bs,be]) => s < be+buf && e > bs-buf).length < CONFIG.CAPACITY;
+    res.push({time:fromMin(t), ok});
+  }
+  return res;
+}
+function dayOpen(ds){
+  if(ds < TODAY) return false;
+  if(CONFIG.CLOSED_WEEKDAYS.includes(dow(ds))) return false;
+  const max = new Date(Date.now()+9*3600e3+CONFIG.MAX_DAYS_AHEAD*864e5).toISOString().slice(0,10);
+  return ds <= max;
+}
+
+/* ---------- 画面 ---------- */
+const screens = {
+  top(){
+    return `
+    <section class="hero"><p>香りに包まれ、<br>ふっと力を抜いて、<br>本来の自分に戻る時間。</p><small>ご希望から選んで、そのままご予約いただけます。</small></section>
+    <h2>ご予約はこちらから</h2>
+    <ul class="cats">${CATS.map(c => `<li><button class="cat" data-act="cat" data-v="${c.id}"><span class="n"><b>${c.name}</b><span>${c.sub}</span></span></button></li>`).join('')}</ul>
+    <h2>ご予約済みの方</h2>
+    <ul class="cats"><li><button class="cat" data-act="my"><span class="n"><b>My Kohaku</b><span>次回予約・予約履歴・クーポン</span></span></button></li></ul>`;
+  },
+  menu(){
+    if(MENU_LOADING) return `<p class="note" style="text-align:center;padding:40px 0">メニューを読み込み中…</p>`;
+    const cat = CATS.find(c => c.id === S.cat);
+    const items = MENU.filter(m => m.cats.includes(S.cat));
+    return `
+    <div class="tabs" role="tablist">${CATS.map(c => `<button class="tab" role="tab" aria-selected="${c.id===S.cat}" data-act="cat" data-v="${c.id}">${c.name}</button>`).join('')}</div>
+    <p class="catdesc">${cat.desc}</p>
+    <ul class="mlist">${items.map(m => `
+      <li><button class="mcard" data-act="pick" data-v="${m.id}">
+        <span class="thumb ${m.g}">${m.kind==='omakase' ? '相談' : m.kind==='pair' ? m.min+'分' : m.min+'分'}</span>
+        <span class="b"><b>${esc(m.name)}</b><span>${esc(m.desc)}</span><em>${m.price==null ? '料金は当日ご案内' : yen(m.price)}</em></span>
+      </button></li>`).join('')}</ul>`;
+  },
+  detail(){
+    const m = S.menu, om = m.kind === 'omakase';
+    const t = total(), d = duration();
+    let body = '';
+    if(om){
+      body = `
+      <h2>ご希望の時間</h2>
+      <div class="chips">${OMAKASE_MINS.map(n => `<label class="chip"><input type="radio" name="mins" data-f="mins" value="${n}" ${S.omakase.mins===n?'checked':''}><span>${n}分程度</span></label>`).join('')}</div>
+      <h2>今日のお悩み<span style="font-size:12px;color:var(--muted);font-family:var(--sans);margin-left:8px">複数選択できます</span></h2>
+      <div class="chips">${CONCERNS.map(c => `<label class="chip"><input type="checkbox" data-f="concern" value="${c}" ${S.omakase.concerns.includes(c)?'checked':''}><span>${c}</span></label>`).join('')}</div>
+      <p class="note">施術内容と料金は、当日セラピストとご相談のうえ決定します。</p>`;
+    } else {
+      body = `
+      <h2>オプション<span style="font-size:12px;color:var(--muted);font-family:var(--sans);margin-left:8px">必要に応じて追加</span></h2>
+      <div class="rows">${OPTIONS.map(o => `
+        <label class="row"><input type="checkbox" data-f="opt" value="${o.id}" ${S.opts.includes(o.id)?'checked':''}>
+          <span class="t">${o.name}${o.min?`<small>${o.min}分</small>`:''}</span><span class="p">+${yen(o.price*mult())}</span></label>`).join('')}</div>
+      ${m.kind==='pair' ? '<p class="note">オプション料金は2名分で表示しています。</p>' : ''}`;
+    }
+    return `
+    <div class="dhead">
+      <div class="thumb ${m.g}">${om ? '相談' : m.min+'分'}</div>
+      <h1>${esc(m.name)}</h1><p>${esc(m.desc)}</p>
+      <p class="dprice">${m.price==null ? '料金は当日ご案内' : yen(m.price)}<small>${om ? S.omakase.mins+'分程度' : m.min+'分'}</small></p>
+    </div>
+    ${body}`;
+  },
+  date(){
+    const {y,m} = S, first = new Date(Date.UTC(y,m,1)).getUTCDay(), n = daysIn(y,m), dur = duration();
+    const prevOff = (y===TY && m===TM-1);
+    const lastD = new Date(Date.now()+9*3600e3+CONFIG.MAX_DAYS_AHEAD*864e5);
+    const nextOff = (y > lastD.getUTCFullYear()) || (y === lastD.getUTCFullYear() && m >= lastD.getUTCMonth());
+    let cells = '';
+    for(let i=0;i<first;i++) cells += '<span></span>';
+    for(let d=1; d<=n; d++){
+      const ds = ymd(y,m,d);
+      const ok = S.busy && dayOpen(ds) && slotsFor(ds,dur,S.busy).some(s => s.ok);
+      cells += `<button class="day ${ok?'ok':''} ${S.date===ds?'sel':''}" data-act="date" data-v="${ds}" ${ok?'':'disabled'} aria-label="${m+1}月${d}日${ok?'':' 予約不可'}">${d}</button>`;
+    }
+    let slots = '';
+    if(S.date && S.busy){
+      slots = `<h2>${fmtDate(S.date)}</h2><div class="slots">${slotsFor(S.date,dur,S.busy).map(s => `
+        <button class="slot ${S.time===s.time?'sel':''}" data-act="time" data-v="${s.time}" ${s.ok?'':'disabled'} aria-label="${s.time} ${s.ok?'空きあり':'満席'}">${s.time}<i>${s.ok?'○':'×'}</i></button>`).join('')}</div>
+        <p class="note">所要時間 ${dur}分(終了予定 ${S.time ? endTime() : '—'})</p>`;
+    }
+    return `
+    ${S.banner ? `<div class="alert" role="alert">${esc(S.banner)}</div>` : ''}
+    <div class="cal">
+      <div class="cal-h"><button class="mv" data-act="month" data-v="-1" ${prevOff?'disabled':''} aria-label="前の月">‹</button><b>${y}年${m+1}月</b><button class="mv" data-act="month" data-v="1" ${nextOff?'disabled':''} aria-label="次の月">›</button></div>
+      <div class="grid">${WD.map(w => `<span class="w">${w}</span>`).join('')}${cells}</div>
+    </div>
+    ${S.loading ? '<p class="loading">空き状況を確認しています…</p>' : ''}
+    ${S.availErr ? '<div class="alert" role="alert">空き状況を取得できませんでした。時間をおいて、もう一度お試しください。</div>' : ''}
+    ${S.date && !S.loading ? slots : (!S.loading && !S.availErr ? '<p class="note">日付を選ぶと、空いている時間が表示されます。(○ = ご予約可)</p>' : '')}`;
+  },
+  info(){
+    const i = S.info, e = S.errors;
+    const fld = (k,label,type,ph,ac) => `
+      <div class="f"><label for="f-${k}">${label}<i>必須</i></label>
+      <input id="f-${k}" type="${type}" data-f="info" data-k="${k}" value="${esc(i[k])}" placeholder="${ph}" autocomplete="${ac}" class="${e[k]?'bad':''}">
+      ${e[k] ? `<div class="er" role="alert">${e[k]}</div>` : ''}</div>`;
+    return `
+    <h2>お客様情報</h2>
+    ${fld('name','お名前','text','山田 花子','name')}
+    ${fld('kana','フリガナ','text','ヤマダ ハナコ','off')}
+    ${fld('tel','電話番号','tel','090-1234-5678','tel')}
+    ${fld('email','メールアドレス','email','hanako@example.com','email')}
+    <fieldset class="f"><legend>初回 / 再来</legend>
+      <div class="chips" style="margin:0">
+        <label class="chip"><input type="radio" name="visit" data-f="visit" value="first" ${i.visit==='first'?'checked':''}><span>初回</span></label>
+        <label class="chip"><input type="radio" name="visit" data-f="visit" value="repeat" ${i.visit==='repeat'?'checked':''}><span>再来</span></label>
+      </div></fieldset>
+    <div class="f"><label for="f-note">気になること・ご要望</label>
+      <textarea id="f-note" data-f="info" data-k="note" placeholder="肩こり、冷えなど">${esc(i.note)}</textarea></div>
+    <div class="hp" aria-hidden="true"><label>Web <input type="text" tabindex="-1" autocomplete="off" data-f="info" data-k="website" value=""></label></div>`;
+  },
+  confirm(){
+    const m = S.menu, i = S.info, t = total();
+    const opts = S.opts.map(id => optOf(id).name).join('、') || 'なし';
+    return `
+    ${S.banner ? `<div class="alert" role="alert">${esc(S.banner)}</div>` : ''}
+    <h2>ご予約内容</h2>
+    <div class="sum"><dl>
+      <div class="r"><dt>メニュー</dt><dd>${esc(m.name)}<br>${m.kind==='omakase' ? S.omakase.mins+'分程度' : m.min+'分'}${m.price==null ? '' : ' / '+yen(m.price)}<br><button class="lnk" data-act="edit" data-v="menu">変更</button></dd></div>
+      <div class="r"><dt>オプション</dt><dd>${m.kind==='omakase' ? (S.omakase.concerns.join('、') || 'お悩み: 未選択') : esc(opts)}<br><button class="lnk" data-act="edit" data-v="detail">変更</button></dd></div>
+      <div class="r"><dt>日時</dt><dd>${fmtDate(S.date)}<br>${S.time}〜${endTime()}(${duration()}分)<br><button class="lnk" data-act="edit" data-v="date">変更</button></dd></div>
+      <div class="r"><dt>お名前</dt><dd>${esc(i.name)} 様<br>${esc(i.kana)}</dd></div>
+      <div class="r"><dt>連絡先</dt><dd>${esc(i.tel)}<br>${esc(i.email)}</dd></div>
+      <div class="r"><dt>来店</dt><dd>${i.visit==='first'?'初回':'再来'}</dd></div>
+      ${i.note ? `<div class="r"><dt>ご要望</dt><dd>${esc(i.note).replace(/\n/g,'<br>')}</dd></div>` : ''}
+    </dl>
+    <div class="tot"><span>お会計(目安)</span><b>${t==null ? '当日ご案内' : yen(t)}</b></div></div>
+    <p class="note">${esc(CONFIG.NOTICE)}</p>`;
+  },
+  login(){
+    return `
+    <h2>My Kohaku</h2>
+    <p class="mk-lead" style="margin-bottom:16px">ご予約時のメールアドレスを入力してください。確認コードをお送りします。</p>
+    ${MY.msg ? `<div class="alert" role="alert">${esc(MY.msg)}</div>` : ''}
+    <div class="f" style="margin-top:16px"><label for="mk-email">メールアドレス</label>
+      <input id="mk-email" type="email" data-f="my" data-k="email" value="${esc(MY.email)}" placeholder="hanako@example.com" autocomplete="email"></div>
+    <div class="links" style="margin-top:0"><button class="btn" data-act="sendcode" ${MY.busy?'disabled':''}>${MY.busy?'送信中…':'確認コードを送る'}</button>
+    <button class="btn ghost" data-act="home">予約TOPへ</button></div>
+    <p class="note">ご予約のないメールアドレスには、コードは届きません。</p>`;
+  },
+  code(){
+    return `
+    <h2>確認コードの入力</h2>
+    <p class="mk-lead">${esc(MY.email)} に6桁のコードを送りました(10分間有効)。</p>
+    ${!CONFIG.GAS_URL ? `<p class="note">デモ表示のため、コードは ${DEMO_CODE} を入力してください。</p>` : ''}
+    ${MY.msg ? `<div class="alert" role="alert">${esc(MY.msg)}</div>` : ''}${MY.ok ? `<div class="msg" role="status">${esc(MY.ok)}</div>` : ''}
+    <div class="f" style="margin-top:16px"><label for="mk-code">確認コード</label>
+      <input id="mk-code" type="text" inputmode="numeric" maxlength="6" data-f="my" data-k="code" value="${esc(MY.code)}" placeholder="123456" autocomplete="one-time-code" style="letter-spacing:.3em;font-size:20px"></div>
+    <div class="links" style="margin-top:0"><button class="btn" data-act="verify" ${MY.busy?'disabled':''}>${MY.busy?'確認中…':'ログイン'}</button>
+    <button class="btn ghost" data-act="sendcode">コードを再送する</button></div>`;
+  },
+  my(){
+    if(MY.failed) return `<div class="alert" role="alert">情報を取得できませんでした。</div><div class="links"><button class="btn" data-act="reload">もう一度読み込む</button><button class="btn ghost" data-act="logout">ログアウト</button></div>`;
+    if(!MY.data) return '<p class="loading">読み込み中…</p>';
+    const d = MY.data, T = MY.tab;
+    const tab = (id,label) => `<button class="tab" role="tab" aria-selected="${T===id}" data-act="tab" data-v="${id}">${label}</button>`;
+    const head = `
+      <p class="mk-name">${esc(d.profile.name)} 様</p>
+      <div class="tabs" role="tablist">${tab('next','次回予約')}${tab('history','予約履歴')}${tab('coupons','クーポン'+(d.coupons.length?`(${d.coupons.length})`:''))}${tab('profile','登録情報')}</div>
+      ${MY.msg ? `<div class="alert" role="alert">${esc(MY.msg)}</div>` : ''}${MY.ok ? `<div class="msg" role="status">${esc(MY.ok)}</div>` : ''}
+      <div style="height:14px"></div>`;
+    const money = b => b.total == null ? '当日ご案内' : yen(b.total);
+    let body = '';
+    if(T === 'next'){
+      body = d.upcoming.length ? d.upcoming.map(b => `
+        <div class="bk"><div class="d">${fmtDate(b.date)} ${b.time}〜${b.end}</div>
+          <div class="m">${esc(b.menuName)}</div>
+          <div class="s">オプション: ${esc(b.options || 'なし')}<br>予約番号 ${esc(b.id)}</div>
+          <div class="f2"><span>${money(b)}</span>
+            ${b.canCancel ? `<div style="display:flex;gap:8px"><button class="btn ghost sm" data-act="change" data-v="${esc(b.id)}">日時を変更</button><button class="btn ghost sm" data-act="cancelbk" data-v="${esc(b.id)}">キャンセル</button></div>` : ''}</div>
+          ${b.canCancel ? '' : `<p class="s" style="margin:8px 0 0">変更・キャンセルは、お電話またはLINEにてご連絡ください。</p>`}
+        </div>`).join('') + `<div class="links"><button class="btn ghost" data-act="newbook">新しく予約する</button></div>`
+      : `<p class="empty">次回のご予約はありません。</p><div class="links" style="margin-top:0"><button class="btn" data-act="newbook">予約する</button></div>`;
+      if(d.upcoming.length) body += `<p class="note">マイページからのキャンセルは、ご来店の${d.cancelDeadlineHours}時間前までです。</p>`;
+    } else if(T === 'history'){
+      body = d.history.length ? d.history.map(b => {
+        const past = b.status !== 'キャンセル', done = past ? 'ご利用済み' : 'キャンセル';
+        return `<div class="bk"><div class="d">${fmtDate(b.date)}<span class="tag ${past?'':'x'}">${done}</span></div>
+          <div class="m">${esc(b.menuName)}</div>
+          <div class="s">${b.time}〜${b.end} / オプション: ${esc(b.options || 'なし')}</div>
+          <div class="f2"><span>${money(b)}</span>${MENU.some(m => m.id === b.menuId) ? `<button class="btn ghost sm" data-act="rebook" data-v="${esc(b.menuId)}">同じメニューで予約</button>` : ''}</div></div>`;
+      }).join('') : `<p class="empty">予約履歴はまだありません。</p>`;
+    } else if(T === 'coupons'){
+      body = d.coupons.length ? d.coupons.map(c => `
+        <div class="cp"><b>${esc(c.name)}</b><p>${esc(c.desc)}</p>
+          <code>${esc(c.code)}</code>${c.expire ? `<p class="s" style="font-size:12.5px;color:var(--muted)">${fmtDate(c.expire)} まで</p>` : ''}</div>`).join('')
+        + `<p class="note">ご来店時にクーポンコードをスタッフへお伝えください。</p>`
+      : `<p class="empty">ご利用いただけるクーポンはありません。</p>`;
+    } else {
+      const p = MY.prof, e = MY.errors;
+      const fld = (k,label,type,ac) => `<div class="f"><label for="pf-${k}">${label}</label>
+        <input id="pf-${k}" type="${type}" data-f="prof" data-k="${k}" value="${esc(p[k])}" autocomplete="${ac}" class="${e[k]?'bad':''}">${e[k] ? `<div class="er" role="alert">${e[k]}</div>` : ''}</div>`;
+      body = `${fld('name','お名前','text','name')}${fld('kana','フリガナ','text','off')}${fld('tel','電話番号','tel','tel')}
+        <div class="f"><label>メールアドレス</label><div class="ro">${esc(d.profile.email)}</div></div>
+        ${lineBox(d.profile.lineLinked)}
+        <div class="links" style="margin-top:0"><button class="btn" data-act="saveprof" ${MY.busy?'disabled':''}>${MY.busy?'保存中…':'変更を保存'}</button></div>
+        <div class="sep"><button class="btn ghost" data-act="logout">ログアウト</button></div>`;
+    }
+    return head + body;
+  },
+  resched(){
+    const b = RS.b, dur = b.minutes, y = RS.y, m = RS.m, first = new Date(Date.UTC(y,m,1)).getUTCDay(), n = daysIn(y,m);
+    const prevOff = (y === TY && m === TM-1);
+    const lastD = new Date(Date.now()+9*3600e3+CONFIG.MAX_DAYS_AHEAD*864e5);
+    const nextOff = (y > lastD.getUTCFullYear()) || (y === lastD.getUTCFullYear() && m >= lastD.getUTCMonth());
+    let cells = '';
+    for(let i=0;i<first;i++) cells += '<span></span>';
+    for(let d=1; d<=n; d++){
+      const ds = ymd(y,m,d);
+      const ok = RS.busy && dayOpen(ds) && slotsFor(ds,dur,RS.busy).some(s => s.ok);
+      cells += `<button class="day ${ok?'ok':''} ${RS.date===ds?'sel':''}" data-act="rs-date" data-v="${ds}" ${ok?'':'disabled'} aria-label="${m+1}月${d}日${ok?'':' 予約不可'}">${d}</button>`;
+    }
+    let slots = '';
+    if(RS.date && RS.busy){
+      slots = `<h2>${fmtDate(RS.date)}</h2><div class="slots">${slotsFor(RS.date,dur,RS.busy).map(s => `
+        <button class="slot ${RS.time===s.time?'sel':''}" data-act="rs-time" data-v="${s.time}" ${s.ok?'':'disabled'} aria-label="${s.time} ${s.ok?'空きあり':'満席'}">${s.time}<i>${s.ok?'○':'×'}</i></button>`).join('')}</div>
+        <p class="note">所要時間 ${dur}分${RS.time ? `(終了予定 ${fromMin(toMin(RS.time)+dur)})` : ''}</p>`;
+    }
+    return `
+    <h2>日時の変更</h2>
+    <div class="bk" style="margin-top:0"><div class="s">現在のご予約</div><div class="d">${fmtDate(b.date)} ${b.time}〜${b.end}</div><div class="m">${esc(b.menuName)}(${b.minutes}分)</div></div>
+    ${RS.msg ? `<div class="alert" role="alert">${esc(RS.msg)}</div>` : ''}
+    <div class="cal">
+      <div class="cal-h"><button class="mv" data-act="rs-month" data-v="-1" ${prevOff?'disabled':''} aria-label="前の月">‹</button><b>${y}年${m+1}月</b><button class="mv" data-act="rs-month" data-v="1" ${nextOff?'disabled':''} aria-label="次の月">›</button></div>
+      <div class="grid">${WD.map(w => `<span class="w">${w}</span>`).join('')}${cells}</div>
+    </div>
+    ${RS.loading ? '<p class="loading">空き状況を確認しています…</p>' : ''}
+    ${RS.failed ? '<div class="alert" role="alert">空き状況を取得できませんでした。時間をおいて、もう一度お試しください。</div>' : ''}
+    ${RS.date && !RS.loading ? slots : (!RS.loading && !RS.failed ? '<p class="note">新しい日付を選ぶと、空いている時間が表示されます。メニューは変更されません。</p>' : '')}`;
+  },
+  done(){
+    const gc = gcalUrl();
+    return `
+    <div class="done">
+      <div class="check" aria-hidden="true"></div>
+      <h1>ご予約ありがとうございます</h1>
+      <p class="when">${fmtDate(S.date)}<br>${S.time} にお待ちしております。</p>
+      <p class="id">予約番号 ${esc(S.result.id)}</p>
+      <p class="note" style="text-align:center">${CONFIG.GAS_URL ? '確認メールをお送りしました。届かない場合はお知らせください。' : 'デモ表示のため、予約は保存されず、メールも送信されません。'}</p>
+    </div>
+    <div class="actions">
+      <a class="btn ghost" href="${gc}" target="_blank" rel="noopener">Googleカレンダーに追加</a>
+      ${CONFIG.LIFF_ID ? '<button class="btn ghost" data-act="my">LINEで通知を受け取る(My Kohakuで連携)</button>' : ''}
+      <button class="btn ghost" data-act="reset">トップへ戻る</button>
+    </div>`;
+  }
+};
+
+function gcalUrl(){
+  const f = (ds,t) => ds.replace(/-/g,'') + 'T' + t.replace(':','') + '00';
+  const p = new URLSearchParams({
+    action:'TEMPLATE', text:`${CONFIG.SALON} ご予約(${S.menu.name})`,
+    dates:`${f(S.date,S.time)}/${f(S.date,endTime())}`, ctz:'Asia/Tokyo',
+    details:`予約番号: ${S.result.id}\nメニュー: ${S.menu.name}`, location:CONFIG.LOCATION
+  });
+  return 'https://calendar.google.com/calendar/render?' + p.toString();
+}
+
+/* ---------- バー(下部固定) ---------- */
+function bar(){
+  const sc = S.screen;
+  if(sc==='resched') return `<div class="bar"><div class="s"><small>新しい日時</small><b>${RS.time ? RS.date.slice(5).replace('-','/') + ' ' + RS.time : '未選択'}</b></div><button class="btn" data-act="rs-submit" ${RS.time && !RS.submitting ? '' : 'disabled'}>${RS.submitting ? '変更中…' : 'この日時に変更する'}</button></div>`;
+  if(['top','menu','done','login','code','my'].includes(sc)) return '';
+  const t = S.menu.price == null ? null : total();
+  const sum = `<div class="s"><small>${t==null ? '料金' : '合計'}・${duration()}分</small><b>${t==null ? '当日ご案内' : yen(t)}</b></div>`;
+  const cfg = {
+    detail:['日時選択へ', 'next', false],
+    date:['お客様情報へ', 'next', !S.time],
+    info:['確認へ', 'next', false],
+    confirm:[S.submitting ? '送信中…' : 'この内容で予約する', 'submit', S.submitting]
+  }[sc];
+  return `<div class="bar">${sum}<button class="btn" data-act="${cfg[1]}" ${cfg[2]?'disabled':''}>${cfg[0]}</button></div>`;
+}
+
+/* ---------- 描画 ---------- */
+const app = document.getElementById('app');
+function render(){
+  if(!S.menu && ['detail','date','info','confirm'].includes(S.screen)) S.screen = 'menu';
+  if(S.screen==='my' && !MY.token) S.screen = 'login';
+  if(S.screen==='code' && !MY.email) S.screen = 'login';
+  if(S.screen==='my' && !MY.data && !MY.loading && !MY.failed){ loadMy(); return; }
+  if(S.screen==='resched'){
+    if(!RS.b) S.screen = 'my';
+    else if(!RS.busy && !RS.loading && !RS.failed){ loadRs(); return; }
+  }
+  if(S.screen==='date' && !S.busy && !S.loading && !S.availErr){ loadAvail(); return; }
+  const st = STEPS[S.screen];
+  app.innerHTML = `
+    <header class="hd">
+      ${CONFIG.GAS_URL ? '' : '<div class="demo">デモ表示中:予約データは保存されません</div>'}
+      <div class="hd-row">
+        <div class="hd-side">${['top','done','my'].includes(S.screen) ? '' : '<button class="back" data-act="back" aria-label="戻る"></button>'}</div>
+        <div class="brand"><b>${CONFIG.SALON}</b><small>KOHAKU</small></div>
+        <div class="hd-side r">${['top','menu','detail','date','info','confirm'].includes(S.screen) ? '<button class="iconbtn" data-act="my" aria-label="My Kohaku"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="8.5" r="3.6"/><path d="M4.8 20c.9-3.6 3.7-5.4 7.2-5.4s6.3 1.8 7.2 5.4"/></svg></button>' : ''}</div>
+      </div>
+      ${stepper()}
+    </header>
+    <main>${screens[S.screen]()}</main>
+    ${bar()}`;
+}
+/* 予約の進行(01 ─── 02 ─── 03 ─── 04)。詳細(オプション)はメニューの一部として数える */
+const FLOW_STEPS = ['メニュー','日時','お客様情報','確認'];
+const FLOW_AT = {menu:1, detail:1, date:2, info:3, confirm:4};
+function stepper(){
+  const at = FLOW_AT[S.screen];
+  if(!at) return '';
+  return `<ol class="stepper" aria-label="予約の進行状況(全${FLOW_STEPS.length}ステップ)">${FLOW_STEPS.map((t,i)=>{
+    const n = i+1, cls = n<at ? 'is-done' : n===at ? 'is-current' : '';
+    return `<li class="${cls}"${n===at ? ' aria-current="step"' : ''}><b>0${n}</b><span>${t}</span></li>`;
+  }).join('')}</ol>`;
+}
+function go(screen){
+  S.screen = screen; S.banner = screen==='date' || screen==='confirm' ? S.banner : '';
+  history.pushState({screen}, '');
+  render(); window.scrollTo(0,0);
+}
+
+/* ---------- 入力検証 ---------- */
+function validate(){
+  const i = S.info, e = {};
+  if(!i.name.trim()) e.name = 'お名前を入力してください';
+  if(!i.kana.trim()) e.kana = 'フリガナを入力してください';
+  else if(!/^[ァ-ヶー\u3041-\u3096\s\u3000・]+$/.test(i.kana.trim())) e.kana = 'ひらがな・カタカナで入力してください';
+  if(!/^0\d{9,10}$/.test(i.tel.replace(/[-\s\u3000]/g,''))) e.tel = '電話番号を正しく入力してください(例: 090-1234-5678)';
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(i.email.trim())) e.email = 'メールアドレスを正しく入力してください';
+  S.errors = e; return Object.keys(e).length === 0;
+}
+
+/* ---------- 送信 ---------- */
+async function submit(){
+  S.submitting = true; S.banner = ''; render();
+  const i = S.info, m = S.menu;
+  const notes = [i.note.trim(), m.kind==='omakase' && S.omakase.concerns.length ? 'お悩み: ' + S.omakase.concerns.join('、') : ''].filter(Boolean).join('\n');
+  const payload = {
+    date:S.date, time:S.time, menuId:m.id, optionIds:S.opts.slice(),
+    ...(m.kind==='omakase' ? {minutes:S.omakase.mins} : {}),
+    name:i.name.trim(), kana:i.kana.trim(), tel:i.tel.trim(), email:i.email.trim(),
+    visit:i.visit==='first' ? '初回' : '再来', note:notes, website:i.website
+  };
+  try{
+    if(!CONFIG.GAS_URL){
+      await sleep(900);
+      S.result = {id:'K' + TODAY.slice(2).replace(/-/g,'') + String(Math.floor(Math.random()*9000)+1000)};
+    } else {
+      const r = await fetch(CONFIG.GAS_URL, {method:'POST', body:JSON.stringify(payload)});
+      const j = await r.json();
+      if(!j.ok){
+        if(j.error === 'conflict'){
+          Object.keys(availCache).forEach(k => delete availCache[k]);
+          S.time = null; S.busy = null; S.banner = '選んだ時間が先ほど埋まってしまいました。別の時間をお選びください。';
+          S.submitting = false; go('date'); return;
+        }
+        if(j.error === 'bad_menu'){
+          S.submitting = false; S.banner = errMsg('bad_menu'); MENU_LOADING = true; loadMenu(true); render(); return;
+        }
+        throw new Error(j.error || 'submit');
+      }
+      S.result = {id:j.id};
+    }
+    S.submitting = false; history.replaceState({screen:'done'}, ''); S.screen = 'done'; render(); window.scrollTo(0,0);
+  } catch(err){
+    S.submitting = false; S.banner = '送信できませんでした。通信状況をご確認のうえ、もう一度お試しください。'; render();
+  }
+}
+
+/* ---------- My Kohaku 操作 ---------- */
+const errMsg = c => ({bad_minutes:'ご希望の時間をもう一度お選びください', bad_menu:'選んだメニューは現在ご予約いただけません。メニューを選び直してください', bad_email:'メールアドレスを正しく入力してください', bad_code:'コードが違います。もう一度ご確認ください', locked:'入力の失敗が続いたため、しばらくしてからやり直してください', too_late:'ご来店が近いため、マイページからはキャンセルできません。お電話またはLINEでご連絡ください', not_found:'予約が見つかりませんでした', not_active:'この予約はすでに取り消されています', bad_tel:'電話番号を正しく入力してください', missing_field:'未入力の項目があります', conflict:'選んだ時間が先ほど埋まってしまいました。別の時間をお選びください', too_soon:'直近の日時は選べません', closed_day:'定休日は選べません', out_of_hours:'営業時間外です', bad_date:'日時を選び直してください', bad_link_code:'連携コードの有効期限が切れました。もう一度「LINEで連携する」からお試しください', line_auth:'LINEの認証に失敗しました。もう一度お試しください', line_already_linked:'このLINEアカウントは、すでに別のお客様情報に連携されています', not_linked:'LINE連携がまだ完了していません。メールアドレスでログインし、「登録情報」から連携してください', no_customer:'お客様情報が見つかりませんでした'}[c] || '処理できませんでした。時間をおいてもう一度お試しください');
+async function mySend(){
+  MY.email = (MY.email || '').trim().toLowerCase(); MY.msg = ''; MY.ok = '';
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(MY.email)){ MY.msg = errMsg('bad_email'); render(); return; }
+  MY.busy = true; render();
+  try{ const j = await api('sendCode', {email:MY.email}); if(!j.ok) throw new Error(j.error); saveSess(); MY.busy = false; MY.code = ''; if(S.screen !== 'code') go('code'); else { MY.ok = 'コードを再送しました。'; render(); } return; }
+  catch(e){ MY.msg = errMsg(e.message); }
+  MY.busy = false; render();
+}
+async function myVerify(){
+  MY.msg = ''; MY.busy = true; render();
+  try{
+    const j = await api('verifyCode', {email:MY.email, code:MY.code});
+    if(!j.ok) throw new Error(j.error);
+    MY.token = j.token; MY.data = null; MY.failed = false; MY.tab = 'next'; saveSess(); MY.busy = false;
+    S.screen = 'my'; history.replaceState({screen:'my'}, ''); render(); window.scrollTo(0,0); return;
+  } catch(e){ MY.msg = errMsg(e.message); }
+  MY.busy = false; render();
+}
+async function myCancel(id){
+  if(!confirm('この予約をキャンセルしますか?')) return;
+  MY.msg = ''; MY.ok = '';
+  try{
+    const j = await api('cancel', {id}); if(!j.ok) throw new Error(j.error);
+    MY.ok = 'ご予約をキャンセルしました。'; MY.data = null; MY.loading = false; MY.failed = false; render();
+  } catch(e){
+    if(e.message === 'auth'){ doLogout(true); return; }
+    MY.msg = errMsg(e.message); render();
+  }
+}
+async function mySaveProf(){
+  const p = MY.prof, er = {};
+  if(!p.name.trim()) er.name = 'お名前を入力してください';
+  if(!p.kana.trim()) er.kana = 'フリガナを入力してください';
+  else if(!/^[ァ-ヶー\u3041-\u3096\s\u3000・]+$/.test(p.kana.trim())) er.kana = 'ひらがな・カタカナで入力してください';
+  if(!/^0\d{9,10}$/.test(p.tel.replace(/[-\s\u3000]/g,''))) er.tel = '電話番号を正しく入力してください';
+  MY.errors = er; MY.msg = ''; MY.ok = '';
+  if(Object.keys(er).length){ render(); return; }
+  MY.busy = true; render();
+  try{
+    const j = await api('updateProfile', {name:p.name.trim(), kana:p.kana.trim(), tel:p.tel.trim()});
+    if(!j.ok){ if(j.error === 'auth'){ doLogout(true); return; } throw new Error(j.error); }
+    MY.data.profile = j.profile; MY.prof = {...j.profile}; MY.ok = '登録情報を更新しました。';
+  } catch(e){ MY.msg = errMsg(e.message); }
+  MY.busy = false; render();
+}
+
+/* ---------- 日時変更 / LINE ---------- */
+function lineBox(linked){
+  const on = CONFIG.LIFF_ID || !CONFIG.GAS_URL;
+  const btn = linked
+    ? '<button class="btn ghost sm" data-act="lineunlink">連携を解除</button>'
+    : '<button class="btn sm" data-act="linelink">LINEで連携する</button>';
+  return `<div class="f"><label>LINE連携</label><div class="ro">${linked ? '連携済み' : '未連携'}</div>
+    ${on ? `<div style="margin-top:8px">${btn}</div><p class="note" style="margin:6px 0 0">連携すると、ご予約の確認と、2日前・当日のリマインドをLINEでお届けします。</p>` : '<p class="note" style="margin:6px 0 0">準備中です。</p>'}</div>`;
+}
+function startResched(id){
+  const b = MY.data && MY.data.upcoming.find(x => x.id === id); if(!b) return;
+  Object.assign(RS, {b, y:TY, m:TM-1, date:null, time:null, busy:null, loading:false, failed:false, msg:'', submitting:false});
+  go('resched');
+}
+async function loadRs(){
+  const y = RS.y, m = RS.m; RS.loading = true; RS.failed = false; render();
+  try{
+    const busy = await loadMonth(y,m);
+    if(RS.y === y && RS.m === m){
+      const os = jst(RS.b.date, RS.b.time).getTime(), oe = jst(RS.b.date, RS.b.end).getTime();
+      RS.busy = busy.filter(([s,e]) => !(s === os && e === oe));   // 自分の予約の枠は「空き」として扱う
+    }
+  } catch(e){ if(RS.y === y && RS.m === m) RS.failed = true; }
+  if(RS.y === y && RS.m === m){ RS.loading = false; render(); }
+}
+async function rsSubmit(){
+  if(!RS.time || RS.submitting) return;
+  if(!confirm(`${fmtDate(RS.date)} ${RS.time} に変更しますか?`)) return;
+  RS.submitting = true; RS.msg = ''; render();
+  try{
+    const j = await api('reschedule', {id:RS.b.id, date:RS.date, time:RS.time});
+    if(!j.ok){ if(j.error === 'auth'){ RS.submitting = false; doLogout(true); return; } throw new Error(j.error); }
+    Object.keys(availCache).forEach(k => delete availCache[k]);
+    MY.ok = 'ご予約の日時を変更しました。'; MY.msg = ''; MY.data = null; MY.failed = false; MY.loading = false; MY.tab = 'next';
+    RS.submitting = false; history.back(); return;
+  } catch(e){
+    RS.msg = errMsg(e.message);
+    if(e.message === 'conflict'){ Object.keys(availCache).forEach(k => delete availCache[k]); RS.busy = null; RS.time = null; }
+  }
+  RS.submitting = false; render();
+}
+function runPending(){
+  if(!MY.pending || !MY.data) return;
+  const p = MY.pending; MY.pending = null;
+  const b = MY.data.upcoming.find(x => x.id === p.id); if(!b) return;
+  if(p.act === 'cancel') myCancel(b.id);
+  else if(p.act === 'change' && b.canCancel) startResched(b.id);
+}
+async function myLineLink(){
+  if(!CONFIG.GAS_URL){ MY.ok = 'デモ表示ではLINE連携は行えません。'; render(); return; }
+  MY.msg = ''; MY.ok = '';
+  try{
+    const j = await api('lineLinkCode');
+    if(!j.ok){ if(j.error === 'auth'){ doLogout(true); return; } throw new Error(j.error); }
+    location.href = `https://liff.line.me/${CONFIG.LIFF_ID}?link=${encodeURIComponent(j.code)}`; return;
+  } catch(e){ MY.msg = errMsg(e.message); }
+  render();
+}
+async function myLineUnlink(){
+  if(!confirm('LINE連携を解除しますか?(以降、通知はメールでお届けします)')) return;
+  MY.msg = ''; MY.ok = '';
+  try{
+    const j = await api('lineUnlink');
+    if(!j.ok){ if(j.error === 'auth'){ doLogout(true); return; } throw new Error(j.error); }
+    MY.data.profile.lineLinked = false; MY.ok = 'LINE連携を解除しました。';
+  } catch(e){ MY.msg = errMsg(e.message); }
+  render();
+}
+
+/* ---------- LIFF(LINEアプリ内で開いたとき) ---------- */
+const QS = new URLSearchParams(location.search);
+const loadScript = src => new Promise((res,rej) => { const el = document.createElement('script'); el.src = src; el.onload = res; el.onerror = rej; document.head.appendChild(el); });
+async function lineEntry(idToken, link){
+  const j = link ? await api('lineLink', {idToken, code:link}) : await api('lineLogin', {idToken});
+  if(j.ok){
+    MY.token = j.token; MY.email = j.email || MY.email; MY.data = null; MY.failed = false; MY.tab = link ? 'profile' : 'next'; MY.msg = '';
+    MY.ok = link ? 'LINE連携が完了しました。ご予約の確認とリマインドをLINEでお届けします。' : '';
+    saveSess(); go('my');
+  } else {
+    MY.msg = errMsg(j.error); go('login');
+  }
+}
+async function bootstrap(){
+  loadMenu();
+  const link = QS.get('link'), page = QS.get('page');
+  if(QS.get('id')) MY.pending = {act: QS.get('act') || 'view', id: QS.get('id')};
+  const useLiff = CONFIG.LIFF_ID && (link || QS.has('liff.state') || /Line\//i.test(navigator.userAgent));
+  if(useLiff){
+    try{
+      await loadScript('https://static.line-scdn.net/liff/edge/2/sdk.js');
+      await liff.init({liffId: CONFIG.LIFF_ID});
+      if(!liff.isLoggedIn()){ liff.login({redirectUri: location.href}); return; }
+      await lineEntry(liff.getIDToken(), link);
+    } catch(e){ MY.msg = 'LINEとの接続に失敗しました。時間をおいてもう一度お試しください。'; go('login'); }
+  } else if(page === 'my'){
+    go(MY.token ? 'my' : 'login');
+  }
+}
+
+/* ---------- イベント ---------- */
+app.addEventListener('click', e => {
+  const t = e.target.closest('[data-act]'); if(!t || t.disabled) return;
+  const v = t.dataset.v;
+  switch(t.dataset.act){
+    case 'cat':   S.cat = v; if(S.screen==='top') go('menu'); else render(); break;
+    case 'pick':  S.menu = MENU.find(m => m.id===v); S.opts = []; S.date = null; S.time = null; go('detail'); break;
+    case 'back':  history.back(); break;
+    case 'edit':  go(v); break;
+    case 'month': { let y=S.y, m=S.m+Number(v); if(m<0){m=11;y--} if(m>11){m=0;y++} S.y=y; S.m=m; S.date=null; S.time=null; S.busy=null; S.loading=false; S.availErr=false; render(); break; }
+    case 'date':  S.date = v; S.time = null; render(); break;
+    case 'time':  S.time = v; render(); break;
+    case 'next': {
+      if(S.screen==='detail'){ S.busy = null; S.loading = false; S.availErr = false; S.date = null; S.time = null; S.y = TY; S.m = TM-1; go('date'); }
+      else if(S.screen==='date'){ S.banner=''; go('info'); }
+      else if(S.screen==='info'){ if(validate()) go('confirm'); else { render(); document.querySelector('.bad')?.focus(); } }
+      break;
+    }
+    case 'submit': submit(); break;
+    case 'my':     MY.msg = ''; MY.ok = ''; MY.failed = false; go(MY.token ? 'my' : 'login'); break;
+    case 'home':   go('top'); break;
+    case 'tab':    MY.tab = v; MY.msg = ''; MY.ok = ''; MY.errors = {}; if(MY.data) MY.prof = {...MY.data.profile}; render(); break;
+    case 'reload': MY.failed = false; render(); break;
+    case 'logout': doLogout(false); break;
+    case 'newbook': S = fresh(); go('top'); break;
+    case 'sendcode': mySend(); break;
+    case 'verify':   myVerify(); break;
+    case 'cancelbk': myCancel(v); break;
+    case 'saveprof': mySaveProf(); break;
+    case 'rebook': { const m = MENU.find(x => x.id === v); if(m){ S = fresh(); S.menu = m; S.cat = m.cats[0]; go('detail'); } break; }
+    case 'change':   startResched(v); break;
+    case 'rs-month': { let y = RS.y, m = RS.m + Number(v); if(m < 0){m = 11; y--} if(m > 11){m = 0; y++} Object.assign(RS, {y, m, date:null, time:null, busy:null, loading:false, failed:false}); render(); break; }
+    case 'rs-date':  RS.date = v; RS.time = null; RS.msg = ''; render(); break;
+    case 'rs-time':  RS.time = v; render(); break;
+    case 'rs-submit': rsSubmit(); break;
+    case 'linelink':   myLineLink(); break;
+    case 'lineunlink': myLineUnlink(); break;
+    case 'reset':  S = fresh(); history.pushState({screen:'top'}, ''); render(); window.scrollTo(0,0); break;
+  }
+});
+app.addEventListener('input', e => {
+  const t = e.target;
+  if(t.dataset.f === 'info'){ S.info[t.dataset.k] = t.value; }
+  if(t.dataset.f === 'my'){ MY[t.dataset.k] = t.value; }
+  if(t.dataset.f === 'prof'){ MY.prof[t.dataset.k] = t.value; }
+});
+app.addEventListener('change', e => {
+  const t = e.target, f = t.dataset.f; if(!f) return;
+  if(f === 'opt'){ S.opts = t.checked ? [...S.opts, t.value] : S.opts.filter(x => x !== t.value); render(); }
+  else if(f === 'mins'){ S.omakase.mins = Number(t.value); render(); }
+  else if(f === 'concern'){ S.omakase.concerns = t.checked ? [...S.omakase.concerns, t.value] : S.omakase.concerns.filter(x => x !== t.value); }
+  else if(f === 'visit'){ S.info.visit = t.value; }
+});
+window.addEventListener('popstate', e => {
+  if(S.result){ S.screen = 'done'; history.pushState({screen:'done'}, ''); render(); return; }
+  S.screen = e.state?.screen || 'top';
+  if(S.screen === 'date'){ S.busy = null; S.loading = false; }
+  render(); window.scrollTo(0,0);
+});
+history.replaceState({screen:'top'}, '');
+render();
+bootstrap();
+</script>
+</body>
+</html>

@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>琥珀 管理</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --cream:#F6EFE3; --paper:#FFFCF7; --sand:#EADBC3; --line:#E7D9C4;
+  --caramel:#B58553; --brown:#6E5238; --ink:#33261C; --muted:#8A7662;
+  --moss:#44593F; --danger:#A5473A;
+  --serif:'Shippori Mincho','Hiragino Mincho ProN','Yu Mincho',serif;
+  --sans:'Zen Kaku Gothic New','Hiragino Sans','Yu Gothic',sans-serif;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--cream);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.6}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--moss);outline-offset:2px}
+#app{min-height:100vh;display:flex;flex-direction:column}
+.wrap{width:100%;max-width:780px;margin:0 auto}
+
+/* header */
+.top{background:var(--brown);color:#fff;padding-top:env(safe-area-inset-top,0px)}
+.top .wrap{display:flex;align-items:center;justify-content:space-between;height:52px;padding:0 16px}
+.top b{font-family:var(--serif);font-weight:500;font-size:19px;letter-spacing:.14em}
+.top small{margin-left:10px;font-size:12px;letter-spacing:.2em;opacity:.8}
+.top button{border:1px solid rgba(255,255,255,.45);background:none;color:#fff;border-radius:6px;padding:5px 12px;font-size:13px}
+.demo{background:var(--sand);color:var(--brown);font-size:12px;text-align:center;padding:3px 10px}
+.tabs{position:sticky;top:0;z-index:5;background:var(--paper);border-bottom:1px solid var(--line)}
+.tabs .wrap{display:flex}
+.tabs button{flex:1;border:0;background:none;padding:13px 0;font-size:15px;color:var(--muted);border-bottom:3px solid transparent}
+.tabs button[aria-selected=true]{color:var(--brown);font-weight:700;border-bottom-color:var(--caramel)}
+main{flex:1;padding-bottom:96px}
+
+/* controls */
+.dnav{display:flex;align-items:center;gap:8px;padding:14px 16px 6px}
+.dnav .lab{flex:1;text-align:center;font-family:var(--serif);font-size:20px;color:var(--brown)}
+.ib{width:44px;height:44px;border:1px solid var(--line);border-radius:8px;background:var(--paper);font-size:20px;color:var(--brown)}
+.ib:disabled{opacity:.4}
+.chip{border:1px solid var(--line);background:var(--paper);border-radius:99px;padding:6px 14px;font-size:13.5px;color:var(--brown)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:8px 16px 4px}
+.stat{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:8px 12px}
+.stat small{display:block;font-size:11.5px;color:var(--muted)}
+.stat b{font-family:var(--serif);font-weight:500;font-size:19px;color:var(--brown)}
+
+/* list */
+.list{list-style:none;margin:10px 0 0;padding:0 16px;display:grid;gap:8px}
+.item{width:100%;display:flex;gap:14px;text-align:left;border:1px solid var(--line);border-left:4px solid var(--sand);border-radius:8px;background:var(--paper);padding:11px 14px}
+.item.next{border-left-color:var(--caramel);background:#FFF9EE}
+.item.x{opacity:.5}
+.item .t{flex:none;width:52px;font-family:var(--serif);color:var(--brown);line-height:1.3}
+.item .t b{display:block;font-size:19px;font-weight:500}
+.item .t small{font-size:12px;color:var(--muted);font-family:var(--sans)}
+.item .b{flex:1;min-width:0}
+.item .n{font-weight:700}
+.item .m{font-size:13.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tag{display:inline-block;font-size:11.5px;font-weight:400;padding:0 8px;border-radius:99px;background:var(--sand);color:var(--brown);margin-left:6px;vertical-align:1px}
+.tag.new{background:#E3EBD9;color:var(--moss)}
+.tag.x{background:#F0E4E0;color:var(--danger)}
+.tag.ok{background:var(--moss);color:#fff}
+.empty{text-align:center;color:var(--muted);padding:36px 16px}
+.err{margin:12px 16px 0;padding:10px 14px;border-radius:6px;background:#F8E9E4;color:var(--danger);font-size:13.5px}
+.ok{margin:12px 16px 0;padding:10px 14px;border-radius:6px;background:#EEF2E8;color:var(--moss);font-size:13.5px}
+.loading{text-align:center;color:var(--muted);padding:28px}
+
+/* month */
+.mh{display:flex;align-items:center;justify-content:space-between;padding:12px 16px 4px}
+.mh b{font-family:var(--serif);font-weight:500;font-size:20px;color:var(--brown)}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;padding:6px 12px}
+.grid .w{text-align:center;font-size:12px;color:var(--muted)}
+.grid .w:first-child{color:var(--danger)}
+.cell{min-height:54px;border:1px solid var(--line);border-radius:8px;background:var(--paper);padding:4px 2px 5px;display:flex;flex-direction:column;align-items:center;gap:2px}
+.cell span{font-size:14px}
+.cell i{font-style:normal;font-size:11.5px;min-width:22px;text-align:center;border-radius:99px;background:var(--sand);color:var(--brown);padding:0 6px}
+.cell.today span{font-weight:700;color:var(--caramel)}
+.cell.sel{background:var(--brown);border-color:var(--brown);color:#fff}
+.cell.sel i{background:#fff}
+.cell.sel.today span{color:#fff}
+.sub{font-family:var(--serif);font-size:18px;color:var(--brown);padding:16px 16px 0}
+
+/* fab */
+.fab{position:fixed;right:max(16px,calc(50vw - 390px + 16px));bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:6;border:0;border-radius:99px;background:var(--brown);color:#fff;padding:13px 20px;font-weight:700;box-shadow:0 4px 14px rgba(60,40,20,.28)}
+
+/* login */
+.login{max-width:380px;margin:60px auto;padding:0 20px;width:100%}
+.login h1{font-family:var(--serif);font-weight:500;color:var(--brown);letter-spacing:.14em;text-align:center;font-size:26px;margin:0 0 4px}
+.login p{text-align:center;color:var(--muted);font-size:13px;margin:0 0 24px}
+
+/* form / sheet */
+.f{margin:0 0 12px}
+.f label{display:block;font-size:13px;font-weight:700;margin-bottom:4px}
+.f input,.f select,.f textarea{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:6px;background:#fff;font-size:16px}
+.f textarea{min-height:70px}
+.f.bad input,.f.bad select{border-color:var(--danger)}
+.f .er{color:var(--danger);font-size:12.5px;margin-top:3px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn{display:block;width:100%;text-align:center;padding:13px;border-radius:6px;border:1px solid var(--brown);background:var(--brown);color:#fff;font-weight:700;font-size:15px;text-decoration:none}
+.btn.ghost{background:var(--paper);color:var(--brown)}
+.btn.danger{background:var(--paper);color:var(--danger);border-color:var(--danger)}
+.btn:disabled{opacity:.45}
+.back{position:fixed;inset:0;z-index:20;background:rgba(40,28,18,.45);display:flex;align-items:flex-end;justify-content:center}
+.sheet{width:100%;max-width:560px;max-height:92vh;overflow:auto;background:var(--paper);border-radius:14px 14px 0 0;padding:18px 18px calc(18px + env(safe-area-inset-bottom,0px))}
+@media(min-width:700px){.back{align-items:center}.sheet{border-radius:14px}}
+.sheet h2{font-family:var(--serif);font-weight:500;color:var(--brown);font-size:21px;margin:0 0 2px}
+.sheet .sm{color:var(--muted);font-size:13px}
+.dl{margin:14px 0;border-top:1px solid var(--line)}
+.dl div{display:flex;gap:12px;padding:9px 0;border-bottom:1px solid var(--line)}
+.dl dt{flex:none;width:78px;color:var(--muted);font-size:13px;padding-top:1px}
+.dl dd{margin:0;flex:1;word-break:break-word}
+.dl a{color:var(--brown)}
+.acts{display:grid;gap:8px;margin-top:6px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+/* =========================================================
+   設定 ― GAS_URL は予約サイト(index.html)と同じURLを入れてください。
+   空のままならデモ表示(パスワード: demo)。
+   ========================================================= */
+const CONFIG = { GAS_URL:'', SALON:'琥珀', OPEN:'10:00', CLOSE:'20:00', STEP_MIN:30, CLOSED_WEEKDAYS:[3] };
+
+// 予備: menu API が使えないとき(デモ・取得失敗)用。index.html の予備配列と同じ内容(おまかせを除く)
+let MENU = [
+  ['アロマボディトリートメント × まこも蒸し(初回限定)',100,10000],
+  ['Relax アロマボディトリートメント',60,7000],['満足 アロマボディトリートメント',80,9000],['疲労回復 アロマボディトリートメント',100,11000],
+  ['ローズフェイシャル A',40,5600],['ローズフェイシャル B',65,8100],['ローズフェイシャル C',70,11600],['ローズフェイシャル D',95,14100],
+  ['Relax アロマボディトリートメント + よもぎ蒸し',90,10000],['満足 アロマボディトリートメント + よもぎ蒸し',110,12000],['疲労回復 アロマボディトリートメント + よもぎ蒸し',130,14000],
+  ['全身満たされる110分コース',110,13000],['全身満たされる140分コース',140,18600],
+  ['ペア よもぎ蒸し(2名分)',40,6000],['ペア まこも蒸し(2名分)',40,12000],
+  ['ペア よもぎ蒸し + フットまたは頭ほぐし30分(2名分)',70,12000],['ペア まこも蒸し + フットまたは頭ほぐし30分(2名分)',70,18000]
+].map(([name,min,price]) => ({name,min,price,label:`${name} ${min}分`}));
+
+/* ---------- utilities ---------- */
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const yen = n => '¥' + Number(n).toLocaleString('ja-JP');
+const pad = n => String(n).padStart(2,'0');
+const WD = ['日','月','火','水','木','金','土'];
+const ymd = (y,m,d) => `${y}-${pad(m+1)}-${pad(d)}`;
+const toMin = t => { const [h,m] = t.split(':').map(Number); return h*60+m; };
+const fromMin = n => `${pad(Math.floor(n/60))}:${pad(n%60)}`;
+const daysIn = (y,m) => new Date(Date.UTC(y,m+1,0)).getUTCDate();
+const dow = ds => new Date(ds+'T00:00:00Z').getUTCDay();
+const fmtDate = ds => { const [y,m,d] = ds.split('-').map(Number); return `${y}年${m}月${d}日(${WD[dow(ds)]})`; };
+const addDays = (ds,n) => new Date(new Date(ds+'T00:00:00Z').getTime()+n*864e5).toISOString().slice(0,10);
+const jstNow = () => new Date(Date.now()+9*3600e3);
+const TODAY = jstNow().toISOString().slice(0,10);
+const nowMin = () => { const j = jstNow(); return j.getUTCHours()*60 + j.getUTCMinutes(); };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const monthEnd = key => { const [y,m] = key.split('-').map(Number); return `${key}-${pad(daysIn(y,m-1))}`; };
+
+/* ---------- demo backend ---------- */
+const demo = (() => {
+  const names = [['田中 恵','タナカ メグミ'],['佐藤 美咲','サトウ ミサキ'],['山田 花子','ヤマダ ハナコ'],['鈴木 さくら','スズキ サクラ'],['高橋 由美','タカハシ ユミ'],['伊藤 梨花','イトウ リカ'],['渡辺 美穂','ワタナベ ミホ']];
+  const list = []; let n = 0;
+  for(let off=-70; off<=100; off++){
+    const ds = addDays(TODAY, off); if([3].includes(dow(ds))) continue;
+    let seed = [...ds].reduce((a,c)=>(a*31+c.charCodeAt(0))>>>0, 11);
+    const rnd = () => (seed = (seed*1664525+1013904223)>>>0) / 4294967296;
+    const cnt = off === 0 ? 4 : Math.floor(rnd()*(off>30 ? 2 : 4));
+    let t = 10*60 + Math.floor(rnd()*3)*30;
+    for(let i=0;i<cnt;i++){
+      const mn = MENU[Math.floor(rnd()*MENU.length)], nm = names[Math.floor(rnd()*names.length)];
+      if(t + mn.min > 20*60) break;
+      const past = off < 0 || (off === 0 && t + mn.min < nowMin());
+      const st = past ? (rnd() < .1 ? 'キャンセル' : '来店済') : (rnd() < .06 ? 'キャンセル' : '確定');
+      list.push({id:'K'+ds.replace(/-/g,'').slice(2)+String(1000+(n++)), status:st, date:ds, time:fromMin(t), end:fromMin(t+mn.min),
+        menuName:mn.name, options:rnd()<.3?'頭ほぐし':'なし', total:mn.price, minutes:mn.min, name:nm[0], kana:nm[1],
+        tel:'090-1234-'+String(1000+Math.floor(rnd()*8999)), email:'guest'+n+'@example.com', customerId:'C'+String(100+names.indexOf(nm)).padStart(6,'0'), source:'web', lineLinked:names.indexOf(nm)%2===0, visit:rnd()<.3?'初回':'再来', note:rnd()<.3?'肩こり、冷え':'', menuId:''});
+      t += mn.min + 30 + Math.floor(rnd()*3)*30;
+    }
+  }
+  return list;
+})();
+
+/** スプレッドシートのメニューを取得。失敗時は予備配列のまま(おまかせは管理画面では選べない) */
+async function loadMenu(){
+  if(!CONFIG.GAS_URL) return;
+  try{
+    const req = (async () => (await fetch(`${CONFIG.GAS_URL}?action=menu`)).json())();
+    const j = await Promise.race([req, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000))]);
+    if(j.ok && Array.isArray(j.menu)){
+      const list = j.menu.filter(m => m.kind !== 'omakase').map(m => ({name:m.name, min:m.min, price:m.price, label:`${m.name} ${m.min}分`}));
+      if(list.length){
+        MENU = list;
+        if(A.form && A.form.menuIdx !== 'x'){ A.form.menuIdx = '0'; A.form.minutes = MENU[0].min; A.form.total = MENU[0].price; }
+        render();
+      }
+    }
+  }catch(e){ /* 予備配列で続行 */ }
+}
+
+async function api(action, extra = {}){
+  if(CONFIG.GAS_URL){
+    const r = await fetch(CONFIG.GAS_URL, {method:'POST', body:JSON.stringify({action, token:A.token, ...extra})});
+    return r.json();
+  }
+  await sleep(300);
+  switch(action){
+    case 'adminLogin': return extra.password === 'demo' ? {ok:true, token:'demo'} : {ok:false, error:'bad_password'};
+    case 'adminList': return {ok:true, reservations:demo.filter(r => r.date >= extra.from && r.date <= extra.to).sort((a,b)=>(a.date+a.time)<(b.date+b.time)?-1:1).map(r=>({...r}))};
+    case 'adminSetStatus': { const r = demo.find(x => x.id === extra.id); if(!r) return {ok:false,error:'not_found'}; if(r.status==='キャンセル') return {ok:false,error:'already_cancelled'}; r.status = extra.status; return {ok:true, notified: extra.status==='キャンセル' && extra.notify !== false && !!r.email}; }
+    case 'adminCreate': {
+      if(!extra.force && demo.some(r => r.date===extra.date && r.status!=='キャンセル' && toMin(r.time) < toMin(extra.time)+extra.minutes+15 && toMin(r.end) > toMin(extra.time)-15)) return {ok:false, error:'conflict'};
+      const id = 'K' + extra.date.replace(/-/g,'').slice(2) + (2000 + demo.length);
+      demo.push({id, status:'確定', date:extra.date, time:extra.time, end:fromMin(toMin(extra.time)+extra.minutes), menuName:extra.menuName, options:'なし', total:extra.total,
+        minutes:extra.minutes, name:extra.name, kana:extra.kana||'', tel:extra.tel||'', email:extra.email||'', visit:extra.visit||'', customerId:'', source:'admin', note:'(管理画面から登録)'+(extra.note?'\n'+extra.note:''), menuId:''});
+      return {ok:true, id};
+    }
+  }
+  return {ok:false, error:'unknown_action'};
+}
+
+/* ---------- state ---------- */
+const A = {
+  token:'', screen:'today', date:TODAY, y:+TODAY.slice(0,4), m:+TODAY.slice(5,7)-1, sel:TODAY,
+  data:{}, loading:{}, failed:{}, msg:'', ok:'', sheet:null, form:null, busy:false, pw:'', pwMsg:''
+};
+try{ A.token = sessionStorage.getItem('kohaku_admin') || ''; }catch(e){}
+const saveTok = () => { try{ sessionStorage.setItem('kohaku_admin', A.token); }catch(e){} };
+const errMsg = c => ({bad_password:'パスワードが違います', locked:'失敗が続いたため、10分ほど待ってからやり直してください', not_configured:'パスワードが未設定です。スクリプト プロパティに ADMIN_PASSWORD を追加してください', conflict:'他の予約と時間が重なっています', already_cancelled:'キャンセル済みの予約は変更できません', not_found:'予約が見つかりません', bad_tel:'電話番号を正しく入力してください', bad_email:'メールアドレスを正しく入力してください'}[c] || '処理できませんでした。時間をおいてもう一度お試しください');
+
+/* ---------- data ---------- */
+function ensure(ds){
+  const key = ds.slice(0,7);
+  if(A.data[key] || A.loading[key] || A.failed[key]) return;
+  A.loading[key] = true;
+  api('adminList', {from:key+'-01', to:monthEnd(key)}).then(j => {
+    if(!j.ok){ if(j.error === 'auth'){ logout(true); return; } throw new Error(j.error); }
+    A.data[key] = j.reservations;
+  }).catch(() => { A.failed[key] = true; }).finally(() => { A.loading[key] = false; render(); });
+}
+const on = ds => (A.data[ds.slice(0,7)] || []).filter(r => r.date === ds);
+const active = r => r.status !== 'キャンセル';
+function reload(){ A.data = {}; A.failed = {}; render(); }
+
+/* ---------- views ---------- */
+function itemHTML(r, nextId){
+  return `<li><button class="item ${active(r)?'':'x'} ${r.id===nextId?'next':''}" data-act="open" data-v="${esc(r.id)}">
+    <span class="t"><b>${r.time}</b><small>〜${r.end}</small></span>
+    <span class="b"><span class="n">${esc(r.name)} 様${r.visit==='初回'?'<span class="tag new">初回</span>':''}${r.status==='来店済'?'<span class="tag ok">来店済</span>':''}${r.status==='キャンセル'?'<span class="tag x">キャンセル</span>':''}</span>
+    <span class="m" style="display:block">${esc(r.menuName)}${r.options && r.options!=='なし' ? ' + '+esc(r.options) : ''}</span></span></button></li>`;
+}
+function listHTML(ds){
+  const key = ds.slice(0,7);
+  if(A.failed[key]) return `<div class="err" role="alert">予約を取得できませんでした。</div><div style="padding:12px 16px"><button class="btn ghost" data-act="reload">もう一度読み込む</button></div>`;
+  if(!A.data[key]) return '<p class="loading">読み込み中…</p>';
+  const rs = on(ds);
+  if(!rs.length) return '<p class="empty">この日のご予約はありません。</p>';
+  const nextId = ds === TODAY ? (rs.find(r => active(r) && r.status !== '来店済' && toMin(r.end) >= nowMin()) || {}).id : null;
+  return `<ul class="list">${rs.map(r => itemHTML(r, nextId)).join('')}</ul>`;
+}
+function statsHTML(ds){
+  const rs = on(ds), a = rs.filter(active);
+  const sum = a.reduce((s,r) => s + (r.total == null ? 0 : r.total), 0);
+  return `<div class="stats"><div class="stat"><small>予約</small><b>${a.length}件</b></div><div class="stat"><small>来店済</small><b>${a.filter(r=>r.status==='来店済').length}件</b></div><div class="stat"><small>売上見込</small><b>${yen(sum)}</b></div></div>`;
+}
+function todayView(){
+  ensure(A.date);
+  return `<div class="dnav"><button class="ib" data-act="day" data-v="-1" aria-label="前の日">‹</button>
+    <div class="lab">${fmtDate(A.date)}</div><button class="ib" data-act="day" data-v="1" aria-label="次の日">›</button></div>
+    <div style="display:flex;gap:8px;padding:0 16px;align-items:center"><button class="chip" data-act="gototoday">今日</button>
+    <input type="date" value="${A.date}" data-f="pick" aria-label="日付を選ぶ" style="border:1px solid var(--line);border-radius:99px;padding:4px 12px;background:var(--paper);font-size:14px"></div>
+    ${A.ok ? `<div class="ok" role="status">${esc(A.ok)}</div>` : ''}${A.msg ? `<div class="err" role="alert">${esc(A.msg)}</div>` : ''}
+    ${A.data[A.date.slice(0,7)] ? statsHTML(A.date) : ''}${listHTML(A.date)}`;
+}
+function calView(){
+  const {y,m} = A, key = `${y}-${pad(m+1)}`; ensure(key+'-01'); ensure(A.sel);
+  const first = new Date(Date.UTC(y,m,1)).getUTCDay(), n = daysIn(y,m);
+  let cells = WD.map(w => `<span class="w">${w}</span>`).join('');
+  for(let i=0;i<first;i++) cells += '<span></span>';
+  for(let d=1; d<=n; d++){
+    const ds = ymd(y,m,d), c = A.data[key] ? on(ds).filter(active).length : 0;
+    cells += `<button class="cell ${ds===TODAY?'today':''} ${ds===A.sel?'sel':''}" data-act="sel" data-v="${ds}" aria-label="${m+1}月${d}日 ${c}件"><span>${d}</span>${c ? `<i>${c}</i>` : ''}</button>`;
+  }
+  return `<div class="mh"><button class="ib" data-act="month" data-v="-1" aria-label="前の月">‹</button><b>${y}年${m+1}月</b><button class="ib" data-act="month" data-v="1" aria-label="次の月">›</button></div>
+    <div class="grid">${cells}</div>
+    ${A.ok ? `<div class="ok" role="status">${esc(A.ok)}</div>` : ''}${A.msg ? `<div class="err" role="alert">${esc(A.msg)}</div>` : ''}
+    <div class="sub">${fmtDate(A.sel)}</div>${A.data[A.sel.slice(0,7)] ? statsHTML(A.sel) : ''}${listHTML(A.sel)}`;
+}
+function loginView(){
+  return `<div class="login"><h1>${CONFIG.SALON}</h1><p>管理画面</p>
+    ${A.pwMsg ? `<div class="err" role="alert" style="margin:0 0 12px">${esc(A.pwMsg)}</div>` : ''}
+    <div class="f"><label for="pw">パスワード</label><input id="pw" type="password" data-f="pw" value="${esc(A.pw)}" autocomplete="current-password"></div>
+    <button class="btn" data-act="login" ${A.busy?'disabled':''}>${A.busy?'確認中…':'ログイン'}</button>
+    ${CONFIG.GAS_URL ? '' : '<p style="margin-top:14px">デモ表示:パスワードは demo です</p>'}</div>`;
+}
+function sheetHTML(){
+  const r = Object.values(A.data).flat().find(x => x.id === A.sheet);
+  if(!r) return '';
+  const tel = String(r.tel||'').replace(/[^\d+]/g,'');
+  return `<div class="back" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="予約の詳細" data-stop="1">
+    <h2>${esc(r.name)} 様</h2><div class="sm">${esc(r.kana)}</div>
+    <dl class="dl">
+      <div><dt>日時</dt><dd>${fmtDate(r.date)}<br>${r.time}〜${r.end}(${r.minutes}分)</dd></div>
+      <div><dt>メニュー</dt><dd>${esc(r.menuName)}<br>オプション: ${esc(r.options || 'なし')}</dd></div>
+      <div><dt>金額</dt><dd>${r.total == null ? '当日ご案内' : yen(r.total)}</dd></div>
+      <div><dt>電話</dt><dd>${r.tel ? `<a href="tel:${tel}">${esc(r.tel)}</a>` : '—'}</dd></div>
+      <div><dt>メール</dt><dd>${r.email ? `<a href="mailto:${esc(r.email)}">${esc(r.email)}</a>` : '—'}</dd></div>
+      <div><dt>区分</dt><dd>${esc(r.visit || '—')}</dd></div>
+      <div><dt>顧客ID</dt><dd>${esc(r.customerId || '—')}　<span class="sm">経路: ${({web:'予約サイト',admin:'管理画面',line:'LINE'})[r.source] || '—'}</span></dd></div>
+      <div><dt>LINE</dt><dd>${r.lineLinked ? '連携済み(LINEで通知)' : '未連携(メールで通知)'}</dd></div>
+      <div><dt>ご要望</dt><dd>${r.note ? esc(r.note).replace(/\n/g,'<br>') : '—'}</dd></div>
+      <div><dt>状態</dt><dd>${esc(r.status)}　<span class="sm">予約番号 ${esc(r.id)}</span></dd></div>
+    </dl>
+    ${A.msg ? `<div class="err" role="alert" style="margin:0 0 10px">${esc(A.msg)}</div>` : ''}
+    ${r.status!=='キャンセル' && r.email ? `<label class="sm" style="display:block;margin:0 0 10px"><input type="checkbox" id="a-notify" checked> キャンセル時にお客様へ通知する(${r.lineLinked ? 'LINE' : 'メール'})</label>` : ''}
+    <div class="acts">
+      ${r.status==='確定' ? `<button class="btn" data-act="status" data-v="来店済" ${A.busy?'disabled':''}>来店済にする</button>` : ''}
+      ${r.status==='来店済' ? `<button class="btn ghost" data-act="status" data-v="確定" ${A.busy?'disabled':''}>確定に戻す</button>` : ''}
+      ${r.status!=='キャンセル' ? `<button class="btn danger" data-act="status" data-v="キャンセル" ${A.busy?'disabled':''}>予約をキャンセル</button>` : ''}
+      <button class="btn ghost" data-act="close">閉じる</button>
+    </div></div></div>`;
+}
+function formHTML(){
+  const f = A.form, e = f.errors || {};
+  const times = []; for(let t = toMin(CONFIG.OPEN); t < toMin(CONFIG.CLOSE); t += CONFIG.STEP_MIN) times.push(fromMin(t));
+  const fld = (k,label,type='text',extra='') => `<div class="f ${e[k]?'bad':''}"><label for="a-${k}">${label}</label><input id="a-${k}" type="${type}" data-f="form" data-k="${k}" value="${esc(f[k])}" ${extra}>${e[k]?`<div class="er" role="alert">${e[k]}</div>`:''}</div>`;
+  return `<div class="back" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="予約を追加" data-stop="1">
+    <h2>予約を追加</h2><div class="sm">お電話などで受けたご予約を登録します。</div><div style="height:12px"></div>
+    <div class="row2">${fld('date','日付','date')}
+      <div class="f"><label for="a-time">開始</label><select id="a-time" data-f="form" data-k="time">${times.map(t => `<option ${t===f.time?'selected':''}>${t}</option>`).join('')}</select></div></div>
+    <div class="f ${e.menu?'bad':''}"><label for="a-menu">メニュー</label><select id="a-menu" data-f="menu">
+      ${MENU.map((m,i) => `<option value="${i}" ${String(i)===String(f.menuIdx)?'selected':''}>${esc(m.label)}</option>`).join('')}
+      <option value="x" ${f.menuIdx==='x'?'selected':''}>その他(自由入力)</option></select>${e.menu?`<div class="er" role="alert">${e.menu}</div>`:''}</div>
+    ${f.menuIdx==='x' ? fld('menuName','メニュー名') : ''}
+    <div class="row2">${fld('minutes','所要時間(分)','number','inputmode="numeric" min="10" max="300"')}${fld('total','料金(空欄=当日ご案内)','number','inputmode="numeric" min="0"')}</div>
+    ${fld('name','お名前')}${fld('kana','フリガナ(任意)')}
+    <div class="row2">${fld('tel','電話番号(任意)','tel')}
+      <div class="f"><label for="a-visit">来店区分</label><select id="a-visit" data-f="form" data-k="visit"><option value="" ${f.visit===''?'selected':''}>未設定</option><option ${f.visit==='初回'?'selected':''}>初回</option><option ${f.visit==='再来'?'selected':''}>再来</option></select></div></div>
+    ${fld('email','メール(任意)','email')}
+    <div class="f"><label for="a-note">メモ</label><textarea id="a-note" data-f="form" data-k="note">${esc(f.note)}</textarea></div>
+    ${A.msg ? `<div class="err" role="alert" style="margin:0 0 10px">${esc(A.msg)}</div>` : ''}
+    <div class="acts"><button class="btn" data-act="create" ${A.busy?'disabled':''}>${A.busy?'登録中…':'この内容で登録'}</button><button class="btn ghost" data-act="close">キャンセル</button></div>
+  </div></div>`;
+}
+
+/* ---------- render ---------- */
+const app = document.getElementById('app');
+function render(){
+  if(!A.token){
+    app.innerHTML = (CONFIG.GAS_URL ? '' : '<div class="demo">デモ表示中:データは保存されません</div>') + loginView(); return;
+  }
+  const scrollY = window.scrollY;
+  app.innerHTML = `
+    ${CONFIG.GAS_URL ? '' : '<div class="demo">デモ表示中:データは保存されません</div>'}
+    <header class="top"><div class="wrap"><div><b>${CONFIG.SALON}</b><small>管理</small></div><button data-act="logout">ログアウト</button></div></header>
+    <nav class="tabs"><div class="wrap" role="tablist">
+      <button role="tab" aria-selected="${A.screen==='today'}" data-act="screen" data-v="today">今日の予約</button>
+      <button role="tab" aria-selected="${A.screen==='cal'}" data-act="screen" data-v="cal">カレンダー</button></div></nav>
+    <main><div class="wrap">${A.screen==='today' ? todayView() : calView()}</div></main>
+    <button class="fab" data-act="new">＋ 予約追加</button>
+    ${A.form ? formHTML() : A.sheet ? sheetHTML() : ''}`;
+  window.scrollTo(0, scrollY);
+}
+
+/* ---------- actions ---------- */
+async function login(){
+  A.busy = true; A.pwMsg = ''; render();
+  try{
+    const j = await api('adminLogin', {password:A.pw});
+    if(!j.ok) throw new Error(j.error);
+    A.token = j.token; A.pw = ''; saveTok();
+  } catch(e){ A.pwMsg = errMsg(e.message); }
+  A.busy = false; render();
+}
+function logout(expired){
+  A.token = ''; A.data = {}; A.loading = {}; A.failed = {}; A.sheet = null; A.form = null; A.pw = '';
+  A.pwMsg = expired === true ? 'ログインの有効期限が切れました。もう一度ログインしてください。' : '';
+  saveTok(); render();
+}
+async function setStatus(st){
+  if(st === 'キャンセル' && !confirm('この予約をキャンセルしますか?\n(Googleカレンダーの予定も削除されます)')) return;
+  const nb = document.getElementById('a-notify');
+  const notify = nb ? nb.checked : false;
+  A.busy = true; A.msg = ''; render();
+  try{
+    const j = await api('adminSetStatus', {id:A.sheet, status:st, notify});
+    if(!j.ok){ if(j.error === 'auth'){ logout(true); return; } throw new Error(j.error); }
+    A.sheet = null;
+    A.ok = st === 'キャンセル' ? '予約をキャンセルしました。' + (j.notified ? '(お客様に通知しました)' : notify ? '(通知は送れませんでした)' : '') : `${st}に更新しました。`;
+    reload();
+  } catch(e){ A.msg = errMsg(e.message); }
+  A.busy = false; render();
+}
+function newForm(){
+  const ds = A.screen === 'cal' ? A.sel : A.date;
+  const m = MENU[0];
+  A.form = {date:ds < TODAY ? TODAY : ds, time:'10:00', menuIdx:'0', menuName:'', minutes:m.min, total:m.price, name:'', kana:'', tel:'', email:'', visit:'', note:'', errors:{}};
+  A.msg = ''; A.ok = ''; render();
+}
+async function create(force){
+  const f = A.form, e = {};
+  if(!f.date) e.date = '日付を選んでください';
+  if(!f.name.trim()) e.name = 'お名前を入力してください';
+  if(f.menuIdx === 'x' && !f.menuName.trim()) e.menuName = 'メニュー名を入力してください';
+  if(!(Number(f.minutes) >= 10 && Number(f.minutes) <= 300)) e.minutes = '10〜300分で入力してください';
+  if(f.tel.trim() && !/^0\d{9,10}$/.test(f.tel.replace(/[-\s\u3000]/g,''))) e.tel = '電話番号を正しく入力してください';
+  if(f.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email.trim())) e.email = 'メールアドレスを正しく入力してください';
+  f.errors = e; A.msg = '';
+  if(Object.keys(e).length){ render(); return; }
+  const mn = f.menuIdx === 'x' ? null : MENU[+f.menuIdx];
+  A.busy = true; render();
+  try{
+    const j = await api('adminCreate', {date:f.date, time:f.time, minutes:Number(f.minutes), menuName: mn ? mn.name : f.menuName.trim(),
+      total: f.total === '' || f.total == null ? null : Number(f.total), name:f.name.trim(), kana:f.kana.trim(), tel:f.tel.trim(), email:f.email.trim(),
+      visit:f.visit, note:f.note.trim(), force:!!force});
+    if(!j.ok){
+      if(j.error === 'auth'){ logout(true); return; }
+      if(j.error === 'conflict'){ A.busy = false; render(); if(confirm('他の予約と時間が重なっています。それでも登録しますか?')) return create(true); return; }
+      throw new Error(j.error);
+    }
+    A.form = null; A.date = f.date; A.sel = f.date; A.y = +f.date.slice(0,4); A.m = +f.date.slice(5,7)-1;
+    A.ok = `ご予約を登録しました(${fmtDate(f.date)} ${f.time})。`; reload();
+  } catch(err){ A.msg = errMsg(err.message); }
+  A.busy = false; render();
+}
+
+app.addEventListener('click', e => {
+  const t = e.target.closest('[data-act]');
+  if(!t || t.disabled) return;
+  if(t.dataset.act === 'close' && e.target.closest('[data-stop]') && !t.classList.contains('btn')) return;   // シート内クリックでは閉じない
+  const v = t.dataset.v;
+  switch(t.dataset.act){
+    case 'login': login(); break;
+    case 'logout': logout(false); break;
+    case 'screen': A.screen = v; A.ok = ''; A.msg = ''; render(); break;
+    case 'day': A.date = addDays(A.date, Number(v)); A.ok = ''; render(); break;
+    case 'gototoday': A.date = TODAY; A.ok = ''; render(); break;
+    case 'month': { let y = A.y, m = A.m + Number(v); if(m < 0){m = 11; y--} if(m > 11){m = 0; y++} A.y = y; A.m = m; A.sel = ymd(y,m,(y===+TODAY.slice(0,4)&&m===+TODAY.slice(5,7)-1) ? +TODAY.slice(8) : 1); A.ok = ''; render(); break; }
+    case 'sel': A.sel = v; A.ok = ''; render(); break;
+    case 'open': A.sheet = v; A.msg = ''; A.ok = ''; render(); break;
+    case 'close': A.sheet = null; A.form = null; A.msg = ''; render(); break;
+    case 'status': setStatus(v); break;
+    case 'new': newForm(); break;
+    case 'create': create(false); break;
+    case 'reload': reload(); break;
+  }
+});
+app.addEventListener('input', e => {
+  const t = e.target, f = t.dataset.f;
+  if(f === 'pw') A.pw = t.value;
+  else if(f === 'form') A.form[t.dataset.k] = t.value;
+});
+app.addEventListener('change', e => {
+  const t = e.target, f = t.dataset.f;
+  if(f === 'pick' && t.value){ A.date = t.value; render(); }
+  else if(f === 'menu'){
+    A.form.menuIdx = t.value;
+    if(t.value !== 'x'){ const m = MENU[+t.value]; A.form.minutes = m.min; A.form.total = m.price; }
+    render();
+  }
+  else if(f === 'form' && t.dataset.k === 'time') A.form.time = t.value;
+});
+app.addEventListener('keydown', e => { if(e.key === 'Enter' && e.target.dataset.f === 'pw') login(); });
+document.addEventListener('keydown', e => { if(e.key === 'Escape' && (A.sheet || A.form)){ A.sheet = null; A.form = null; A.msg = ''; render(); } });
+render();
+loadMenu();
+</script>
+</body>
+</html>
