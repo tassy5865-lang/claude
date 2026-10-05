@@ -40,4 +40,27 @@
   } else {
     items.forEach(function (el) { el.classList.add("is-in"); });
   }
+  // ヘッダー: スクロールしたら半透明のアイボリー背景に
+  var header = document.querySelector(".site-header");
+  if (header) {
+    var onScroll = function () { header.classList.toggle("is-scrolled", window.scrollY > 24); };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+  }
+
+  // ヒーローの写真をごくゆっくり動かす(パララックス。動きを減らす設定では無効)
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var photos = document.querySelectorAll(".hero__photo img");
+  if (!reduce && photos.length && window.matchMedia("(min-width: 820px)").matches) {
+    var ticking = false;
+    window.addEventListener("scroll", function () {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(function () {
+        var y = Math.min(window.scrollY, 700);
+        photos.forEach(function (img, i) { img.style.transform = "translateY(" + (y * (i ? -0.05 : 0.08)).toFixed(1) + "px)"; });
+        ticking = false;
+      });
+    }, { passive: true });
+  }
 })();
