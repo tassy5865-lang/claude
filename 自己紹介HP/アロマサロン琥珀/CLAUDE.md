@@ -8,6 +8,8 @@
 - `images/` — `owner-steam.jpg`、`herbs.jpg`、`og-image.png`。`tools/prepare_images.py` で元画像から再生成できる(要Pillow)
 - `tools/check_site.py` — 料金・リンク・必須文言・alt・JSON-LD の検査。変更後は `python tools/check_site.py`
 
+- オープニング動画: `images/opening.mp4`(縦・スマホ)/`images/opening-wide.mp4`(横・PC)。8秒を1回再生→フェードアウト→サイト表示、ボタンなし。画面比で自動切替(`index.html` の `#intro`、`main.js` 末尾)
+
 ## ルール
 - 料金・メニューは `アロマサロン琥珀　メニュー.png`(店主のメニュー表)を正とする(2026-10-04に予約サイト基準から変更。予約サイトの表示とは差がある)。変更したら `check_site.py` の `PRICES`・`ROWS` と `index.html` の両方を直す
 - 屋号の表記は「琥珀(こはく)」(店主が自分で書いた自己紹介文の「アロマサロン琥珀」「琥珀サロン」は、原文のまま載せている)。商標 ® を付ける語は仕様どおり
