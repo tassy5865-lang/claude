@@ -320,18 +320,4 @@ p { margin: 0 0 1.2em; }
 }
 .has-intro .intro.is-done { opacity: 0; pointer-events: none; }
 .intro__video { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
-.intro__bg { display: none; }
-/* PC・横長画面: 縦動画は高さいっぱいで中央に、背景は同じ映像をぼかして敷く */
-@media (min-aspect-ratio: 1/1) {
-  .intro__bg {
-    display: block; position: absolute; inset: -6%; width: 112%; height: 112%;
-    filter: blur(36px) brightness(.75) saturate(1.1);
-  }
-  .intro__video {
-    position: absolute; top: 0; left: 50%; width: auto; height: 100%;
-    aspect-ratio: 720 / 1280; object-fit: cover; transform: translateX(-50%);
-    -webkit-mask-image: linear-gradient(90deg, transparent, #000 16%, #000 84%, transparent);
-            mask-image: linear-gradient(90deg, transparent, #000 16%, #000 84%, transparent);
-  }
-}
 .has-intro.is-intro-playing { overflow: hidden; }

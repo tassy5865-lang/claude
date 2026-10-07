@@ -78,22 +78,9 @@
       setTimeout(function () { intro.remove(); root.classList.remove("has-intro"); }, 1100);
     };
     root.classList.add("is-intro-playing");
-    // 横長画面: 背景のぼかしキャンバスに動画の各コマを映す
-    var bg = intro.querySelector(".intro__bg");
-    var ctx = bg && bg.getContext && bg.getContext("2d");
-    if (ctx && window.matchMedia("(min-aspect-ratio: 1/1)").matches) {
-      var vw = 64, vh = 36;
-      var paint = function () {
-        if (finished) return;
-        if (video.videoWidth) {
-          // 画面比(幅広)いっぱいに、動画の中ほど(ロゴ周辺)を切り出して拡大
-          var sh = video.videoWidth * vh / vw;
-          ctx.drawImage(video, 0, video.videoHeight * 0.38 - sh / 2, video.videoWidth, sh, 0, 0, vw, vh);
-        }
-        requestAnimationFrame(paint);
-      };
-      requestAnimationFrame(paint);
-    }
+    // 横長画面(PC)は横長動画、縦長画面(スマホ)は縦長動画
+    var wide = window.matchMedia("(min-aspect-ratio: 1/1)").matches;
+    video.src = wide ? video.getAttribute("data-src-wide") : video.getAttribute("data-src-tall");
     video.addEventListener("ended", finish);
     video.addEventListener("error", finish);
     var p = video.play();
