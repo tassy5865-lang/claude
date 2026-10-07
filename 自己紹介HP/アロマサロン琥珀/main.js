@@ -63,4 +63,28 @@
       });
     }, { passive: true });
   }
+
+  // オープニング動画: 1回再生 → フェードアウト → サイト表示(ボタンなし)
+  var root = document.documentElement;
+  var intro = document.getElementById("intro");
+  var video = intro && intro.querySelector("video");
+  if (intro && video && !reduce) {
+    var finished = false;
+    var finish = function () {
+      if (finished) return;
+      finished = true;
+      intro.classList.add("is-done");
+      root.classList.remove("is-intro-playing");
+      setTimeout(function () { intro.remove(); root.classList.remove("has-intro"); }, 1100);
+    };
+    root.classList.add("is-intro-playing");
+    video.addEventListener("ended", finish);
+    video.addEventListener("error", finish);
+    var p = video.play();
+    if (p && p.catch) p.catch(finish);
+    setTimeout(finish, 12000); // 万一止まったときの保険
+  } else if (intro) {
+    intro.remove();
+    root.classList.remove("has-intro");
+  }
 })();

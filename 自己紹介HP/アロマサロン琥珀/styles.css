@@ -311,3 +311,14 @@ p { margin: 0 0 1.2em; }
   .js .reveal img { filter: none; }
   .sticky-cta, .site-header, .hero__glow, .hero::before, .hero::after { display: none; }
 }
+
+/* オープニング動画(8秒を1回再生→フェードアウト→サイト表示。操作ボタンなし) */
+.intro { display: none; }
+.has-intro .intro {
+  display: block; position: fixed; inset: 0; z-index: 1000; background: #000;
+  opacity: 1; transition: opacity 1s ease; pointer-events: auto;
+}
+.has-intro .intro.is-done { opacity: 0; pointer-events: none; }
+.intro__video { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
+@media (min-aspect-ratio: 1/1) { .intro__video { object-fit: contain; } }
+.has-intro.is-intro-playing { overflow: hidden; }
