@@ -39,7 +39,14 @@
     "sameAs": ["https://www.instagram.com/kohaku_salon.himeji/"]
   }
   </script>
-  <script>document.documentElement.classList.add("has-intro");</script>
+  <script>
+  // オープニング動画は、そのタブ(セッション)で初回のみ。見たあとの再訪・再読込では出さない
+  (function () {
+    var seen = false;
+    try { seen = sessionStorage.getItem("kohaku-intro") === "1"; } catch (e) {}
+    if (!seen) document.documentElement.classList.add("has-intro");
+  })();
+  </script>
 </head>
 <body>
   <div class="intro" id="intro" aria-hidden="true">

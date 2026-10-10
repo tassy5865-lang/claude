@@ -68,7 +68,9 @@
   var root = document.documentElement;
   var intro = document.getElementById("intro");
   var video = intro && intro.querySelector("video");
-  if (intro && video && !reduce) {
+  // 初回かどうかは <head> の判定(has-intro クラスの有無)に従う
+  if (intro && video && !reduce && root.classList.contains("has-intro")) {
+    try { sessionStorage.setItem("kohaku-intro", "1"); } catch (e) {}
     var finished = false;
     var finish = function () {
       if (finished) return;
@@ -83,9 +85,14 @@
     video.src = wide ? video.getAttribute("data-src-wide") : video.getAttribute("data-src-tall");
     video.addEventListener("ended", finish);
     video.addEventListener("error", finish);
+    // 再生が始まらない(通信が遅い等)ときは5秒で諦めてサイトを表示。始まったら動画の長さ(8秒)+余裕で保険
+    var stallTimer = setTimeout(finish, 5000);
+    video.addEventListener("playing", function () {
+      clearTimeout(stallTimer);
+      setTimeout(finish, 10000);
+    }, { once: true });
     var p = video.play();
     if (p && p.catch) p.catch(finish);
-    setTimeout(finish, 12000); // 万一止まったときの保険
   } else if (intro) {
     intro.remove();
     root.classList.remove("has-intro");
