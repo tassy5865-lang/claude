@@ -98,4 +98,26 @@
     intro.remove();
     root.classList.remove("has-intro");
   }
+
+  // アクセス解析: 予約・LINE・Instagram・地図ボタンのクリックをGA4のイベントとして送る
+  var tracked = [
+    { test: /^https:\/\/tol-app\.jp\//, name: "click_reserve" },
+    { test: /^https:\/\/line\.me\//, name: "click_line" },
+    { test: /^https:\/\/(ig\.me|www\.instagram\.com)\//, name: "click_instagram" },
+    { test: /^https:\/\/www\.google\.com\/maps\//, name: "click_map" }
+  ];
+  document.addEventListener("click", function (e) {
+    var a = e.target.closest && e.target.closest("a[href]");
+    if (!a || typeof window.gtag !== "function") return;
+    var href = a.getAttribute("href");
+    for (var i = 0; i < tracked.length; i++) {
+      if (tracked[i].test.test(href)) {
+        window.gtag("event", tracked[i].name, {
+          link_url: href,
+          link_text: (a.textContent || "").replace(/\s+/g, " ").trim().slice(0, 40)
+        });
+        break;
+      }
+    }
+  });
 })();
