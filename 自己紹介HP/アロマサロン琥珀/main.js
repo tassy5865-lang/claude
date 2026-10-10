@@ -70,7 +70,8 @@
   var video = intro && intro.querySelector("video");
   // 初回かどうかは <head> の判定(has-intro クラスの有無)に従う
   if (intro && video && !reduce && root.classList.contains("has-intro")) {
-    try { sessionStorage.setItem("kohaku-intro", "1"); } catch (e) {}
+    try { localStorage.setItem("kohaku-intro", "1"); } catch (e) {}
+    try { sessionStorage.setItem("kohaku-intro", "1"); } catch (e) {} // localStorage不可時の代替
     var finished = false;
     var finish = function () {
       if (finished) return;

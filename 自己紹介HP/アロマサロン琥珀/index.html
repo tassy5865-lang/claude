@@ -40,10 +40,11 @@
   }
   </script>
   <script>
-  // オープニング動画は、そのタブ(セッション)で初回のみ。見たあとの再訪・再読込では出さない
+  // オープニング動画は、そのブラウザで初回のみ。見たあとはリンクを開き直しても出さない
   (function () {
     var seen = false;
-    try { seen = sessionStorage.getItem("kohaku-intro") === "1"; } catch (e) {}
+    try { seen = localStorage.getItem("kohaku-intro") === "1"; } catch (e) {}
+    if (!seen) { try { seen = sessionStorage.getItem("kohaku-intro") === "1"; } catch (e) {} }
     if (!seen) document.documentElement.classList.add("has-intro");
   })();
   </script>
