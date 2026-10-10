@@ -246,6 +246,7 @@ p { margin: 0 0 1.2em; }
 /* ===== Footer・固定CTA ===== */
 .footer { text-align: center; padding: 56px 16px 40px; color: var(--color-text-soft); font-size: 13px; letter-spacing: .1em; }
 .footer__logo { width: 140px; height: auto; margin: 0 auto 14px; }
+.footer__note { margin: 0 auto 14px; font-size: 11px; line-height: 1.8; letter-spacing: .04em; }
 .sticky-cta {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: flex; gap: 8px;
   padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: rgba(247, 243, 237, .92);
