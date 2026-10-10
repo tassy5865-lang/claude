@@ -7,12 +7,19 @@ test('管理画面: キャンセル時の通知チェック(デモ表示)', asyn
   type('#pw', 'demo'); click('[data-act=login]'); await sleep(1000);
 
   // 確定の予約を開く → 通知チェックは初期ON
+  const findItem = () => [...d.querySelectorAll('.item')].find(x => !/キャンセル|来店済/.test(x.textContent));
   const open = () => {
-    const items = [...d.querySelectorAll('.item')];
-    const it = items.find(x => !/キャンセル|来店済/.test(x.textContent));
+    const it = findItem();
     assert.ok(it, '確定の予約が見つかりません');
     it.click();
   };
+  // 夜間に実行すると今日の予約は全て来店済になるため、確定の予約が出るまで翌日以降の日付を順に開く
+  if (!findItem()) {
+    click('[data-act=screen][data-v=cal]'); await sleep(300);
+    const cells = [...d.querySelectorAll('.cell[data-act=sel]')];
+    const from = cells.findIndex(c => c.classList.contains('today'));
+    for (const c of cells.slice(from + 1)) { c.click(); await sleep(100); if (findItem()) break; }
+  }
   open();
   const nb = d.querySelector('#a-notify');
   assert.ok(nb && nb.checked, '通知チェックが初期ONで表示される');

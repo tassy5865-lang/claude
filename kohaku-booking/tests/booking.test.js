@@ -45,8 +45,13 @@ test('お客様側: LINEから開いた予約の日時変更(デモ表示)', asy
   type('#mk-code', '123456'); click('[data-act=verify]'); await sleep(1500);
   await sleep(900);
   assert.match(text(), /日時の変更/);
-  [...d.querySelectorAll('.day.ok')][2].click();
-  [...d.querySelectorAll('.slot:not(:disabled)')][1].click();
+  // 空き枠が2つ以上ある日を選ぶ(デモの空きは日付から生成されるため、決め打ちの日だと日によって枠が足りない)
+  // クリックで画面が再描画されるので、日付ごとに要素を取り直す
+  const okDates = [...d.querySelectorAll('.day.ok')].map(b => b.dataset.v);
+  const slotsOf = () => [...d.querySelectorAll('.slot:not(:disabled)')];
+  const day = okDates.find(ds => { d.querySelector(`.day[data-v="${ds}"]`).click(); return slotsOf().length >= 2; });
+  assert.ok(day, '空き枠が2つ以上ある日が見つかりません');
+  slotsOf()[1].click();
   click('[data-act=rs-submit]'); await sleep(1800);
   assert.match(text(), /日時を変更しました/);
   assert.deepStrictEqual(errors.filter(e => !/scrollTo/.test(e)), []);
