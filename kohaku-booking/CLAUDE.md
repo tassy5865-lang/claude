@@ -42,7 +42,7 @@ gas/Code.gs (Web App: 実行=自分 / アクセス=全員)
   - 公開(認証なし): `couponCheck`(確認画面の「適用」用。`{code,email,menuId,optionIds,minutes}` → `{name,discount,total}`、予約は作らない。メール別10回/10分・全体100回/10分を超えると `locked`)
   - お客様: `sendCode` / `verifyCode`(メール6桁コード→6時間トークン) / `me` / `cancel` / `reschedule` / `updateProfile` / `logout`
   - LINE: `lineLinkCode`(要ログイン) / `lineLink`(IDトークン+連携コード) / `lineLogin`(IDトークン) / `lineUnlink`
-  - 管理: `adminLogin` / `adminList` / `adminSetStatus` / `adminCreate` / `adminSetClosed`(臨時休業の登録/解除) / `adminCustomers`(顧客一覧+集計) / `adminCustomerUpdate`(Instagram名・流入元・初回問い合わせ日・メモ) / `adminMenu`(メニュー・オプション一覧。表示OFFを含む) / `adminMenuSave` / `adminOptionSave`(1件の更新・新規追加。保存後に `menu:v1` キャッシュを消すので予約サイトへ即反映。検証違反は `{error:'bad_field', field}`、ID重複は `duplicate_id`) / `adminCoupons`(クーポン一覧。利用数=非キャンセル予約数・表示用状態つき) / `adminCouponSave`(`{item, create}` で発行・更新。コード空なら `CP-`+6文字を自動生成。検証違反は `bad_field`+`field`、コード重複は `duplicate_code`、更新対象なしは `not_found`)(トークン6時間。パスワードは `ADMIN_PASSWORD`)
+  - 管理: `adminLogin` / `adminList` / `adminSetStatus` / `adminCreate` / `adminSetClosed`(臨時休業の登録/解除) / `adminCustomers`(顧客一覧+集計) / `adminCustomerUpdate`(Instagram名・流入元・初回問い合わせ日・メモ) / `adminMenu`(メニュー・オプション一覧。表示OFFを含む) / `adminMenuSave` / `adminOptionSave`(1件の更新・新規追加。保存後に `menu:v1` キャッシュを消すので予約サイトへ即反映。検証違反は `{error:'bad_field', field}`、ID重複は `duplicate_id`) / `adminCoupons`(クーポン一覧。利用数=非キャンセル予約数・表示用状態つき) / `adminCouponSave`(`{item, create}` で発行・更新。コード空なら `CP-`+6文字を自動生成。検証違反は `bad_field`+`field`、コード重複は `duplicate_code`、更新対象なしは `not_found`) / `adminAnalytics`(期間 `{from,to}` の集計。売上=来店済の割引後金額、見込み・未処理・金額未定・キャンセル率・前期間比、推移(62日以内は日別・超は月別)、メニュー別・流入元別・新規/再来。読み取り専用で個人情報なし。期間は400日以内、違反は `bad_range`)(トークン6時間。パスワードは `ADMIN_PASSWORD`)
   - `adminList` は `closures`(休業日の配列)を返す。予約の応答には `refSource`(流入元)・`inquiryId`(問い合わせID)が入る(既存の `source`=web/admin はそのまま)
 - 予約リンク(`index.html`): `?source=instagram_dm|instagram|line|web|other` / `&inquiry=<英数字-_ 32文字以内>` / `&menu=<メニューID>`。LIFF経由(`liff.state`)も解釈。無効な値は無視。予約POSTの `source` / `inquiry` をGASが再検証して保存する
 - レスポンスは `{ok:true,...}` / `{ok:false,error:'code'}`。エラーコード→日本語は `index.html` の `errMsg` / `admin.html` の `errMsg`。
@@ -79,12 +79,13 @@ gas/Code.gs (Web App: 実行=自分 / アクセス=全員)
 - **クーポンの無効理由は区別して返さない**: 存在しない・期間外・対象外メール・無効は全て `bad_coupon`(コードの当て推量対策)。`couponCheck` は試行回数を制限(`CacheService`。厳密なレート制限ではない)。
 - **割引・利用判定は常にサーバー**: クライアントの割引額・合計は見ない。確定時にロック内で再判定する。利用判定はメール単位なので、別メールなら同じコードを再利用できる(全員向けコード=1メール1回)。
 - **管理画面の予約追加(電話予約)にはクーポンを自動適用しない**。
+- **売上は「来店済」の予約だけを実績とする**: 確定は見込み、過去日付のまま確定のものは「未処理」として可視化し、売上には入れない。新規/再来は予約時の自己申告。流入元は予約リンクから来た予約のみ(それ以外は未記録)。
 
 ## 実装済み / 未実装
-**実装済み**: メニュー/オプションのシート管理 + 予約時のサーバー側料金再計算 / 予約フロー(7ステップ)/ My Kohaku(次回・履歴・クーポン表示・登録情報)/ 日時変更・キャンセル / 管理画面(今日・カレンダー・詳細・状態変更・予約追加・**営業日(臨時休業の登録/解除)**・**顧客一覧/詳細/編集**・**予約リンク発行**・**メニュー/オプションの編集・追加**・**クーポンの発行/編集**。PCは左サイドバー、スマホは下タブ)/ 予約リンクによる流入元・問い合わせIDの記録とメニュー事前選択 / 顧客ID・LINE userId保存項目 / LINE連携(LIFF)/ 確認・2日前・当日通知 / **クーポン管理(発行・編集・無効化)と予約時の自動適用(金額OFF/%OFF、1人1回)**
+**実装済み**: メニュー/オプションのシート管理 + 予約時のサーバー側料金再計算 / 予約フロー(7ステップ)/ My Kohaku(次回・履歴・クーポン表示・登録情報)/ 日時変更・キャンセル / 管理画面(今日・カレンダー・詳細・状態変更・予約追加・**営業日(臨時休業の登録/解除)**・**顧客一覧/詳細/編集**・**予約リンク発行**・**メニュー/オプションの編集・追加**・**クーポンの発行/編集**・**売上・来店分析(「分析」画面)**。PCは左サイドバー、スマホは下タブ)/ 予約リンクによる流入元・問い合わせIDの記録とメニュー事前選択 / 顧客ID・LINE userId保存項目 / LINE連携(LIFF)/ 確認・2日前・当日通知 / **クーポン管理(発行・編集・無効化)と予約時の自動適用(金額OFF/%OFF、1人1回)**
 
 **未実装(優先度の目安)**
-1. 管理画面の残り: **売上・来店分析**、**スタッフ管理**。いずれもナビ(`admin.html` の `NAV` / `VIEWS`)に足す
+1. 管理画面の残り: **スタッフ管理**。ナビ(`admin.html` の `NAV` / `VIEWS`)に足す
 2. ~~管理画面でキャンセルした際のお客様への通知~~ → 実装済み(`adminSetStatus` の `notify`、詳細画面のチェックで ON/OFF。GAS実機は未確認)
 3. LINEブロック判定の実機調整(`linePush_` の停止条件は推測。実際の応答を見て調整)
 4. 週表示(時間軸)カレンダー、メニュー変更を伴う予約変更
