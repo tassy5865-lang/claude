@@ -1,5 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert');
+const fs = require('fs');
+const path = require('path');
+const vm = require('node:vm');
 const { load, sleep } = require('./helpers');
 
 test('管理画面: キャンセル時の通知チェック(デモ表示)', async () => {
@@ -157,4 +160,35 @@ test('管理画面: 顧客の詳細は HTML をエスケープして表示する
   assert.strictEqual(w.__pwned, undefined);
   assert.strictEqual(d.querySelector('.sheet img'), null);
   assert.deepStrictEqual(errors, []);
+});
+
+test('管理画面: 予約リンク発行(流入元・問い合わせID・メニューからURLを作る)', async () => {
+  const { click, type, d, errors } = load('admin.html');
+  type('#pw', 'demo'); click('[data-act=login]'); await sleep(1000);
+  click('[data-act=section][data-v=links]'); await sleep(100);
+  const url = () => d.querySelector('#l-url').value;
+  assert.strictEqual(url(), 'https://example.test/index.html?source=instagram_dm');
+  type('#l-inquiry', 'IG-00125');
+  type('#l-menu', 'aroma60');
+  assert.strictEqual(url(), 'https://example.test/index.html?source=instagram_dm&inquiry=IG-00125&menu=aroma60');
+  type('#l-source', 'line');
+  assert.match(url(), /source=line/);
+  // 問い合わせIDが不正なら発行しない
+  type('#l-inquiry', 'あ b&c');
+  assert.strictEqual(url(), '');
+  assert.match(d.querySelector('#link-out').textContent, /英数字/);
+  // コピー(clipboard が使えない環境では選択して案内する)
+  type('#l-inquiry', 'IG-1');
+  click('[data-act=copylink]'); await sleep(50);
+  assert.match(d.querySelector('#link-out').textContent, /コピー/);
+  assert.deepStrictEqual(errors, []);
+});
+
+test('管理画面: メニューの予備配列は GAS の初期データ(表示ON・おまかせ除く)と同じID・並び', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'gas', 'Code.gs'), 'utf8');
+  const ctx = vm.createContext({ console });
+  vm.runInContext(src + '\n;this.__s = { SEED_MENU };', ctx);
+  const ids = Array.from(ctx.__s.SEED_MENU.filter(r => r[8] === 'ON' && r[7] !== 'omakase').map(r => r[0]));
+  const { w } = load('admin.html');
+  assert.deepStrictEqual(JSON.parse(w.eval('JSON.stringify(MENU.map(m => m.id))')), ids);
 });
