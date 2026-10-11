@@ -270,9 +270,20 @@ let OPTIONS = [
 const OMAKASE_MINS = [60,90,120];
 let MENU_LOADING = !!CONFIG.GAS_URL;
 const MENU_TIMEOUT_MS = 8000;
+/** 予約リンクの menu= を、メニュー一覧が確定した後に一度だけ反映する(一致しなければ何もしない) */
+function applyRefMenu(){
+  const id = S.ref && S.ref.menu;
+  if(!id || S.refMenuDone || S.screen !== 'top' || MENU_LOADING) return;
+  S.refMenuDone = true;
+  const m = MENU.find(x => x.id === id);
+  if(!m) return;
+  S.menu = m; S.opts = []; S.date = null; S.time = null;
+  if(m.cats && m.cats[0]) S.cat = m.cats[0];
+  go('detail');
+}
 /** スプレッドシートのメニューを取得して差し替える。失敗・無応答のときは予備配列のまま。fresh=true はGAS側のキャッシュを使わない */
 async function loadMenu(fresh){
-  if(!CONFIG.GAS_URL){ MENU_LOADING = false; return; }
+  if(!CONFIG.GAS_URL){ MENU_LOADING = false; applyRefMenu(); return; }
   try{
     const req = (async () => (await fetch(`${CONFIG.GAS_URL}?action=menu${fresh ? '&fresh=1' : ''}`)).json())();
     const j = await Promise.race([req, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), MENU_TIMEOUT_MS))]);
@@ -284,6 +295,7 @@ async function loadMenu(fresh){
     }
   }catch(e){ /* 予備配列で続行 */ }
   MENU_LOADING = false;
+  applyRefMenu();
   if(['top','menu','detail','date','confirm'].includes(S.screen)) render();   // 入力中の画面は再描画しない
 }
 const CONCERNS = ['疲労','肩・首','冷え','むくみ','睡眠','ストレス','肌','その他'];
@@ -305,14 +317,39 @@ const TODAY = new Date(Date.now()+9*3600e3).toISOString().slice(0,10);
 const [TY,TM] = TODAY.split('-').map(Number);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+/* ---------- 予約リンクのパラメータ(?source=…&inquiry=…&menu=…) ---------- */
+const REF_SOURCES = ['instagram_dm','instagram','line','web','other'];
+const REF_KEY = 'kohaku_ref';
+const cleanRef = o => ({
+  source: REF_SOURCES.includes(o && o.source) ? o.source : '',
+  inquiry: /^[A-Za-z0-9_-]{1,32}$/.test((o && o.inquiry) || '') ? o.inquiry : '',
+  menu: /^[A-Za-z0-9_-]{1,40}$/.test((o && o.menu) || '') ? o.menu : ''
+});
+/** URLの検索部(LIFF経由なら liff.state の中身も)から、有効な値だけを取り出す */
+function parseRef(search){
+  const q = new URLSearchParams(search);
+  const st = q.get('liff.state');
+  if(st){ new URLSearchParams(st.replace(/^[^?]*\?/, '')).forEach((v, k) => { if(!q.has(k)) q.set(k, v); }); }
+  return cleanRef({source:q.get('source'), inquiry:q.get('inquiry'), menu:q.get('menu')});
+}
+/** 今回のURLに値があればそれを記憶し(LIFFログインの再読込・リロード対策)、無ければ記憶から復元する */
+function loadRef(){
+  const r = parseRef(location.search);
+  if(r.source || r.inquiry || r.menu){ try{ sessionStorage.setItem(REF_KEY, JSON.stringify(r)); }catch(e){} return r; }
+  try{ const j = JSON.parse(sessionStorage.getItem(REF_KEY) || 'null'); if(j) return {...cleanRef(j), menu:''}; }catch(e){}
+  return {source:'', inquiry:'', menu:''};
+}
+
 /* ---------- 状態 ---------- */
 const fresh = () => ({
   screen:'top', cat:'first', menu:null, opts:[], omakase:{mins:60, concerns:[]},
   y:TY, m:TM-1, date:null, time:null, busy:null, loading:false, availErr:false,
   info:{name:'', kana:'', tel:'', email:'', visit:'first', note:'', website:''},
-  errors:{}, banner:'', submitting:false, result:null
+  errors:{}, banner:'', submitting:false, result:null,
+  ref:{source:'', inquiry:'', menu:''}, refMenuDone:false
 });
 let S = fresh();
+S.ref = loadRef();   // 予約リンクから来たときだけ値が入る。予約完了後の fresh() では引き継がない
 // My Kohaku(ログイン状態は予約フローのリセットとは別に保持)
 const MY = {email:'', code:'', token:'', data:null, tab:'next', msg:'', ok:'', loading:false, failed:false, busy:false, prof:null, errors:{}};
 try{ MY.token = sessionStorage.getItem('kohaku_token') || ''; MY.email = sessionStorage.getItem('kohaku_email') || ''; }catch(e){}
@@ -765,7 +802,8 @@ async function submit(){
     date:S.date, time:S.time, menuId:m.id, optionIds:S.opts.slice(),
     ...(m.kind==='omakase' ? {minutes:S.omakase.mins} : {}),
     name:i.name.trim(), kana:i.kana.trim(), tel:i.tel.trim(), email:i.email.trim(),
-    visit:i.visit==='first' ? '初回' : '再来', note:notes, website:i.website
+    visit:i.visit==='first' ? '初回' : '再来', note:notes, website:i.website,
+    ...(S.ref.source ? {source:S.ref.source} : {}), ...(S.ref.inquiry ? {inquiry:S.ref.inquiry} : {})
   };
   try{
     if(!CONFIG.GAS_URL){
@@ -787,6 +825,7 @@ async function submit(){
       }
       S.result = {id:j.id};
     }
+    try{ sessionStorage.removeItem(REF_KEY); }catch(e){}   // 予約が済んだら流入元の記憶は使わない
     S.submitting = false; history.replaceState({screen:'done'}, ''); S.screen = 'done'; render(); window.scrollTo(0,0);
   } catch(err){
     S.submitting = false; S.banner = '送信できませんでした。通信状況をご確認のうえ、もう一度お試しください。'; render();
