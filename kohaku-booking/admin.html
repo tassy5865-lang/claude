@@ -149,6 +149,21 @@ main{flex:1;padding-bottom:150px}
 .tag.st-active{background:var(--moss);color:#fff}
 .tag.st-upcoming{background:#E3EBD9;color:var(--moss)}
 .tag.st-expired,.tag.st-disabled,.tag.st-unset{background:#F0E4E0;color:var(--danger)}
+/* analytics */
+.arange{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:10px 16px 0}
+.arange input{min-height:40px;padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:#fff;font-size:15px}
+.arange .btn{width:auto;padding:8px 16px}
+.anote{margin:12px 16px 0;padding:10px 14px;border-radius:6px;background:#FFF4E0;color:var(--brown);font-size:13.5px}
+.abars{display:flex;align-items:flex-end;gap:2px;height:120px;padding:0 16px;margin-top:8px}
+.abar{flex:1;height:100%;display:flex;align-items:flex-end}
+.abar i{display:block;width:100%;background:var(--caramel);border-radius:2px 2px 0 0;min-height:1px}
+.aaxis{display:flex;justify-content:space-between;padding:4px 16px 0;font-size:12px;color:var(--muted)}
+.arow{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px 16px;border-bottom:1px solid var(--line);font-size:14px}
+.arow .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.arow .bar{height:10px;background:var(--sand);border-radius:99px;overflow:hidden}
+.arow .bar i{display:block;height:100%;background:var(--caramel)}
+.arow .v{text-align:right;color:var(--muted);font-size:13px;white-space:nowrap}
+.stat small + b + small{margin-top:2px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -217,6 +232,34 @@ const demo = (() => {
 const demoClosed = new Set();   // デモ表示の臨時休業(画面内のみ保持)
 /** デモ表示のメニュー管理(画面内のメモリのみ。予備配列から作る) */
 /** デモ表示のクーポン管理(画面内のメモリのみ) */
+/** デモ表示の分析(demo 予約から画面内で集計。GAS の analyticsSummary_ と同じ定義) */
+function demoAnalytics(from, to){
+  const dayN = (a, b) => Math.round((new Date(b + 'T00:00:00Z') - new Date(a + 'T00:00:00Z')) / 864e5) + 1;
+  const okDate = s => /^\d{4}-\d{2}-\d{2}$/.test(s || '') && !isNaN(new Date(s + 'T00:00:00Z'));
+  if(!okDate(from) || !okDate(to) || from > to || dayN(from, to) > 400) return {ok:false, error:'bad_range'};
+  const totals = (a, b) => { const v = demo.filter(r => r.status === '来店済' && r.date >= a && r.date <= b); return {sales:v.reduce((s, r) => s + (r.total || 0), 0), visits:v.length}; };
+  const mine = demo.filter(r => r.date >= from && r.date <= to);
+  const visited = mine.filter(r => r.status === '来店済'), priced = visited.filter(r => r.total != null);
+  const sales = priced.reduce((s, r) => s + r.total, 0);
+  const conf = mine.filter(r => r.status === '確定'), upc = conf.filter(r => r.date >= TODAY);
+  const cancelled = mine.filter(r => r.status === 'キャンセル').length, denom = visited.length + conf.length + cancelled;
+  const n = dayN(from, to), unit = n <= 62 ? 'day' : 'month', keys = [];
+  if(unit === 'day'){ for(let i = 0; i < n; i++) keys.push(addDays(from, i)); }
+  else { let y = +from.slice(0, 4), m = +from.slice(5, 7); const ey = +to.slice(0, 4), em = +to.slice(5, 7); while(y < ey || (y === ey && m <= em)){ keys.push(`${y}-${pad(m)}`); if(++m > 12){ m = 1; y++; } } }
+  const pts = Object.fromEntries(keys.map(k => [k, {key:k, sales:0, visits:0}]));
+  visited.forEach(r => { const p = pts[unit === 'day' ? r.date : r.date.slice(0, 7)]; p.visits++; p.sales += r.total || 0; });
+  const group = keyOf => { const g = new Map(); visited.forEach(r => { const k = keyOf(r), o = g.get(k) || {key:k, visits:0, sales:0}; o.visits++; o.sales += r.total || 0; g.set(k, o); }); return [...g.values()]; };
+  const cmp = (a, b) => (b.sales - a.sales) || (b.visits - a.visits) || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0);
+  const byMenu = group(r => r.menuName).sort(cmp).map(o => ({name:o.key, visits:o.visits, sales:o.sales}));
+  const bySource = group(r => r.refSource || (r.source === 'admin' ? 'admin' : 'none')).sort(cmp);
+  const vt = {first:{visits:0, sales:0}, repeat:{visits:0, sales:0}, unknown:{visits:0, sales:0}};
+  visited.forEach(r => { const o = vt[r.visit === '初回' ? 'first' : r.visit === '再来' ? 'repeat' : 'unknown']; o.visits++; o.sales += r.total || 0; });
+  const pr = {from:addDays(from, -n), to:addDays(from, -1)};
+  return {ok:true, from, to, today:TODAY,
+    summary:{sales, visits:visited.length, avgSpend:priced.length ? Math.round(sales / priced.length) : null, unpriced:visited.length - priced.length,
+      upcoming:{count:upc.length, amount:upc.reduce((s, r) => s + (r.total || 0), 0)}, pending:conf.length - upc.length, cancelled, cancelRate:denom ? cancelled / denom : null},
+    prev:{...pr, ...totals(pr.from, pr.to)}, series:{unit, points:keys.map(k => pts[k])}, byMenu, bySource, visitType:vt};
+}
 const demoCoupons = [
   {code:'WELCOME500', name:'ご来店ありがとうクーポン', desc:'', target:'', from:'', to:'2099-12-31', status:'有効', type:'金額', value:500, used:2},
   {code:'AUTUMN10', name:'秋のリピートクーポン', desc:'次回のご利用が10%OFF', target:'', from:'', to:'2099-12-31', status:'有効', type:'割合', value:10, used:0},
@@ -364,6 +407,7 @@ async function api(action, extra = {}){
         minutes:extra.minutes, name:extra.name, kana:extra.kana||'', tel:extra.tel||'', email:extra.email||'', visit:extra.visit||'', customerId:'', source:'admin', note:'(管理画面から登録)'+(extra.note?'\n'+extra.note:''), menuId:''});
       return {ok:true, id};
     }
+    case 'adminAnalytics': return demoAnalytics(extra.from, extra.to);
     case 'adminCoupons': return {ok:true, coupons:demoCoupons.map(demoCouponView)};
     case 'adminCouponSave': return demoCouponSave(extra);
     case 'adminMenu': return {ok:true, menu:demoMenuAdm.menu.map(x => ({...x})).sort((a,b) => a.order - b.order),
@@ -804,6 +848,76 @@ async function couponSave(){
 }
 VIEWS.coupon = couponAdminView;
 NAV.push(['coupon','クーポン']);
+/* ---------- 売上・来店分析 ---------- */
+const ANA_SRC = {...SRC_LABEL, admin:'管理画面から登録(電話など)', none:'流入元の記録なし'};
+const ANA_PERIODS = [['month','今月'], ['last','先月'], ['q','直近3か月'], ['year','今年']];
+function newAna(){ return {period:'month', from:'', to:'', cfrom:'', cto:'', data:null, loading:false, failed:false, err:''}; }
+A.ana = newAna();
+/** 期間チップ → {from, to}(JSTの今日 TODAY を基準にする) */
+function anaRange(key){
+  const y = +TODAY.slice(0, 4), m = +TODAY.slice(5, 7);
+  const first = (yy, mm) => `${yy}-${pad(mm)}-01`;
+  if(key === 'month') return {from:first(y, m), to:TODAY};
+  if(key === 'last'){ const py = m === 1 ? y - 1 : y, pm = m === 1 ? 12 : m - 1; return {from:first(py, pm), to:`${py}-${pad(pm)}-${pad(daysIn(py, pm - 1))}`}; }
+  if(key === 'q'){ let yy = y, mm = m - 2; if(mm < 1){ mm += 12; yy--; } return {from:first(yy, mm), to:TODAY}; }
+  return {from:`${y}-01-01`, to:TODAY};   // 'year'
+}
+function ensureAna(){
+  const N = A.ana;
+  if(N.data || N.loading || N.failed) return;
+  if(!N.from){ const r = anaRange(N.period); N.from = r.from; N.to = r.to; }
+  N.loading = true;
+  const key = N.from + '~' + N.to;
+  api('adminAnalytics', {from:N.from, to:N.to}).then(j => {
+    if(!j.ok){ if(j.error === 'auth'){ logout(true); return; } throw new Error(j.error); }
+    if(key === A.ana.from + '~' + A.ana.to) N.data = j;   // 期間が切り替わっていたら捨てる(次の描画で取り直す)
+  }).catch(e => { N.failed = true; N.err = e && e.message; }).finally(() => { N.loading = false; render(); });
+}
+const pctText = v => v == null ? '—' : (Math.round(v * 1000) / 10) + '%';
+const deltaText = (cur, prev) => prev ? ((cur >= prev ? '+' : '') + (Math.round((cur - prev) / prev * 1000) / 10) + '%') : '—';
+function anaRowsHTML(list, labelOf){
+  if(!list.length) return '<p class="empty" style="padding:14px">該当はありません。</p>';
+  const max = Math.max(1, ...list.map(o => o.sales));
+  return list.map(o => `<div class="arow"><span class="nm">${esc(labelOf(o))}</span><span class="bar"><i style="width:${Math.round(o.sales / max * 100)}%"></i></span>
+    <span class="v">${yen(o.sales)} / ${o.visits}件</span></div>`).join('');
+}
+function anaView(){
+  ensureAna();
+  const N = A.ana;
+  const chips = ANA_PERIODS.map(([k, l]) => `<button class="chip" aria-pressed="${N.period === k}" data-act="anaperiod" data-v="${k}">${l}</button>`).join('');
+  const head = `<div class="mrow" style="flex-wrap:wrap">${chips}</div>
+    <div class="arange"><input type="date" id="ana-from" data-f="ana" data-k="cfrom" value="${esc(N.cfrom || N.from)}" aria-label="開始日">〜
+      <input type="date" id="ana-to" data-f="ana" data-k="cto" value="${esc(N.cto || N.to)}" aria-label="終了日">
+      <button class="btn ghost" data-act="anacustom" aria-pressed="${N.period === 'custom'}">この期間を表示</button></div>`;
+  if(N.failed){
+    const msg = N.err === 'bad_range' ? '期間は400日以内で、開始日から終了日の順に指定してください。' : '分析を取得できませんでした。';
+    return head + `<div class="err" role="alert">${esc(msg)}</div><div style="padding:12px 16px"><button class="btn ghost" data-act="anareload">もう一度読み込む</button></div>`;
+  }
+  if(!N.data) return head + '<p class="loading">読み込み中…</p>';
+  const r = N.data, s = r.summary, p = r.prev;
+  const none = s.visits + s.upcoming.count + s.pending + s.cancelled === 0;
+  const notes = (s.pending > 0 ? `<div class="anote">過去の予約のうち ${s.pending}件が来店済になっていません(売上に含まれていません)。「今日の予約」などで状態を更新してください。</div>` : '')
+    + (s.unpriced > 0 ? `<div class="anote">金額が未定の来店が ${s.unpriced}件あります(売上・客単価には含まれていません)。</div>` : '');
+  const cards = `<div class="stats" id="ana-summary">
+    <div class="stat"><small>売上(実績)</small><b id="ana-sales">${yen(s.sales)}</b><small>前期間比 ${deltaText(s.sales, p.sales)}</small></div>
+    <div class="stat"><small>来店数</small><b id="ana-visits">${s.visits}件</b><small>前期間比 ${deltaText(s.visits, p.visits)}</small></div>
+    <div class="stat"><small>客単価</small><b>${s.avgSpend == null ? '—' : yen(s.avgSpend)}</b></div>
+    <div class="stat"><small>見込み(今後の確定)</small><b>${yen(s.upcoming.amount)}</b><small>${s.upcoming.count}件</small></div>
+    <div class="stat"><small>キャンセル率</small><b>${pctText(s.cancelRate)}</b><small>${s.cancelled}件</small></div></div>`;
+  if(none) return head + cards + '<p class="empty">この期間の予約はありません。</p>';
+  const pts = r.series.points, max = Math.max(1, ...pts.map(q => q.sales));
+  const chart = `<div class="sub">売上の推移(${r.series.unit === 'day' ? '日別' : '月別'})</div>
+    <div class="abars" role="img" aria-label="売上の推移">${pts.map(q => `<div class="abar" title="${esc(q.key)} ${yen(q.sales)}"><i style="height:${Math.round(q.sales / max * 100)}%"></i></div>`).join('')}</div>
+    <div class="aaxis"><span>${esc(pts[0].key)}</span><span>${esc(pts[pts.length - 1].key)}</span></div>`;
+  const vt = r.visitType;
+  const visitRows = [['first', '初回'], ['repeat', '再来'], ['unknown', '不明']].map(([k, l]) => ({name:l, visits:vt[k].visits, sales:vt[k].sales}));
+  return head + cards + notes + chart
+    + `<div class="sub">メニュー別</div>${anaRowsHTML(r.byMenu, o => o.name)}`
+    + `<div class="sub">流入元別</div>${anaRowsHTML(r.bySource, o => ANA_SRC[o.key] || o.key)}`
+    + `<div class="sub">新規 / 再来(お客様の申告ベース)</div>${anaRowsHTML(visitRows, o => o.name)}`;
+}
+VIEWS.analytics = anaView;
+NAV.push(['analytics','分析']);
 
 /* ---------- render ---------- */
 const app = document.getElementById('app');
@@ -841,7 +955,7 @@ async function login(){
   A.busy = false; render();
 }
 function logout(expired){
-  A.token = ''; A.data = {}; A.loading = {}; A.failed = {}; A.sheet = null; A.form = null; A.pw = ''; A.section = 'reserve'; A.cust = null; A.custFailed = false; A.custSel = null; A.custForm = null; A.menuAdm = newMenuAdm(); A.cpn = newCpn();
+  A.token = ''; A.data = {}; A.loading = {}; A.failed = {}; A.sheet = null; A.form = null; A.pw = ''; A.section = 'reserve'; A.cust = null; A.custFailed = false; A.custSel = null; A.custForm = null; A.menuAdm = newMenuAdm(); A.cpn = newCpn(); A.ana = newAna();
   A.pwMsg = expired === true ? 'ログインの有効期限が切れました。もう一度ログインしてください。' : '';
   saveTok(); render();
 }
@@ -969,6 +1083,12 @@ app.addEventListener('click', e => {
     }
     case 'cpnsave': couponSave(); break;
     case 'cpnreload': A.cpn.failed = false; render(); break;
+    case 'anaperiod': { const r = anaRange(v), N = A.ana; N.period = v; N.from = r.from; N.to = r.to; N.cfrom = ''; N.cto = ''; N.data = null; N.failed = false; render(); break; }
+    case 'anacustom': {
+      const N = A.ana, f = N.cfrom || N.from, t = N.cto || N.to;
+      N.period = 'custom'; N.from = f; N.to = t; N.data = null; N.failed = false; render(); break;
+    }
+    case 'anareload': A.ana.failed = false; render(); break;
     case 'closure': setClosed(v); break;
     case 'new': newForm(); break;
     case 'create': create(false); break;
@@ -984,6 +1104,7 @@ app.addEventListener('input', e => {
   else if(f === 'cform'){ A.custForm[t.dataset.k] = t.value; }
   else if(f === 'link'){ A.link[t.dataset.k] = t.value; A.ok = ''; refreshLink(); }
   else if(f === 'cform2'){ A.cpn.form[t.dataset.k] = t.value; }
+  else if(f === 'ana'){ A.ana[t.dataset.k] = t.value; }
   else if(f === 'mform'){
     const F = A.menuAdm.form, k = t.dataset.k;
     if(k === 'cats'){ const c = t.dataset.v; F.cats = t.checked ? [...new Set([...F.cats, c])] : F.cats.filter(x => x !== c); }
