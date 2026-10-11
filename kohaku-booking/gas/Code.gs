@@ -575,9 +575,10 @@ function newCouponCode_(codes, rnd) {
   throw new Error('coupon_code_exhausted');
 }
 
-/** couponCheck の試行制限。メール別10回/10分・全体100回/10分。超えたら true */
-function couponThrottled_(cache, email) {
-  const keys = ['cpn_t:' + normEmail_(email), 'cpn_t:all'], limits = [10, 100];
+/** couponCheck の試行制限。メール別10回/10分・全体100回/10分(固定枠。枠が変われば数え直し)。超えたら true */
+function couponThrottled_(cache, email, nowMs) {
+  const win = Math.floor((nowMs == null ? Date.now() : nowMs) / 600000);
+  const keys = ['cpn_t:' + win + ':' + normEmail_(email), 'cpn_t:' + win + ':all'], limits = [10, 100];
   let blocked = false;
   keys.forEach(function (k, i) {
     const n = Number(cache.get(k) || 0) + 1;

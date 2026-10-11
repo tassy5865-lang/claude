@@ -213,3 +213,18 @@ test('couponThrottled_: メール別10回・全体100回を超えたら制限', 
   for (let i = 0; i < 120; i++) if (g.couponThrottled_(c2, 'u' + i + '@example.com')) blocked++;
   assert.strictEqual(blocked, 20, '全体100回を超えた分');
 });
+
+test('couponThrottled_: 10分の枠は固定で、次の枠では再び許可される(試行が続いても閉じる)', () => {
+  const g = loadGas();
+  const store = {};
+  // TTL を無視する偽キャッシュ(延長で枠が閉じない実装を検出する)
+  const cache = { get: k => (k in store ? store[k] : null), put: (k, v) => { store[k] = v; } };
+  const t0 = 1800000000000 - (1800000000000 % 600000);   // 枠の先頭
+  for (let i = 0; i < 101; i++) g.couponThrottled_(cache, 'u' + i + '@example.com', t0 + i);
+  assert.strictEqual(g.couponThrottled_(cache, 'x@example.com', t0 + 599000), true, '同じ枠では全体制限');
+  assert.strictEqual(g.couponThrottled_(cache, 'x@example.com', t0 + 600000), false, '次の枠では許可');
+  // メール別も同じ規則
+  for (let i = 0; i < 11; i++) g.couponThrottled_(cache, 'p@example.com', t0 + 600000 + i);
+  assert.strictEqual(g.couponThrottled_(cache, 'p@example.com', t0 + 600000 + 100), true, '同じ枠でメール別制限');
+  assert.strictEqual(g.couponThrottled_(cache, 'p@example.com', t0 + 1200000), false, '次の枠でメール別も許可');
+});
