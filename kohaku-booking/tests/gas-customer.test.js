@@ -12,10 +12,10 @@ function loadGas() {
 }
 const j = o => JSON.parse(JSON.stringify(o));
 
-test('列定義: 予約26列・顧客15列で、追加は末尾', () => {
+test('列定義: 予約28列・顧客15列で、追加は末尾', () => {
   const g = loadGas();
-  assert.strictEqual(g.HEADERS.length, 26);
-  assert.deepStrictEqual(j(g.HEADERS.slice(23)), ['当日リマインド送信日時', '流入元', '問い合わせID']);
+  assert.strictEqual(g.HEADERS.length, 28);
+  assert.deepStrictEqual(j(g.HEADERS.slice(23)), ['当日リマインド送信日時', '流入元', '問い合わせID', 'クーポン', '割引額']);
   assert.strictEqual(g.CUSTOMER_HEADERS.length, 15);
   assert.deepStrictEqual(j(g.CUSTOMER_HEADERS.slice(10)), ['メモ', 'Instagram名', '流入元', '初回問い合わせ日', '問い合わせID']);
   assert.deepStrictEqual(j(g.C), { ID:0, EMAIL:1, NAME:2, KANA:3, TEL:4, LINE_ID:5, LINE_AT:6, LINE_NOTIFY:7, CREATED:8, UPDATED:9, MEMO:10,

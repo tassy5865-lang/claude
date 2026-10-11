@@ -57,7 +57,7 @@ const CONFIG = {
 const HEADERS = ['予約ID','受付日時','予約ステータス','日付','開始','終了','メニュー','オプション','合計金額','所要分',
                  'お名前','フリガナ','電話','メール','初回/再来','ご要望','カレンダーEventID','メニューID',
                  '顧客ID','予約日時(ISO)','流入経路','2日前リマインド送信日時','更新日時','当日リマインド送信日時',
-                 '流入元','問い合わせID'];
+                 '流入元','問い合わせID','クーポン','割引額'];
 
 const STATUS = { CONFIRMED: '確定', VISITED: '来店済', CANCELLED: 'キャンセル' };   // 追加する場合はここに足す
 
@@ -435,6 +435,150 @@ function saveItem_(kind, d) {
   sh.getRange(target, 1, 1, width).setNumberFormat('@').setValues([cells]);
   CacheService.getScriptCache().remove('menu:v1');   // 予約サイトへ即反映
   return { ok: true, id: id };
+}
+
+/* =========================================================
+ * クーポン(管理画面での発行・予約時の自動適用)
+ *  割引は 金額OFF / 割合OFF。1人(メール)1回。利用回数は予約シートの「クーポン」列から数える(保存しない)。
+ *  無効理由は bad_coupon に統一し、区別して返さない(コードの当て推量対策)。
+ * ========================================================= */
+const COUPON_HEADERS = ['コード', '名称', '内容', '対象メール(空=全員)', '開始日', '期限', '状態(有効/無効/使用済)', '割引種別(金額/割合)', '割引値'];
+const COUPON_TYPES = ['', '金額', '割合'];
+const COUPON_STATUSES = ['有効', '無効', '使用済'];
+const COUPON_CODE_RE = /^[A-Z0-9_-]{3,20}$/;
+
+/** コードの正規化: 全角英数・全角ハイフン→半角、前後空白除去、大文字化 */
+function normCouponCode_(v) {
+  return strOf_(v)
+    .replace(/[Ａ-Ｚａ-ｚ０-９]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); })
+    .replace(/[－]/g, '-')
+    .trim().toUpperCase();
+}
+
+/** クーポンシートの値(見出し除く)→ 配列。コードが空の行は除外。旧7列の行は種別・値が空(割引未設定) */
+function parseCouponRows_(values) {
+  const out = [];
+  (values || []).forEach(function (v, i) {
+    const code = normCouponCode_(v[0]);
+    if (!code) return;
+    const type = strOf_(v[7]).trim(), val = intOrNull_(v[8]);
+    out.push({ row: i + 2, code: code, name: strOf_(v[1]), desc: strOf_(v[2]), target: normEmail_(v[3]),
+               from: dstr_(v[4]), to: dstr_(v[5]), status: strOf_(v[6]).trim(),
+               type: COUPON_TYPES.indexOf(type) > 0 ? type : '', value: (val === null || isNaN(val)) ? null : val });
+  });
+  return out;
+}
+
+function withCommas_(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+
+/** 割引の表示文 例: 1,000円OFF / 10%OFF。未設定は '' */
+function couponDiscountText_(c) {
+  if (!couponConfigured_(c)) return '';
+  return c.type === '金額' ? withCommas_(c.value) + '円OFF' : c.value + '%OFF';
+}
+
+/** 割引種別と値が正しく設定されているか(金額 1〜1,000,000 / 割合 1〜100) */
+function couponConfigured_(c) {
+  if (c.value === null || c.value === undefined || isNaN(c.value)) return false;
+  if (c.type === '金額') return c.value >= 1 && c.value <= 1000000;
+  if (c.type === '割合') return c.value >= 1 && c.value <= 100;
+  return false;
+}
+
+/** 管理画面の一覧用の状態 */
+function couponState_(c, today) {
+  if (c.status !== '有効') return 'disabled';
+  if (!couponConfigured_(c)) return 'unset';
+  if (c.to && today > c.to) return 'expired';
+  if (c.from && today < c.from) return 'upcoming';
+  return 'active';
+}
+
+/** 同じメールが、キャンセル以外の予約でそのコードを使っているか */
+function couponUsed_(rows, code, email) {
+  const cc = normCouponCode_(code), em = normEmail_(email);
+  return rows.some(function (r) {
+    return r.status !== STATUS.CANCELLED && normCouponCode_(r.couponCode) === cc && normEmail_(r.email) === em;
+  });
+}
+
+/** 割引の判定と計算(純関数)。total は割引前の合計(null=当日案内) */
+function couponApply_(coupons, rows, code, email, total, today) {
+  const cc = normCouponCode_(code), em = normEmail_(email);
+  if (!COUPON_CODE_RE.test(cc)) return { ok: false, error: 'bad_coupon' };
+  const c = coupons.filter(function (x) { return x.code === cc; })[0];
+  if (!c) return { ok: false, error: 'bad_coupon' };
+  if (c.status !== '有効' || (c.from && today < c.from) || (c.to && today > c.to) || (c.target && c.target !== em)) {
+    return { ok: false, error: 'bad_coupon' };
+  }
+  if (!couponConfigured_(c) || total === null || total === undefined) return { ok: false, error: 'coupon_not_applicable' };
+  if (couponUsed_(rows, cc, em)) return { ok: false, error: 'coupon_used' };
+  const discount = c.type === '金額' ? Math.min(c.value, total) : Math.floor(total * c.value / 100);
+  return { ok: true, code: cc, name: c.name, discount: discount, total: total - discount };
+}
+
+function isRealDate_(s) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const t = new Date(s + 'T00:00:00Z');
+  return !isNaN(t.getTime()) && t.toISOString().slice(0, 10) === s;
+}
+
+/** 管理画面からの発行・更新の検証。問題なければ ''。codes は既存コード(正規化済み)の一覧(create時の重複検査用) */
+function validateCouponItem_(item, create, codes) {
+  item = item || {};
+  const code = normCouponCode_(item.code);
+  if (create && code) {
+    if (!COUPON_CODE_RE.test(code)) return fieldErr_('code');
+    if ((codes || []).indexOf(code) >= 0) return { error: 'duplicate_code', field: 'code' };
+  }
+  const name = strOf_(item.name).trim();
+  if (name.length < 1 || name.length > 60) return fieldErr_('name');
+  if (strOf_(item.desc).length > 200) return fieldErr_('desc');
+  const target = normEmail_(item.target);
+  if (target && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(target)) return fieldErr_('target');
+  const from = strOf_(item.from), to = strOf_(item.to);
+  if (from && !isRealDate_(from)) return fieldErr_('from');
+  if (to && !isRealDate_(to)) return fieldErr_('to');
+  if (from && to && from > to) return fieldErr_('to');
+  if (COUPON_STATUSES.indexOf(strOf_(item.status)) < 0) return fieldErr_('status');
+  const type = strOf_(item.type);
+  if (COUPON_TYPES.indexOf(type) < 0) return fieldErr_('type');
+  if (type) {
+    const v = intOrNull_(item.value);
+    const max = type === '金額' ? 1000000 : 100;
+    if (v === null || isNaN(v) || v < 1 || v > max) return fieldErr_('value');
+  }
+  return '';
+}
+
+/** 検証済みの item → クーポンシートの1行(COUPON_HEADERS の並び、全て文字列) */
+function couponRowFromItem_(item) {
+  const type = strOf_(item.type), v = intOrNull_(item.value);
+  return [normCouponCode_(item.code), strOf_(item.name).trim(), strOf_(item.desc).trim(), normEmail_(item.target),
+          strOf_(item.from), strOf_(item.to), strOf_(item.status), type, type && v !== null ? String(v) : ''];
+}
+
+/** CP- + 6文字の新しいコード(紛らわしい文字を除く)。codes と重複しないものを返す */
+function newCouponCode_(codes, rnd) {
+  const abc = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', r = rnd || Math.random;
+  for (let t = 0; t < 50; t++) {
+    let s = 'CP-';
+    for (let i = 0; i < 6; i++) s += abc.charAt(Math.floor(r() * abc.length));
+    if ((codes || []).indexOf(s) < 0) return s;
+  }
+  throw new Error('coupon_code_exhausted');
+}
+
+/** couponCheck の試行制限。メール別10回/10分・全体100回/10分。超えたら true */
+function couponThrottled_(cache, email) {
+  const keys = ['cpn_t:' + normEmail_(email), 'cpn_t:all'], limits = [10, 100];
+  let blocked = false;
+  keys.forEach(function (k, i) {
+    const n = Number(cache.get(k) || 0) + 1;
+    cache.put(k, String(n), 600);
+    if (n > limits[i]) blocked = true;
+  });
+  return blocked;
 }
 
 /* ---------- 検証 ---------- */
@@ -906,7 +1050,8 @@ function parseRow_(v, i) {
     name: String(v[10]), kana: String(v[11]), tel: String(v[12]), email: String(v[13]),
     visit: String(v[14]), note: String(v[15]), eventId: String(v[16] || ''), menuId: String(v[17] || ''),
     customerId: String(v[18] || ''), startIso: String(v[19] || ''), source: String(v[20] || ''), remindedAt: String(v[21] || ''), remindedTodayAt: String(v[23] || ''),
-    refSource: String(v[24] || ''), inquiryId: String(v[25] || '')
+    refSource: String(v[24] || ''), inquiryId: String(v[25] || ''),
+    couponCode: String(v[26] || ''), couponDiscount: Number(v[27]) || 0
   };
 }
 function allRows_() {
