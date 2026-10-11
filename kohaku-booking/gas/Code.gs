@@ -122,6 +122,11 @@ function doPost(e) {
     const err = validate_(d);
     if (err) return json_({ ok: false, error: err });
 
+    // クーポン: 確定時にサーバーが再判定する(クライアントの割引額は見ない)。ロック内なので同時予約でも二重に使えない
+    const cp = applyBookingCoupon_(d, calc.total);
+    if (!cp.ok) return json_({ ok: false, error: cp.error });
+    d.total = cp.total; d.couponCode = cp.code; d.couponDiscount = cp.discount;
+
     const start = new Date(d.date + 'T' + d.time + ':00+09:00');
     const end = new Date(start.getTime() + d.minutes * 60000);
     const cal = getCalendar_();
@@ -138,7 +143,7 @@ function doPost(e) {
       '予約ID: ' + id,
       'メニュー: ' + d.menuName,
       'オプション: ' + opts,
-      '合計: ' + (d.total == null ? '当日ご案内' : d.total + '円'),
+      '合計: ' + (d.total == null ? '当日ご案内' : d.total + '円') + (d.couponCode ? '(クーポン ' + d.couponCode + ' −' + d.couponDiscount + '円)' : ''),
       'お名前: ' + d.name + '(' + d.kana + ')',
       '電話: ' + d.tel,
       'メール: ' + d.email,
@@ -154,7 +159,8 @@ function doPost(e) {
       menuName: d.menuName, options: opts, total: d.total == null ? '当日ご案内' : d.total, minutes: d.minutes,
       name: d.name, kana: d.kana, tel: d.tel, email: d.email, visit: d.visit, note: d.note || '',
       eventId: ev.getId(), menuId: d.menuId || '', customerId: customerId, start: start, source: 'web',
-      refSource: ref.source, inquiryId: ref.inquiry
+      refSource: ref.source, inquiryId: ref.inquiry,
+      couponCode: d.couponCode, couponDiscount: d.couponDiscount
     });
     notify_(d, id, start, end, opts);
     return json_({ ok: true, id: id });
@@ -581,6 +587,65 @@ function couponThrottled_(cache, email) {
   return blocked;
 }
 
+function todayStr_() { return Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd'); }
+
+/** クーポンシートの全行(シートを直接読む) */
+function allCoupons_() { return parseCouponRows_(readRows_(getCouponSheet_(), COUPON_HEADERS.length)); }
+
+/** 予約確定時のクーポン適用。d.couponCode が空なら割引なし。判定は呼び出し側のロック内で行う */
+function applyBookingCoupon_(d, total) {
+  const code = normCouponCode_(d.couponCode);
+  if (!code) return { ok: true, code: '', discount: 0, total: total };
+  return couponApply_(allCoupons_(), allRows_(), code, d.email, total, todayStr_());
+}
+
+/** 確認画面の「適用」ボタン用(認証なし)。予約は作らず、割引後の合計だけ返す */
+function couponCheck_(d) {
+  const email = normEmail_(d.email);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { ok: false, error: 'bad_email' };
+  if (couponThrottled_(CacheService.getScriptCache(), email)) return { ok: false, error: 'locked' };
+  const m = loadMenu_();
+  const calc = calcBooking_(m.menu, m.options, d);
+  if (!calc.ok) return { ok: false, error: calc.error };
+  const res = couponApply_(allCoupons_(), allRows_(), d.code, email, calc.total, todayStr_());
+  if (!res.ok) return res;
+  return { ok: true, name: res.name, discount: res.discount, total: res.total };
+}
+
+/** 管理画面の一覧(利用数は非キャンセルの予約数) */
+function adminCoupons_() {
+  const today = todayStr_(), count = {};
+  allRows_().forEach(function (r) {
+    if (r.couponCode && r.status !== STATUS.CANCELLED) { const k = normCouponCode_(r.couponCode); count[k] = (count[k] || 0) + 1; }
+  });
+  return { ok: true, coupons: allCoupons_().map(function (c) {
+    return { code: c.code, name: c.name, desc: c.desc, target: c.target, from: c.from, to: c.to, status: c.status, type: c.type, value: c.value,
+             used: count[c.code] || 0, state: couponState_(c, today), discountText: couponDiscountText_(c) };
+  }) };
+}
+
+/** クーポン1件の発行(create:true)または更新。コードは書き換えない */
+function adminCouponSave_(d) {
+  const item = d.item || {}, create = d.create === true;
+  const sh = getCouponSheet_();
+  const last = sh.getLastRow();
+  const codes = last < 2 ? [] : sh.getRange(2, 1, last - 1, 1).getValues().map(function (r) { return normCouponCode_(r[0]); });
+  const err = validateCouponItem_(item, create, codes);
+  if (err) return { ok: false, error: err.error, field: err.field };
+  let code = normCouponCode_(item.code), target;
+  if (create) {
+    if (!code) code = newCouponCode_(codes);
+    target = last + 1;
+  } else {
+    const at = code ? codes.indexOf(code) : -1;
+    if (at < 0) return { ok: false, error: 'not_found' };
+    target = at + 2;
+  }
+  const cells = couponRowFromItem_(Object.assign({}, item, { code: code }));
+  sh.getRange(target, 1, 1, COUPON_HEADERS.length).setNumberFormat('@').setValues([cells]);
+  return { ok: true, code: code };
+}
+
 /* ---------- 検証 ---------- */
 function validate_(d) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(d.date || '')) return 'bad_date';
@@ -605,13 +670,13 @@ function notify_(d, id, start, end, opts) {
   const endHHmm = Utilities.formatDate(end, 'Asia/Tokyo', 'HH:mm');
   notifyCustomer_(d.email, 'confirm', {
     id: id, date: d.date, time: d.time, end: endHHmm, menuName: d.menuName, options: opts, total: d.total,
-    name: d.name, minutes: d.minutes, startMs: start.getTime()
+    name: d.name, minutes: d.minutes, startMs: start.getTime(), couponCode: d.couponCode, couponDiscount: d.couponDiscount
   });
   const when = Utilities.formatDate(start, 'Asia/Tokyo', 'yyyy年M月d日 HH:mm') + '〜' + endHHmm;
   notifyOwner_('【新規予約】' + d.name + ' 様 ' + when,
     '予約番号: ' + id + '\n日時: ' + when + '\nメニュー: ' + d.menuName + '\nオプション: ' + opts +
     '\nお名前: ' + d.name + '(' + d.kana + ')\n電話: ' + d.tel + '\nメール: ' + d.email +
-    '\n区分: ' + d.visit + '\nご要望: ' + (d.note || 'なし'));
+    '\n区分: ' + d.visit + '\nご要望: ' + (d.note || 'なし') + (d.couponCode ? '\nクーポン: ' + d.couponCode + '(−' + d.couponDiscount + '円)' : ''));
 }
 function notifyOwner_(subject, body) {
   try { if (CONFIG.OWNER_EMAIL) MailApp.sendEmail(CONFIG.OWNER_EMAIL, subject, body); }
@@ -647,6 +712,7 @@ function json_(obj) {
  * ========================================================= */
 function handleAction_(d) {
   switch (d.action) {
+    case 'couponCheck':   return couponCheck_(d);
     case 'sendCode':      return sendCode_(d);
     case 'verifyCode':    return verifyCode_(d);
     case 'logout':        CacheService.getScriptCache().remove('tok:' + (d.token || '')); return { ok: true };
@@ -666,6 +732,8 @@ function handleAction_(d) {
     case 'adminCustomers':      return adminAuth_(d) ? adminCustomers_(d) : { ok: false, error: 'auth' };
     case 'adminCustomerUpdate': return adminAuth_(d) ? adminCustomerUpdate_(d) : { ok: false, error: 'auth' };
     case 'adminMenu':       return adminAuth_(d) ? adminMenu_() : { ok: false, error: 'auth' };
+    case 'adminCoupons':    return adminAuth_(d) ? adminCoupons_() : { ok: false, error: 'auth' };
+    case 'adminCouponSave': return adminAuth_(d) ? adminCouponSave_(d) : { ok: false, error: 'auth' };
     case 'adminMenuSave':   return adminAuth_(d) ? saveItem_('menu', d) : { ok: false, error: 'auth' };
     case 'adminOptionSave': return adminAuth_(d) ? saveItem_('option', d) : { ok: false, error: 'auth' };
   }
@@ -937,7 +1005,7 @@ function appendReservation_(f) {
     f.id, nowStr_(), f.status, f.date, f.time, f.end, f.menuName, f.options, f.total, f.minutes,
     f.name, f.kana, f.tel, f.email, f.visit, f.note, f.eventId, f.menuId,
     f.customerId || '', Utilities.formatDate(f.start, 'Asia/Tokyo', "yyyy-MM-dd'T'HH:mm:ssXXX"), f.source || '', '', nowStr_(), '',
-    f.refSource || '', f.inquiryId || ''
+    f.refSource || '', f.inquiryId || '', f.couponCode || '', f.couponDiscount || ''
   ];
   const sh = getSheet_();
   sh.getRange(sh.getLastRow() + 1, 1, 1, HEADERS.length).setNumberFormat('@').setValues([row.map(function (x) { return x == null ? '' : String(x); })]);  // 文字列として保存(数式化・先頭0落ち防止)
@@ -967,6 +1035,8 @@ function migrate_() {
     });
     if (rows.length) cs.getRange(2, 1, rows.length, CUSTOMER_HEADERS.length).setNumberFormat('@').setValues(rows);
   }
+  // 2.4) クーポンシートの見出しを最新に(割引種別・割引値の列を足す)
+  getCouponSheet_().getRange(1, 1, 1, COUPON_HEADERS.length).setValues([COUPON_HEADERS]).setFontWeight('bold').setBackground('#EADBC3');
   // 2.5) 顧客シートの見出しを最新に(列追加後の setup 再実行で、足りない見出しが入る)
   cs.getRange(1, 1, 1, CUSTOMER_HEADERS.length).setValues([CUSTOMER_HEADERS]).setFontWeight('bold').setBackground('#EADBC3');
   // 3) 既存の予約に 顧客ID / 予約日時(ISO) / 流入経路 を補完
@@ -999,22 +1069,22 @@ function getCouponSheet_() {
   let sh = ss.getSheetByName(CONFIG.COUPON_SHEET);
   if (!sh) {
     sh = ss.insertSheet(CONFIG.COUPON_SHEET);
-    sh.getRange(1, 1, 1, 7).setValues([['コード', '名称', '内容', '対象メール(空=全員)', '開始日', '期限', '状態(有効/無効/使用済)']])
-      .setFontWeight('bold').setBackground('#EADBC3');
-    sh.getRange(2, 1, 1, 7).setNumberFormat('@').setValues([['SAMPLE500', 'ご来店ありがとうクーポン', 'オプション1つサービス', '', '', '2026-12-31', '無効']]);
+    sh.getRange(1, 1, 1, COUPON_HEADERS.length).setValues([COUPON_HEADERS]).setFontWeight('bold').setBackground('#EADBC3');
+    sh.getRange(2, 1, 1, COUPON_HEADERS.length).setNumberFormat('@')
+      .setValues([['SAMPLE500', 'ご来店ありがとうクーポン', '500円OFF', '', '', '2026-12-31', '無効', '金額', '500']]);
     sh.setFrozenRows(1);
   }
+  ensureColumns_(sh, COUPON_HEADERS.length);
   return sh;
 }
+/** マイページ用: そのお客様が使えるクーポン(そのメールが使用済みのコードは除く) */
 function coupons_(email) {
-  const sh = getCouponSheet_(), last = sh.getLastRow();
-  if (last < 2) return [];
-  const today = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd');
-  return sh.getRange(2, 1, last - 1, 7).getValues().filter(function (v) {
-    const target = normEmail_(v[3]), from = dstr_(v[4]), to = dstr_(v[5]);
-    return String(v[6]).trim() === '有効' && (!target || target === email) && (!from || from <= today) && (!to || to >= today);
-  }).map(function (v) {
-    return { code: String(v[0]), name: String(v[1]), desc: String(v[2]), expire: dstr_(v[5]) };
+  const today = todayStr_(), rows = allRows_();
+  return allCoupons_().filter(function (c) {
+    return c.status === '有効' && (!c.target || c.target === email) && (!c.from || c.from <= today) && (!c.to || c.to >= today)
+      && !couponUsed_(rows, c.code, email);
+  }).map(function (c) {
+    return { code: c.code, name: c.name, desc: c.desc, expire: c.to, discount: couponDiscountText_(c) };
   });
 }
 
@@ -1339,7 +1409,9 @@ function buildMessage_(kind, r) {
   return {
     kind: kind, title: T.title, lead: T.lead, name: r.name, id: r.id,
     rows: [['予約番号', r.id], ['日時', fmtDateJa_(r.date) + ' ' + r.time + '〜' + r.end], ['メニュー', r.menuName],
-           ['オプション', r.options || 'なし'], ['合計', yenStr_(r.total)]],
+           ['オプション', r.options || 'なし']]
+          .concat(r.couponCode ? [['クーポン', r.couponCode + '(−' + yenStr_(r.couponDiscount || 0) + ')']] : [])
+          .concat([['合計', yenStr_(r.total)]]),
     hasLink: kind !== 'cancelled',
     canChange: kind !== 'cancelled' && (r.startMs - Date.now()) >= CONFIG.CANCEL_DEADLINE_HOURS * 3600000,
     subject: '【' + CONFIG.SALON_NAME + '】' + T.title + '(' + r.id + ')'
