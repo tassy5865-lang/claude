@@ -1,3 +1,11 @@
+## 現行デザイン（2026-10-11、自己紹介HP/v2に合わせた）
+
+- `v2.css`(最後に読み込み)が配色・書体・形状を上書きする。紙色`#fafaf8`・クリーム`#f6efe4`・紺`#0f2136`/`#0a1524`・銅`#b4643a`・空色`#8fb3de`。書体はZen Old Mincho / Zen Kaku Gothic New / EB Garamond。
+- `v2.js`が、ヒーローの点の波(canvas)・ゴースト文字(Works/Profile/Contact)・進捗バー・ヘッダーの透過→不透明切替を後付けする。HTMLテンプレート(`index.html`内)は変更していない。
+- プロフィール導線(ヘッダー・導線セクション・フッター・JSON-LD `sameAs`・実績カード)はすべてv2(`自己紹介HP/v2/`)を指す。画面画像は`assets/work-profile.png`。
+- 3Dノートパソコンのオープニング(v2の`intro.js`)は取り込んでいない。
+- 色や形を直すときは`v2.css`、構成は`index.html`内の描画テンプレート。`redesign.css`は旧(深緑)デザインの土台として残り、v2.cssが上書きする。
+
 # portfolio
 
 ## 現行デザイン（2026-09-19）
@@ -47,3 +55,4 @@
 - `SITE`の文字列は描画時にエスケープされる。装飾を許可する項目は`sanitizeRichHTML`を通し、`b`、`br`、`span.role-accent`のみを残す。リンクは`https:`、`mailto:`、ページ内アンカーのみ許可する。
 - SEO用のdescription、canonical、OGP、Twitter Card、Person構造化データは`<head>`に直接定義している。公開URLや肩書きを変更した場合は`SITE`だけでなく、これらのメタ情報も更新する。
 - Webフォントへの外部通信を避けるため、フォントはOS標準の日本語フォントスタックを使用する。
+- 掲載実績は7件(2026-10-11)。AI導入・伴走支援LP(`assets/work-ai-consult.png`)と琥珀サロン公式サイト(`assets/work-kohaku.png`)を追加。画像は公開ページを実際に開いて撮影。琥珀は店主の掲載了承を取得済み(2026-10-11、ユーザー申告)。
