@@ -777,7 +777,7 @@ function bar(){
   if(sc==='resched') return `<div class="bar"><div class="s"><small>新しい日時</small><b>${RS.time ? RS.date.slice(5).replace('-','/') + ' ' + RS.time : '未選択'}</b></div><button class="btn" data-act="rs-submit" ${RS.time && !RS.submitting ? '' : 'disabled'}>${RS.submitting ? '変更中…' : 'この日時に変更する'}</button></div>`;
   if(['top','menu','done','login','code','my'].includes(sc)) return '';
   const t = S.menu.price == null ? null : total();
-  const sum = `<div class="s"><small>${t==null ? '料金' : '合計'}・${duration()}分</small><b>${t==null ? '当日ご案内' : yen(t)}</b></div>`;
+  const sum = `<div class="s"><small>${t==null ? '料金' : '合計'}・${duration()}分</small><b>${t==null ? '当日ご案内' : yen(sc==='confirm' ? payTotalOf(t) : t)}</b></div>`;
   const cfg = {
     detail:['日時選択へ', 'next', false],
     date:['お客様情報へ', 'next', !S.time],

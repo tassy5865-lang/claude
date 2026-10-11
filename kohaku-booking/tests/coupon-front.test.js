@@ -175,3 +175,15 @@ test('応答待ちの間に何も変えなければ、通常どおり適用さ�
   assert.match(text('#app'), /−¥500/);
   assert.match(text('#app'), /¥6,500/);
 });
+
+test('確認画面: 下部の固定バーの合計も割引後の金額になる', async () => {
+  const { w, click, type, text } = load('index.html');
+  await sleep(30);
+  toConfirm(w);
+  assert.match(text('.bar'), /合計.*¥7,000/);
+  type('#cp-code', 'WELCOME500'); click('[data-act=cpapply]'); await sleep(700);
+  assert.match(text('.bar'), /¥6,500/);
+  assert.doesNotMatch(text('.bar'), /¥7,000/);
+  click('[data-act=cpoff]'); await sleep(30);
+  assert.match(text('.bar'), /¥7,000/);
+});
