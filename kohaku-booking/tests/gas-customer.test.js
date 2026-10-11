@@ -122,3 +122,10 @@ test('ensureColumns_: 列が足りないときだけ末尾に足す', () => {
   g.ensureColumns_(sh(30), 26);
   assert.deepStrictEqual(calls, [[11, 4]]);
 });
+
+test('handleAction_: 顧客系アクションはトークン無しだと auth で拒否される', () => {
+  const g = loadGas();
+  g.CacheService = { getScriptCache: () => ({ get: () => null }) };   // adminAuth_ が参照する
+  assert.deepStrictEqual(j(g.handleAction_({ action: 'adminCustomers' })), { ok: false, error: 'auth' });
+  assert.deepStrictEqual(j(g.handleAction_({ action: 'adminCustomerUpdate', id: 'C000001' })), { ok: false, error: 'auth' });
+});

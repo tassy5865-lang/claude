@@ -147,12 +147,14 @@ function doPost(e) {
     ].join('\n');
     const ev = cal.createEvent('【予約】' + d.name + ' 様 / ' + d.menuName, start, end, { description: desc });
 
-    const customerId = upsertCustomer_(d.email, d.name, d.kana, d.tel);
+    const ref = cleanRef_(d.source, d.inquiry);   // 予約リンクの流入元・問い合わせID(無効なら空)
+    const customerId = upsertCustomer_(d.email, d.name, d.kana, d.tel, ref);
     appendReservation_({
       id: id, status: STATUS.CONFIRMED, date: d.date, time: d.time, end: Utilities.formatDate(end, 'Asia/Tokyo', 'HH:mm'),
       menuName: d.menuName, options: opts, total: d.total == null ? '当日ご案内' : d.total, minutes: d.minutes,
       name: d.name, kana: d.kana, tel: d.tel, email: d.email, visit: d.visit, note: d.note || '',
-      eventId: ev.getId(), menuId: d.menuId || '', customerId: customerId, start: start, source: 'web'
+      eventId: ev.getId(), menuId: d.menuId || '', customerId: customerId, start: start, source: 'web',
+      refSource: ref.source, inquiryId: ref.inquiry
     });
     notify_(d, id, start, end, opts);
     return json_({ ok: true, id: id });
@@ -399,6 +401,8 @@ function handleAction_(d) {
     case 'adminSetStatus': return adminAuth_(d) ? adminSetStatus_(d) : { ok: false, error: 'auth' };
     case 'adminCreate':    return adminAuth_(d) ? adminCreate_(d) : { ok: false, error: 'auth' };
     case 'adminSetClosed': return adminAuth_(d) ? adminSetClosed_(d) : { ok: false, error: 'auth' };
+    case 'adminCustomers':      return adminAuth_(d) ? adminCustomers_(d) : { ok: false, error: 'auth' };
+    case 'adminCustomerUpdate': return adminAuth_(d) ? adminCustomerUpdate_(d) : { ok: false, error: 'auth' };
   }
   return { ok: false, error: 'unknown_action' };
 }
@@ -613,18 +617,27 @@ function nextCustomerId_() {
   allCustomers_().forEach(function (c) { const m = /^C(\d+)$/.exec(c.id); if (m) max = Math.max(max, Number(m[1])); });
   return 'C' + String(max + 1).padStart(6, '0');
 }
-/** メールアドレスで名寄せして顧客を登録/更新し、顧客IDを返す(LINE userId などの既存値は保持) */
-function upsertCustomer_(email, name, kana, tel) {
+/** メールアドレスで名寄せして顧客を登録/更新し、顧客IDを返す(LINE userId などの既存値は保持)。
+ *  ref は予約リンクの流入元・問い合わせID。顧客側の空欄だけを埋め、手入力済みの値は上書きしない */
+function upsertCustomer_(email, name, kana, tel, ref) {
   email = normEmail_(email);
   if (!email) return '';
+  ref = ref || { source: '', inquiry: '' };
+  const today = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd');
   const sh = getCustomerSheet_(), c = findCustomer_(email);
   if (c) {
     sh.getRange(c.row, C.NAME + 1, 1, 3).setNumberFormat('@').setValues([[String(name), String(kana), String(tel)]]);
+    const plan = refFillPlan_(c, ref, today);
+    if (plan.refSource) sh.getRange(c.row, C.REF_SOURCE + 1).setNumberFormat('@').setValue(plan.refSource);
+    if (plan.inquiryDate) sh.getRange(c.row, C.INQUIRY_DATE + 1).setNumberFormat('@').setValue(plan.inquiryDate);
+    if (plan.inquiryId) sh.getRange(c.row, C.INQUIRY_ID + 1).setNumberFormat('@').setValue(plan.inquiryId);
     sh.getRange(c.row, C.UPDATED + 1).setNumberFormat('@').setValue(nowStr_());
     return c.id;
   }
+  const plan = refFillPlan_({}, ref, today);
   const id = nextCustomerId_();
-  const row = [id, email, name, kana, tel, '', '', '許可', nowStr_(), nowStr_(), ''];
+  const row = [id, email, name, kana, tel, '', '', '許可', nowStr_(), nowStr_(), '',
+               '', plan.refSource || '', plan.inquiryDate || '', plan.inquiryId || ''];
   sh.getRange(sh.getLastRow() + 1, 1, 1, CUSTOMER_HEADERS.length).setNumberFormat('@').setValues([row.map(String)]);
   return id;
 }
@@ -658,7 +671,8 @@ function appendReservation_(f) {
   const row = [
     f.id, nowStr_(), f.status, f.date, f.time, f.end, f.menuName, f.options, f.total, f.minutes,
     f.name, f.kana, f.tel, f.email, f.visit, f.note, f.eventId, f.menuId,
-    f.customerId || '', Utilities.formatDate(f.start, 'Asia/Tokyo', "yyyy-MM-dd'T'HH:mm:ssXXX"), f.source || '', '', nowStr_(), ''
+    f.customerId || '', Utilities.formatDate(f.start, 'Asia/Tokyo', "yyyy-MM-dd'T'HH:mm:ssXXX"), f.source || '', '', nowStr_(), '',
+    f.refSource || '', f.inquiryId || ''
   ];
   const sh = getSheet_();
   sh.getRange(sh.getLastRow() + 1, 1, 1, HEADERS.length).setNumberFormat('@').setValues([row.map(function (x) { return x == null ? '' : String(x); })]);  // 文字列として保存(数式化・先頭0落ち防止)
@@ -683,10 +697,13 @@ function migrate_() {
     cs.getRange(1, 1, 1, CUSTOMER_HEADERS.length).setValues([CUSTOMER_HEADERS]).setFontWeight('bold').setBackground('#EADBC3');
     cs.setFrozenRows(1);
     const rows = old.map(function (v, i) {
-      return ['C' + String(i + 1).padStart(6, '0'), normEmail_(v[0]), v[1], v[2], v[3], '', '', '許可', String(v[4] || nowStr_()), String(v[4] || nowStr_()), ''].map(String);
+      return ['C' + String(i + 1).padStart(6, '0'), normEmail_(v[0]), v[1], v[2], v[3], '', '', '許可', String(v[4] || nowStr_()), String(v[4] || nowStr_()), '',
+              '', '', '', ''].map(String);
     });
     if (rows.length) cs.getRange(2, 1, rows.length, CUSTOMER_HEADERS.length).setNumberFormat('@').setValues(rows);
   }
+  // 2.5) 顧客シートの見出しを最新に(列追加後の setup 再実行で、足りない見出しが入る)
+  cs.getRange(1, 1, 1, CUSTOMER_HEADERS.length).setValues([CUSTOMER_HEADERS]).setFontWeight('bold').setBackground('#EADBC3');
   // 3) 既存の予約に 顧客ID / 予約日時(ISO) / 流入経路 を補完
   const last = sh.getLastRow();
   if (last >= 2) {
@@ -879,6 +896,26 @@ function adminCreate_(d) {
   if (email) notifyCustomer_(email, 'confirm', { id: id, date: d.date, time: d.time, end: Utilities.formatDate(end, 'Asia/Tokyo', 'HH:mm'),
     menuName: d.menuName, options: 'なし', total: total, name: d.name, minutes: d.minutes, startMs: start.getTime() });
   return { ok: true, id: id };
+}
+
+/* ---------- 顧客(管理画面) ---------- */
+function adminCustomers_() {
+  const today = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd');
+  return { ok: true, customers: customerStats_(allCustomers_(), allRows_(), today) };
+}
+
+function adminCustomerUpdate_(d) {
+  const err = validateCustomerUpdate_(d);
+  if (err) return { ok: false, error: err };
+  const c = allCustomers_().filter(function (x) { return x.id === d.id; })[0];
+  if (!c) return { ok: false, error: 'not_found' };
+  const sh = getCustomerSheet_();
+  // メモ〜問い合わせID は連続した5列。問い合わせIDは画面から変更しないので現在値を書き戻す
+  sh.getRange(c.row, C.MEMO + 1, 1, 5).setNumberFormat('@').setValues([[
+    String(d.memo || ''), String(d.instagram || ''), String(d.refSource || ''), String(d.inquiryDate || ''), c.inquiryId
+  ]]);
+  sh.getRange(c.row, C.UPDATED + 1).setNumberFormat('@').setValue(nowStr_());
+  return { ok: true };
 }
 
 
