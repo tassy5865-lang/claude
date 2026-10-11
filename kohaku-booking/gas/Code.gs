@@ -406,6 +406,37 @@ function nextItemId_(prefix, ids) {
   return prefix + '-' + (max + 1);
 }
 
+/** 管理画面用の一覧。表示OFFも含め、キャッシュを使わずシートを直接読む */
+function adminMenu_() {
+  const m = loadMenu_();
+  return { ok: true, menu: m.menu.slice().sort(byOrder_), options: m.options.slice().sort(byOrder_),
+           cats: MENU_CATS, groups: MENU_GROUPS, kinds: MENU_KINDS };
+}
+
+/** メニュー/オプション1件を保存する。kind は 'menu' | 'option'、d = {item, create}。IDは書き換えない */
+function saveItem_(kind, d) {
+  const isMenu = kind === 'menu', item = d.item || {}, create = d.create === true;
+  const sh = isMenu ? getMenuSheet_() : getOptionSheet_();
+  const width = isMenu ? MENU_HEADERS.length : OPTION_HEADERS.length;
+  const last = sh.getLastRow();
+  const ids = last < 2 ? [] : sh.getRange(2, 1, last - 1, 1).getValues().map(function (r) { return String(r[0]).trim(); });
+  const err = isMenu ? validateMenuItem_(item, create, ids) : validateOptionItem_(item, create, ids);
+  if (err) return { ok: false, error: err.error, field: err.field };
+  let id = strOf_(item.id).trim(), target;
+  if (create) {
+    if (!id) id = nextItemId_(isMenu ? 'menu' : 'opt', ids);
+    target = last + 1;
+  } else {
+    const at = id ? ids.indexOf(id) : -1;
+    if (at < 0) return { ok: false, error: 'not_found' };
+    target = at + 2;
+  }
+  const cells = (isMenu ? menuRowFromItem_ : optionRowFromItem_)(Object.assign({}, item, { id: id }));
+  sh.getRange(target, 1, 1, width).setNumberFormat('@').setValues([cells]);
+  CacheService.getScriptCache().remove('menu:v1');   // 予約サイトへ即反映
+  return { ok: true, id: id };
+}
+
 /* ---------- 検証 ---------- */
 function validate_(d) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(d.date || '')) return 'bad_date';
@@ -490,6 +521,9 @@ function handleAction_(d) {
     case 'adminSetClosed': return adminAuth_(d) ? adminSetClosed_(d) : { ok: false, error: 'auth' };
     case 'adminCustomers':      return adminAuth_(d) ? adminCustomers_(d) : { ok: false, error: 'auth' };
     case 'adminCustomerUpdate': return adminAuth_(d) ? adminCustomerUpdate_(d) : { ok: false, error: 'auth' };
+    case 'adminMenu':       return adminAuth_(d) ? adminMenu_() : { ok: false, error: 'auth' };
+    case 'adminMenuSave':   return adminAuth_(d) ? saveItem_('menu', d) : { ok: false, error: 'auth' };
+    case 'adminOptionSave': return adminAuth_(d) ? saveItem_('option', d) : { ok: false, error: 'auth' };
   }
   return { ok: false, error: 'unknown_action' };
 }
