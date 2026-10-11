@@ -152,6 +152,12 @@ h3{font-size:13px;color:var(--muted);font-weight:500;margin:0 0 8px}
 .hp{position:absolute;left:-9999px;height:0;overflow:hidden}
 
 /* confirm */
+.cpn{margin:14px 0 0;padding:12px 14px;border:1px dashed var(--line);border-radius:8px;background:var(--paper)}
+.cpn label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}
+.cpn .cprow{display:flex;gap:8px}
+.cpn .cprow input{flex:1;min-width:0;padding:11px 12px;border:1px solid var(--line);border-radius:6px;background:#fff;font-size:16px}
+.cpn .cprow .btn{width:auto;padding:0 18px;margin:0}
+.cpn .r2{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
 .sum{margin:0 20px;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
 .sum dl{margin:0;padding:6px 16px}
 .sum .r{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}
@@ -346,7 +352,8 @@ const fresh = () => ({
   y:TY, m:TM-1, date:null, time:null, busy:null, loading:false, availErr:false,
   info:{name:'', kana:'', tel:'', email:'', visit:'first', note:'', website:''},
   errors:{}, banner:'', submitting:false, result:null,
-  ref:{source:'', inquiry:'', menu:''}, refMenuDone:false
+  ref:{source:'', inquiry:'', menu:''}, refMenuDone:false,
+  coupon:null, couponInput:'', couponMsg:'', couponBusy:false
 });
 let S = fresh();
 S.ref = loadRef();   // 予約リンクから来たときだけ値が入る。予約完了後の fresh() では引き継がない
@@ -361,6 +368,35 @@ const mult = () => S.menu.kind === 'pair' ? 2 : 1;
 const optOf = id => OPTIONS.find(o => o.id === id) || {id, name:'', min:0, price:0};
 const duration = () => S.menu.kind === 'omakase' ? S.omakase.mins : S.menu.min + S.opts.reduce((a,id)=>a+optOf(id).min,0);
 const total = () => S.menu.price == null ? null : S.menu.price + S.opts.reduce((a,id)=>a+optOf(id).price,0) * mult();
+
+/* ---------- クーポン(確認画面) ---------- */
+/** 適用結果が有効な前提(メニュー・オプション・時間・メール)をまとめた鍵。変わったら適用を外す */
+const couponKey = () => [S.menu && S.menu.id, S.opts.slice().sort().join(','), S.omakase.mins, S.info.email.trim().toLowerCase()].join('|');
+const couponActive = () => (S.coupon && S.coupon.key === couponKey()) ? S.coupon : null;
+const payTotalOf = t => { const c = couponActive(); return c ? c.total : t; };
+function couponBoxHTML(){
+  if(!S.menu || total() == null) return '';
+  if(S.coupon && !couponActive()) S.coupon = null;   // 条件が変わった割引は破棄する(元に戻しても復活させない)
+  const c = couponActive();
+  if(c) return `<div class="cpn"><div class="r2"><span>クーポン</span><b>${esc(c.name)}(−${yen(c.discount)})</b></div>
+    <button class="lnk" data-act="cpoff">外す</button></div>`;
+  return `<div class="cpn"><label for="cp-code">クーポンコード(お持ちの方)</label>
+    <div class="cprow"><input id="cp-code" data-f="cpn" value="${esc(S.couponInput)}" placeholder="例: CP-ABC123" autocomplete="off" maxlength="30">
+    <button class="btn ghost" data-act="cpapply" ${S.couponBusy ? 'disabled' : ''}>${S.couponBusy ? '確認中…' : '適用'}</button></div>
+    ${S.couponMsg ? `<div class="er" role="alert">${esc(S.couponMsg)}</div>` : ''}</div>`;
+}
+async function applyCoupon(){
+  const code = S.couponInput.trim();
+  if(!code){ S.couponMsg = 'クーポンコードを入力してください'; render(); return; }
+  S.couponBusy = true; S.couponMsg = ''; render();
+  try{
+    const j = await api('couponCheck', {code, email:S.info.email.trim(), menuId:S.menu.id, optionIds:S.opts.slice(), minutes:S.omakase.mins});
+    if(!j.ok) throw new Error(j.error);
+    S.coupon = {code, name:j.name, discount:j.discount, total:j.total, key:couponKey()};
+    S.couponInput = '';
+  } catch(e){ S.couponMsg = errMsg(e.message); }
+  S.couponBusy = false; render();
+}
 const endTime = () => fromMin(toMin(S.time) + duration());
 
 /* ---------- My Kohaku API ---------- */
@@ -375,8 +411,8 @@ const demoDB = (() => {
       {id:'K2607150003', status:'キャンセル', date:add(-81), time:'10:30', end:'11:35', menuId:'f-relax', menuName:'リラックスフェイシャル', options:'なし', total:8100, minutes:65, canCancel:false}
     ],
     coupons:[
-      {code:'WELCOME500', name:'ご来店ありがとうクーポン', desc:'オプション1つサービス', expire:add(60)},
-      {code:'AUTUMN10', name:'秋のリピートクーポン', desc:'次回のご利用が10%OFF', expire:add(30)}
+      {code:'WELCOME500', name:'ご来店ありがとうクーポン', desc:'ご予約時にご利用いただけます', discount:'500円OFF', expire:add(60)},
+      {code:'AUTUMN10', name:'秋のリピートクーポン', desc:'次回のご利用が10%OFF', discount:'10%OFF', expire:add(30)}
     ]
   };
 })();
@@ -388,6 +424,15 @@ async function api(action, extra = {}){
   await sleep(400);   // デモ
   switch(action){
     case 'sendCode': return {ok:true};
+    case 'couponCheck': {
+      const code = String(extra.code || '').trim().toUpperCase();
+      const c = {WELCOME500:{name:'ご来店ありがとうクーポン', type:'金額', value:500}, AUTUMN10:{name:'秋のリピートクーポン', type:'割合', value:10}}[code];
+      if(!c) return {ok:false, error:'bad_coupon'};
+      const t = total();   // デモは現在の選択から計算する
+      if(t == null) return {ok:false, error:'coupon_not_applicable'};
+      const discount = c.type === '金額' ? Math.min(c.value, t) : Math.floor(t * c.value / 100);
+      return {ok:true, name:c.name, discount, total:t - discount};
+    }
     case 'verifyCode': return extra.code === DEMO_CODE ? {ok:true, token:'demo'} : {ok:false, error:'bad_code'};
     case 'me': return {ok:true, ...JSON.parse(JSON.stringify(demoDB)), cancelDeadlineHours:24};
     case 'cancel': {
@@ -591,7 +636,8 @@ const screens = {
       <div class="r"><dt>来店</dt><dd>${i.visit==='first'?'初回':'再来'}</dd></div>
       ${i.note ? `<div class="r"><dt>ご要望</dt><dd>${esc(i.note).replace(/\n/g,'<br>')}</dd></div>` : ''}
     </dl>
-    <div class="tot"><span>お会計(目安)</span><b>${t==null ? '当日ご案内' : yen(t)}</b></div></div>
+    ${couponBoxHTML()}
+    <div class="tot"><span>お会計(目安)</span><b>${t==null ? '当日ご案内' : yen(payTotalOf(t))}</b></div></div>
     <p class="note">${esc(CONFIG.NOTICE)}</p>`;
   },
   login(){
@@ -649,9 +695,9 @@ const screens = {
       }).join('') : `<p class="empty">予約履歴はまだありません。</p>`;
     } else if(T === 'coupons'){
       body = d.coupons.length ? d.coupons.map(c => `
-        <div class="cp"><b>${esc(c.name)}</b><p>${esc(c.desc)}</p>
+        <div class="cp"><b>${esc(c.name)}</b>${c.discount ? `<p><b>${esc(c.discount)}</b></p>` : ''}<p>${esc(c.desc)}</p>
           <code>${esc(c.code)}</code>${c.expire ? `<p class="s" style="font-size:12.5px;color:var(--muted)">${fmtDate(c.expire)} まで</p>` : ''}</div>`).join('')
-        + `<p class="note">ご来店時にクーポンコードをスタッフへお伝えください。</p>`
+        + `<p class="note">ご予約の「内容のご確認」画面でクーポンコードを入力してください。1回のご予約につき1つ、お一人様1回までご利用いただけます。</p>`
       : `<p class="empty">ご利用いただけるクーポンはありません。</p>`;
     } else {
       const p = MY.prof, e = MY.errors;
@@ -803,7 +849,8 @@ async function submit(){
     ...(m.kind==='omakase' ? {minutes:S.omakase.mins} : {}),
     name:i.name.trim(), kana:i.kana.trim(), tel:i.tel.trim(), email:i.email.trim(),
     visit:i.visit==='first' ? '初回' : '再来', note:notes, website:i.website,
-    ...(S.ref.source ? {source:S.ref.source} : {}), ...(S.ref.inquiry ? {inquiry:S.ref.inquiry} : {})
+    ...(S.ref.source ? {source:S.ref.source} : {}), ...(S.ref.inquiry ? {inquiry:S.ref.inquiry} : {}),
+    ...(couponActive() ? {couponCode:couponActive().code} : {})
   };
   try{
     if(!CONFIG.GAS_URL){
@@ -817,6 +864,9 @@ async function submit(){
           Object.keys(availCache).forEach(k => delete availCache[k]);
           S.time = null; S.busy = null; S.banner = '選んだ時間が先ほど埋まってしまいました。別の時間をお選びください。';
           S.submitting = false; go('date'); return;
+        }
+        if(['bad_coupon','coupon_used','coupon_not_applicable','locked'].includes(j.error) && couponActive()){
+          S.coupon = null; S.submitting = false; S.banner = errMsg(j.error) + '(クーポンを外しました。内容をご確認のうえ、もう一度お進みください)'; render(); return;
         }
         if(j.error === 'bad_menu'){
           S.submitting = false; S.banner = errMsg('bad_menu'); MENU_LOADING = true; loadMenu(true); render(); return;
@@ -833,7 +883,7 @@ async function submit(){
 }
 
 /* ---------- My Kohaku 操作 ---------- */
-const errMsg = c => ({bad_minutes:'ご希望の時間をもう一度お選びください', bad_menu:'選んだメニューは現在ご予約いただけません。メニューを選び直してください', bad_email:'メールアドレスを正しく入力してください', bad_code:'コードが違います。もう一度ご確認ください', locked:'入力の失敗が続いたため、しばらくしてからやり直してください', too_late:'ご来店が近いため、マイページからはキャンセルできません。お電話またはLINEでご連絡ください', not_found:'予約が見つかりませんでした', not_active:'この予約はすでに取り消されています', bad_tel:'電話番号を正しく入力してください', missing_field:'未入力の項目があります', conflict:'選んだ時間が先ほど埋まってしまいました。別の時間をお選びください', too_soon:'直近の日時は選べません', closed_day:'定休日は選べません', out_of_hours:'営業時間外です', bad_date:'日時を選び直してください', bad_link_code:'連携コードの有効期限が切れました。もう一度「LINEで連携する」からお試しください', line_auth:'LINEの認証に失敗しました。もう一度お試しください', line_already_linked:'このLINEアカウントは、すでに別のお客様情報に連携されています', not_linked:'LINE連携がまだ完了していません。メールアドレスでログインし、「登録情報」から連携してください', no_customer:'お客様情報が見つかりませんでした'}[c] || '処理できませんでした。時間をおいてもう一度お試しください');
+const errMsg = c => ({bad_minutes:'ご希望の時間をもう一度お選びください', bad_menu:'選んだメニューは現在ご予約いただけません。メニューを選び直してください', bad_email:'メールアドレスを正しく入力してください', bad_code:'コードが違います。もう一度ご確認ください', locked:'入力の失敗が続いたため、しばらくしてからやり直してください', too_late:'ご来店が近いため、マイページからはキャンセルできません。お電話またはLINEでご連絡ください', not_found:'予約が見つかりませんでした', not_active:'この予約はすでに取り消されています', bad_tel:'電話番号を正しく入力してください', missing_field:'未入力の項目があります', conflict:'選んだ時間が先ほど埋まってしまいました。別の時間をお選びください', too_soon:'直近の日時は選べません', closed_day:'定休日は選べません', out_of_hours:'営業時間外です', bad_date:'日時を選び直してください', bad_link_code:'連携コードの有効期限が切れました。もう一度「LINEで連携する」からお試しください', line_auth:'LINEの認証に失敗しました。もう一度お試しください', line_already_linked:'このLINEアカウントは、すでに別のお客様情報に連携されています', not_linked:'LINE連携がまだ完了していません。メールアドレスでログインし、「登録情報」から連携してください', no_customer:'お客様情報が見つかりませんでした', bad_coupon:'このクーポンコードはご利用いただけません', coupon_used:'このクーポンは既にご利用済みです', coupon_not_applicable:'このクーポンは今回のメニューにはご利用いただけません'}[c] || '処理できませんでした。時間をおいてもう一度お試しください');
 async function mySend(){
   MY.email = (MY.email || '').trim().toLowerCase(); MY.msg = ''; MY.ok = '';
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(MY.email)){ MY.msg = errMsg('bad_email'); render(); return; }
@@ -999,6 +1049,8 @@ app.addEventListener('click', e => {
       break;
     }
     case 'submit': submit(); break;
+    case 'cpapply': applyCoupon(); break;
+    case 'cpoff':   S.coupon = null; S.couponMsg = ''; render(); break;
     case 'my':     MY.msg = ''; MY.ok = ''; MY.failed = false; go(MY.token ? 'my' : 'login'); break;
     case 'home':   go('top'); break;
     case 'tab':    MY.tab = v; MY.msg = ''; MY.ok = ''; MY.errors = {}; if(MY.data) MY.prof = {...MY.data.profile}; render(); break;
@@ -1023,6 +1075,7 @@ app.addEventListener('click', e => {
 app.addEventListener('input', e => {
   const t = e.target;
   if(t.dataset.f === 'info'){ S.info[t.dataset.k] = t.value; }
+  if(t.dataset.f === 'cpn'){ S.couponInput = t.value; }
   if(t.dataset.f === 'my'){ MY[t.dataset.k] = t.value; }
   if(t.dataset.f === 'prof'){ MY.prof[t.dataset.k] = t.value; }
 });
