@@ -388,13 +388,15 @@ function couponBoxHTML(){
 async function applyCoupon(){
   const code = S.couponInput.trim();
   if(!code){ S.couponMsg = 'クーポンコードを入力してください'; render(); return; }
+  const key = couponKey();   // リクエストを組み立てる時点の条件。応答時に変わっていたら破棄する
   S.couponBusy = true; S.couponMsg = ''; render();
   try{
     const j = await api('couponCheck', {code, email:S.info.email.trim(), menuId:S.menu.id, optionIds:S.opts.slice(), minutes:S.omakase.mins});
+    if(couponKey() !== key){ S.couponBusy = false; render(); return; }
     if(!j.ok) throw new Error(j.error);
-    S.coupon = {code, name:j.name, discount:j.discount, total:j.total, key:couponKey()};
+    S.coupon = {code, name:j.name, discount:j.discount, total:j.total, key};
     S.couponInput = '';
-  } catch(e){ S.couponMsg = errMsg(e.message); }
+  } catch(e){ if(couponKey() === key) S.couponMsg = errMsg(e.message); }
   S.couponBusy = false; render();
 }
 const endTime = () => fromMin(toMin(S.time) + duration());

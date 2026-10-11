@@ -125,3 +125,53 @@ test('クーポンを使わない通常の予約 payload には couponCode が�
   await w.eval('submit()');
   assert.ok(!('couponCode' in bodies[0]));
 });
+
+test('応答待ちの間に内容を変えたら、古い割引は破棄される(応答は適用しない)', async () => {
+  let release;
+  const gate = new Promise(r => { release = r; });
+  const { w, click, type, text, d } = load('index.html', {
+    replace: withGas,
+    beforeParse(w) {
+      w.fetch = async (u, opt) => {
+        if (opt && opt.method === 'POST') {
+          const b = JSON.parse(opt.body);
+          if (b.action === 'couponCheck') {
+            await gate;
+            return { json: async () => ({ ok: true, name: '古い計算', discount: 500, total: 6500 }) };
+          }
+          return { json: async () => ({ ok: true, id: 'K1' }) };
+        }
+        return { json: async () => ({ ok: false }) };
+      };
+    }
+  });
+  await sleep(50);
+  toConfirm(w);
+  type('#cp-code', 'CP-AAA111'); click('[data-act=cpapply]'); await sleep(30);
+  w.eval("S.opts = ['head']; render();");      // 応答前にオプションを変える
+  release(); await sleep(50);
+  assert.strictEqual(w.eval('S.coupon'), null);
+  assert.doesNotMatch(text('#app'), /−¥500/);
+  assert.strictEqual(w.eval('S.couponBusy'), false);
+  assert.ok(d.querySelector('#cp-code'));
+});
+
+test('応答待ちの間に何も変えなければ、通常どおり適用される', async () => {
+  const { w, click, type, text } = load('index.html', {
+    replace: withGas,
+    beforeParse(w) {
+      w.fetch = async (u, opt) => {
+        if (opt && opt.method === 'POST') {
+          await sleep(30);
+          return { json: async () => ({ ok: true, name: 'サーバー側の名前', discount: 500, total: 6500 }) };
+        }
+        return { json: async () => ({ ok: false }) };
+      };
+    }
+  });
+  await sleep(50);
+  toConfirm(w);
+  type('#cp-code', 'CP-AAA111'); click('[data-act=cpapply]'); await sleep(150);
+  assert.match(text('#app'), /−¥500/);
+  assert.match(text('#app'), /¥6,500/);
+});
