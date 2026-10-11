@@ -45,21 +45,27 @@ const CONFIG = {
  *   予約ステータス  STATUS の値(確定 / 来店済 / キャンセル)
  *   予約日時(ISO)  開始日時 例 2026-10-10T11:00:00+09:00(リマインド配信の判定に使用)
  *   流入経路        web(予約サイト) / admin(管理画面) / 将来 line など
+ *   流入元 / 問い合わせID  予約リンク(?source=…&inquiry=…)から。予約の末尾2列。顧客側は「空のときだけ」埋める
  *   2日前リマインド送信日時 / 当日リマインド送信日時  送ったら記録(二重送信防止。日時変更時は空に戻す)
  *
  * 【顧客】シート … 1行 = 1顧客(メールアドレスで名寄せ)
  *   顧客ID / メール / お名前 / フリガナ / 電話
  *   LINE userId     LINE連携後に保存(Uから始まる33文字)。未連携なら空
  *   LINE連携日時 / LINE通知(許可/停止) / 登録日時 / 更新日時 / メモ
+ *   Instagram名 / 流入元 / 初回問い合わせ日 / 問い合わせID  手入力または予約リンクから
  * ========================================================= */
 const HEADERS = ['予約ID','受付日時','予約ステータス','日付','開始','終了','メニュー','オプション','合計金額','所要分',
                  'お名前','フリガナ','電話','メール','初回/再来','ご要望','カレンダーEventID','メニューID',
-                 '顧客ID','予約日時(ISO)','流入経路','2日前リマインド送信日時','更新日時','当日リマインド送信日時'];
+                 '顧客ID','予約日時(ISO)','流入経路','2日前リマインド送信日時','更新日時','当日リマインド送信日時',
+                 '流入元','問い合わせID'];
 
 const STATUS = { CONFIRMED: '確定', VISITED: '来店済', CANCELLED: 'キャンセル' };   // 追加する場合はここに足す
 
-const CUSTOMER_HEADERS = ['顧客ID','メール','お名前','フリガナ','電話','LINE userId','LINE連携日時','LINE通知','登録日時','更新日時','メモ'];
-const C = { ID:0, EMAIL:1, NAME:2, KANA:3, TEL:4, LINE_ID:5, LINE_AT:6, LINE_NOTIFY:7, CREATED:8, UPDATED:9, MEMO:10 };
+const CUSTOMER_HEADERS = ['顧客ID','メール','お名前','フリガナ','電話','LINE userId','LINE連携日時','LINE通知','登録日時','更新日時','メモ',
+                          'Instagram名','流入元','初回問い合わせ日','問い合わせID'];
+const C = { ID:0, EMAIL:1, NAME:2, KANA:3, TEL:4, LINE_ID:5, LINE_AT:6, LINE_NOTIFY:7, CREATED:8, UPDATED:9, MEMO:10,
+            INSTAGRAM:11, REF_SOURCE:12, INQUIRY_DATE:13, INQUIRY_ID:14 };
+const REF_SOURCES = ['instagram_dm', 'instagram', 'line', 'web', 'other'];   // 予約サイト・管理画面と同じ5種類
 
 /* ---------- 初期セットアップ ---------- */
 function setup() {
@@ -362,6 +368,7 @@ function getSheet_() {
     sh.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]).setFontWeight('bold').setBackground('#EADBC3');
     sh.setFrozenRows(1);
   }
+  ensureColumns_(sh, HEADERS.length);
   return sh;
 }
 function json_(obj) {
@@ -515,13 +522,82 @@ function getCustomerSheet_() {
     sh.getRange(1, 1, 1, CUSTOMER_HEADERS.length).setValues([CUSTOMER_HEADERS]).setFontWeight('bold').setBackground('#EADBC3');
     sh.setFrozenRows(1);
   }
+  ensureColumns_(sh, CUSTOMER_HEADERS.length);
   return sh;
 }
 function nowStr_() { return Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd HH:mm:ss'); }
 
+/** シートの列数が n 未満なら末尾に足す(書き込み範囲がシートの外に出て落ちるのを防ぐ) */
+function ensureColumns_(sh, n) {
+  const have = sh.getMaxColumns();
+  if (have < n) sh.insertColumnsAfter(have, n - have);
+}
+
+/** 予約リンクのパラメータを検証して返す。無効な値は空文字(クライアントの値は信用しない) */
+function cleanRef_(source, inquiry) {
+  const s = String(source == null ? '' : source).trim();
+  const q = String(inquiry == null ? '' : inquiry).trim();
+  return {
+    source: REF_SOURCES.indexOf(s) >= 0 ? s : '',
+    inquiry: /^[A-Za-z0-9_-]{1,32}$/.test(q) ? q : ''
+  };
+}
+
+/** 顧客の空欄だけを埋める計画。手入力済みの値は上書きしない */
+function refFillPlan_(c, ref, today) {
+  const plan = {};
+  if (!c.refSource && ref.source) plan.refSource = ref.source;
+  if (!c.inquiryId && ref.inquiry) plan.inquiryId = ref.inquiry;
+  if (!c.inquiryDate && ref.inquiry) plan.inquiryDate = today;
+  return plan;
+}
+
+/** 顧客ごとの来店回数・最終来店・次回予約・履歴を計算する(保存はしない) */
+function customerStats_(customers, rows, today) {
+  const byTime = function (a, b) { return (a.date + a.time) < (b.date + b.time) ? -1 : 1; };
+  return customers.map(function (c) {
+    const mine = rows.filter(function (r) {
+      return r.customerId ? r.customerId === c.id : (!!c.email && normEmail_(r.email) === c.email);
+    });
+    const visited = mine.filter(function (r) { return r.status === STATUS.VISITED; });
+    const upcoming = mine.filter(function (r) { return r.status === STATUS.CONFIRMED && r.date >= today; }).sort(byTime);
+    let last = '';
+    visited.forEach(function (r) { if (r.date > last) last = r.date; });
+    return {
+      id: c.id, name: c.name, kana: c.kana, tel: c.tel, email: c.email,
+      instagram: c.instagram || '', refSource: c.refSource || '', inquiryDate: c.inquiryDate || '', inquiryId: c.inquiryId || '',
+      lineLinked: !!c.lineUserId, memo: c.memo || '',
+      visits: visited.length,
+      reservations: mine.filter(function (r) { return r.status !== STATUS.CANCELLED; }).length,
+      lastVisit: last,
+      next: upcoming.length ? upcoming[0].date + ' ' + upcoming[0].time : '',
+      history: mine.slice().sort(byTime).reverse().map(function (r) {
+        return { date: r.date, time: r.time, menuName: r.menuName, status: r.status };
+      })
+    };
+  });
+}
+
+/** 管理画面からの顧客情報更新の入力検証。問題なければ空文字 */
+function validateCustomerUpdate_(d) {
+  if (!d.id) return 'not_found';
+  const src = String(d.refSource || '');
+  if (src && REF_SOURCES.indexOf(src) < 0) return 'bad_source';
+  const dt = String(d.inquiryDate || '');
+  if (dt) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dt)) return 'bad_date';
+    const t = new Date(dt + 'T00:00:00Z');
+    if (isNaN(t.getTime()) || t.toISOString().slice(0, 10) !== dt) return 'bad_date';
+  }
+  if (String(d.instagram || '').length > 100 || String(d.memo || '').length > 1000) return 'too_long';
+  return '';
+}
+
 function customerFromRow_(v, i) {
   return { row: i + 2, id: String(v[C.ID]), email: normEmail_(v[C.EMAIL]), name: String(v[C.NAME]), kana: String(v[C.KANA]), tel: String(v[C.TEL]),
-           lineUserId: String(v[C.LINE_ID] || ''), lineLinkedAt: String(v[C.LINE_AT] || ''), lineNotify: String(v[C.LINE_NOTIFY] || '') };
+           lineUserId: String(v[C.LINE_ID] || ''), lineLinkedAt: String(v[C.LINE_AT] || ''), lineNotify: String(v[C.LINE_NOTIFY] || ''),
+           memo: String(v[C.MEMO] || ''), instagram: String(v[C.INSTAGRAM] || ''), refSource: String(v[C.REF_SOURCE] || ''),
+           inquiryDate: dstr_(v[C.INQUIRY_DATE]), inquiryId: String(v[C.INQUIRY_ID] || '') };
 }
 function allCustomers_() {
   const sh = getCustomerSheet_(), last = sh.getLastRow();
@@ -691,7 +767,8 @@ function parseRow_(v, i) {
     total: (v[8] === '' || isNaN(Number(v[8]))) ? null : Number(v[8]), minutes: Number(v[9]),
     name: String(v[10]), kana: String(v[11]), tel: String(v[12]), email: String(v[13]),
     visit: String(v[14]), note: String(v[15]), eventId: String(v[16] || ''), menuId: String(v[17] || ''),
-    customerId: String(v[18] || ''), startIso: String(v[19] || ''), source: String(v[20] || ''), remindedAt: String(v[21] || ''), remindedTodayAt: String(v[23] || '')
+    customerId: String(v[18] || ''), startIso: String(v[19] || ''), source: String(v[20] || ''), remindedAt: String(v[21] || ''), remindedTodayAt: String(v[23] || ''),
+    refSource: String(v[24] || ''), inquiryId: String(v[25] || '')
   };
 }
 function allRows_() {
