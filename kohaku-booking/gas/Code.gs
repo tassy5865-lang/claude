@@ -647,6 +647,119 @@ function adminCouponSave_(d) {
   return { ok: true, code: code };
 }
 
+/* =========================================================
+ * 売上・来店分析(管理画面)
+ *  予約シートを集計するだけ(読み取り専用・個人情報は返さない)。
+ *  売上=状態「来店済」の合計金額(割引後)。確定は見込み、過去日付の確定は未処理。
+ * ========================================================= */
+
+/** 'YYYY-MM-DD' に n 日足す(UTCの日付として計算。タイムゾーンずれを避ける) */
+function addDaysStr_(ds, n) {
+  return new Date(new Date(ds + 'T00:00:00Z').getTime() + n * 86400000).toISOString().slice(0, 10);
+}
+/** from〜to の日数(両端を含む) */
+function daysBetween_(from, to) {
+  return Math.round((new Date(to + 'T00:00:00Z').getTime() - new Date(from + 'T00:00:00Z').getTime()) / 86400000) + 1;
+}
+/** 直前の同じ長さの期間 */
+function prevRange_(from, to) {
+  const n = daysBetween_(from, to);
+  return { from: addDaysStr_(from, -n), to: addDaysStr_(from, -1) };
+}
+/** 期間の検証: 実在する日付・from<=to・400日以内。問題なければ '' */
+function validateAnalyticsRange_(from, to) {
+  if (!isRealDate_(strOf_(from)) || !isRealDate_(strOf_(to))) return 'bad_range';
+  if (from > to || daysBetween_(from, to) > 400) return 'bad_range';
+  return '';
+}
+function monthKeys_(from, to) {
+  const out = [];
+  let y = Number(from.slice(0, 4)), m = Number(from.slice(5, 7));
+  const ey = Number(to.slice(0, 4)), em = Number(to.slice(5, 7));
+  while (y < ey || (y === ey && m <= em)) {
+    out.push(y + '-' + (m < 10 ? '0' : '') + m);
+    m++; if (m > 12) { m = 1; y++; }
+  }
+  return out;
+}
+
+/** 期間内の来店済の売上・来店数だけ(前期間の比較用) */
+function visitedTotals_(rows, from, to) {
+  let sales = 0, visits = 0;
+  rows.forEach(function (r) {
+    if (r.status === STATUS.VISITED && r.date >= from && r.date <= to) { visits++; sales += r.total || 0; }
+  });
+  return { sales: sales, visits: visits };
+}
+
+/** 集計(純関数)。rows は parseRow_ の結果、today は JST の 'YYYY-MM-DD' */
+function analyticsSummary_(rows, from, to, today) {
+  const mine = rows.filter(function (r) { return r.date >= from && r.date <= to; });
+  const visited = mine.filter(function (r) { return r.status === STATUS.VISITED; });
+  const priced = visited.filter(function (r) { return r.total !== null && r.total !== undefined; });
+  const sales = priced.reduce(function (s, r) { return s + r.total; }, 0);
+  const confirmed = mine.filter(function (r) { return r.status === STATUS.CONFIRMED; });
+  const upcomingRows = confirmed.filter(function (r) { return r.date >= today; });
+  const cancelled = mine.filter(function (r) { return r.status === STATUS.CANCELLED; }).length;
+  const denom = visited.length + confirmed.length + cancelled;
+
+  const unit = daysBetween_(from, to) <= 62 ? 'day' : 'month';
+  const keys = [];
+  if (unit === 'day') { for (let i = 0, n = daysBetween_(from, to); i < n; i++) keys.push(addDaysStr_(from, i)); }
+  else { monthKeys_(from, to).forEach(function (k) { keys.push(k); }); }
+  const pts = {};
+  keys.forEach(function (k) { pts[k] = { key: k, sales: 0, visits: 0 }; });
+  visited.forEach(function (r) {
+    const p = pts[unit === 'day' ? r.date : r.date.slice(0, 7)];
+    p.visits++; p.sales += r.total || 0;
+  });
+
+  const group = function (keyOf) {
+    const map = {}, order = [];
+    visited.forEach(function (r) {
+      const k = keyOf(r);
+      if (!map[k]) { map[k] = { key: k, visits: 0, sales: 0 }; order.push(k); }
+      map[k].visits++; map[k].sales += r.total || 0;
+    });
+    return order.map(function (k) { return map[k]; });
+  };
+  const bySales = function (a, b) { return (b.sales - a.sales) || (b.visits - a.visits); };
+  const byMenu = group(function (r) { return r.menuName; }).sort(function (a, b) {
+    return bySales(a, b) || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0);
+  }).map(function (o) { return { name: o.key, visits: o.visits, sales: o.sales }; });
+  const bySource = group(function (r) { return r.refSource || (r.source === 'admin' ? 'admin' : 'none'); }).sort(function (a, b) {
+    return bySales(a, b) || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0);
+  });
+  const visitType = { first: { visits: 0, sales: 0 }, repeat: { visits: 0, sales: 0 }, unknown: { visits: 0, sales: 0 } };
+  visited.forEach(function (r) {
+    const o = visitType[r.visit === '初回' ? 'first' : r.visit === '再来' ? 'repeat' : 'unknown'];
+    o.visits++; o.sales += r.total || 0;
+  });
+
+  const pr = prevRange_(from, to), pt = visitedTotals_(rows, pr.from, pr.to);
+  return {
+    summary: {
+      sales: sales, visits: visited.length,
+      avgSpend: priced.length ? Math.round(sales / priced.length) : null,
+      unpriced: visited.length - priced.length,
+      upcoming: { count: upcomingRows.length, amount: upcomingRows.reduce(function (s, r) { return s + (r.total || 0); }, 0) },
+      pending: confirmed.length - upcomingRows.length,
+      cancelled: cancelled,
+      cancelRate: denom ? cancelled / denom : null
+    },
+    prev: { from: pr.from, to: pr.to, sales: pt.sales, visits: pt.visits },
+    series: { unit: unit, points: keys.map(function (k) { return pts[k]; }) },
+    byMenu: byMenu, bySource: bySource, visitType: visitType
+  };
+}
+
+function adminAnalytics_(d) {
+  const err = validateAnalyticsRange_(d.from, d.to);
+  if (err) return { ok: false, error: err };
+  const res = analyticsSummary_(allRows_(), d.from, d.to, todayStr_());
+  return Object.assign({ ok: true, from: d.from, to: d.to, today: todayStr_() }, res);
+}
+
 /* ---------- 検証 ---------- */
 function validate_(d) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(d.date || '')) return 'bad_date';
@@ -735,6 +848,7 @@ function handleAction_(d) {
     case 'adminMenu':       return adminAuth_(d) ? adminMenu_() : { ok: false, error: 'auth' };
     case 'adminCoupons':    return adminAuth_(d) ? adminCoupons_() : { ok: false, error: 'auth' };
     case 'adminCouponSave': return adminAuth_(d) ? adminCouponSave_(d) : { ok: false, error: 'auth' };
+    case 'adminAnalytics':  return adminAuth_(d) ? adminAnalytics_(d) : { ok: false, error: 'auth' };
     case 'adminMenuSave':   return adminAuth_(d) ? saveItem_('menu', d) : { ok: false, error: 'auth' };
     case 'adminOptionSave': return adminAuth_(d) ? saveItem_('option', d) : { ok: false, error: 'auth' };
   }
