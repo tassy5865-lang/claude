@@ -391,6 +391,7 @@ function handleAction_(d) {
     case 'adminList':      return adminAuth_(d) ? adminList_(d) : { ok: false, error: 'auth' };
     case 'adminSetStatus': return adminAuth_(d) ? adminSetStatus_(d) : { ok: false, error: 'auth' };
     case 'adminCreate':    return adminAuth_(d) ? adminCreate_(d) : { ok: false, error: 'auth' };
+    case 'adminSetClosed': return adminAuth_(d) ? adminSetClosed_(d) : { ok: false, error: 'auth' };
   }
   return { ok: false, error: 'unknown_action' };
 }
@@ -706,7 +707,46 @@ function adminList_(d) {
   const list = allRows_().filter(function (r) { return r.date >= d.from && r.date <= d.to; })
     .sort(function (a, b) { return (a.date + a.time) < (b.date + b.time) ? -1 : 1; })
     .map(function (r) { r.lineLinked = !!linked[normEmail_(r.email)]; delete r.row; delete r.eventId; return r; });
-  return { ok: true, reservations: list };
+  const closures = closureEntries_(d.from, d.to).map(function (c) { return c.date; })
+    .filter(function (v, i, a) { return a.indexOf(v) === i; });
+  return { ok: true, reservations: list, closures: closures };
+}
+
+/* ---------- 営業日(臨時休業 = タイトル【臨時休業】の終日予定) ---------- */
+const CLOSURE_TITLE = '【臨時休業】';
+
+/** 範囲内の臨時休業を日付ごとに返す。single=その予定が1日だけ(解除してよい) */
+function closureEntries_(from, to) {
+  const s = new Date(from + 'T00:00:00+09:00');
+  const e = new Date(to + 'T23:59:59+09:00');
+  const out = [];
+  getCalendar_().getEvents(s, e).forEach(function (ev) {
+    if (!ev.isAllDayEvent() || ev.getTitle() !== CLOSURE_TITLE) return;
+    const first = Utilities.formatDate(ev.getAllDayStartDate(), 'Asia/Tokyo', 'yyyy-MM-dd');
+    const endEx = Utilities.formatDate(ev.getAllDayEndDate(), 'Asia/Tokyo', 'yyyy-MM-dd');   // 終了日は含まない
+    let day = first, guard = 0;
+    const single = new Date(first + 'T00:00:00Z').getTime() + 864e5 >= new Date(endEx + 'T00:00:00Z').getTime();
+    while (day < endEx && guard++ < 366) {
+      out.push({ date: day, ev: ev, single: single });
+      day = Utilities.formatDate(new Date(new Date(day + 'T00:00:00Z').getTime() + 864e5), 'UTC', 'yyyy-MM-dd');
+    }
+  });
+  return out.filter(function (c) { return c.date >= from && c.date <= to; });
+}
+
+function adminSetClosed_(d) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d.date || '') || typeof d.closed !== 'boolean') return { ok: false, error: 'bad_date' };
+  if (d.date < Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd')) return { ok: false, error: 'bad_date' };
+  if (CONFIG.CLOSED_WEEKDAYS.indexOf(new Date(d.date + 'T00:00:00Z').getUTCDay()) >= 0) return { ok: false, error: 'closed_day' };
+  const found = closureEntries_(d.date, d.date);
+  if (d.closed) {
+    if (!found.length) getCalendar_().createAllDayEvent(CLOSURE_TITLE, new Date(d.date + 'T00:00:00+09:00'));
+    const active = allRows_().filter(function (r) { return r.date === d.date && r.status === STATUS.CONFIRMED; }).length;
+    return { ok: true, activeCount: active };
+  }
+  if (found.some(function (c) { return !c.single; })) return { ok: false, error: 'multi_day_event' };
+  found.forEach(function (c) { c.ev.deleteEvent(); });
+  return { ok: true };
 }
 
 function adminSetStatus_(d) {

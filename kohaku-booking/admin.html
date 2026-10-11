@@ -82,6 +82,12 @@ main{flex:1;padding-bottom:96px}
 .cell.sel{background:var(--brown);border-color:var(--brown);color:#fff}
 .cell.sel i{background:#fff}
 .cell.sel.today span{color:#fff}
+.cell.closed{background:#F1ECE4}
+.cell em{font-style:normal;font-size:11px;color:var(--danger)}
+.cell em.reg{color:var(--muted)}
+.cell.sel em{color:#fff}
+.closed-bar{margin:12px 16px 0;padding:10px 14px;border-radius:6px;background:#F1ECE4;color:var(--brown);font-size:13.5px}
+.closure{padding:12px 16px 0}
 .sub{font-family:var(--serif);font-size:18px;color:var(--brown);padding:16px 16px 0}
 
 /* fab */
@@ -180,6 +186,8 @@ const demo = (() => {
   return list;
 })();
 
+const demoClosed = new Set();   // デモ表示の臨時休業(画面内のみ保持)
+
 /** スプレッドシートのメニューを取得。失敗時は予備配列のまま(おまかせは管理画面では選べない) */
 async function loadMenu(){
   if(!CONFIG.GAS_URL) return;
@@ -205,7 +213,15 @@ async function api(action, extra = {}){
   await sleep(300);
   switch(action){
     case 'adminLogin': return extra.password === 'demo' ? {ok:true, token:'demo'} : {ok:false, error:'bad_password'};
-    case 'adminList': return {ok:true, reservations:demo.filter(r => r.date >= extra.from && r.date <= extra.to).sort((a,b)=>(a.date+a.time)<(b.date+b.time)?-1:1).map(r=>({...r}))};
+    case 'adminList': return {ok:true, reservations:demo.filter(r => r.date >= extra.from && r.date <= extra.to).sort((a,b)=>(a.date+a.time)<(b.date+b.time)?-1:1).map(r=>({...r})),
+      closures:[...demoClosed].filter(ds => ds >= extra.from && ds <= extra.to).sort()};
+    case 'adminSetClosed': {
+      if(extra.date < TODAY) return {ok:false, error:'bad_date'};
+      if(CONFIG.CLOSED_WEEKDAYS.includes(dow(extra.date))) return {ok:false, error:'closed_day'};
+      if(!extra.closed){ demoClosed.delete(extra.date); return {ok:true}; }
+      demoClosed.add(extra.date);
+      return {ok:true, activeCount:demo.filter(r => r.date === extra.date && r.status === '確定').length};
+    }
     case 'adminSetStatus': { const r = demo.find(x => x.id === extra.id); if(!r) return {ok:false,error:'not_found'}; if(r.status==='キャンセル') return {ok:false,error:'already_cancelled'}; r.status = extra.status; return {ok:true, notified: extra.status==='キャンセル' && extra.notify !== false && !!r.email}; }
     case 'adminCreate': {
       if(!extra.force && demo.some(r => r.date===extra.date && r.status!=='キャンセル' && toMin(r.time) < toMin(extra.time)+extra.minutes+15 && toMin(r.end) > toMin(extra.time)-15)) return {ok:false, error:'conflict'};
@@ -221,11 +237,11 @@ async function api(action, extra = {}){
 /* ---------- state ---------- */
 const A = {
   token:'', screen:'today', date:TODAY, y:+TODAY.slice(0,4), m:+TODAY.slice(5,7)-1, sel:TODAY,
-  data:{}, loading:{}, failed:{}, msg:'', ok:'', sheet:null, form:null, busy:false, pw:'', pwMsg:''
+  data:{}, closed:{}, loading:{}, failed:{}, msg:'', ok:'', sheet:null, form:null, busy:false, pw:'', pwMsg:''
 };
 try{ A.token = sessionStorage.getItem('kohaku_admin') || ''; }catch(e){}
 const saveTok = () => { try{ sessionStorage.setItem('kohaku_admin', A.token); }catch(e){} };
-const errMsg = c => ({bad_password:'パスワードが違います', locked:'失敗が続いたため、10分ほど待ってからやり直してください', not_configured:'パスワードが未設定です。スクリプト プロパティに ADMIN_PASSWORD を追加してください', conflict:'他の予約と時間が重なっています', already_cancelled:'キャンセル済みの予約は変更できません', not_found:'予約が見つかりません', bad_tel:'電話番号を正しく入力してください', bad_email:'メールアドレスを正しく入力してください'}[c] || '処理できませんでした。時間をおいてもう一度お試しください');
+const errMsg = c => ({bad_password:'パスワードが違います', locked:'失敗が続いたため、10分ほど待ってからやり直してください', not_configured:'パスワードが未設定です。スクリプト プロパティに ADMIN_PASSWORD を追加してください', conflict:'他の予約と時間が重なっています', already_cancelled:'キャンセル済みの予約は変更できません', not_found:'予約が見つかりません', closed_day:'定休日は設定できません', bad_date:'過去の日付は設定できません', multi_day_event:'複数日にまたがる休業予定は、Googleカレンダーから解除してください', bad_tel:'電話番号を正しく入力してください', bad_email:'メールアドレスを正しく入力してください'}[c] || '処理できませんでした。時間をおいてもう一度お試しください');
 
 /* ---------- data ---------- */
 function ensure(ds){
@@ -235,11 +251,14 @@ function ensure(ds){
   api('adminList', {from:key+'-01', to:monthEnd(key)}).then(j => {
     if(!j.ok){ if(j.error === 'auth'){ logout(true); return; } throw new Error(j.error); }
     A.data[key] = j.reservations;
+    A.closed[key] = j.closures || [];
   }).catch(() => { A.failed[key] = true; }).finally(() => { A.loading[key] = false; render(); });
 }
 const on = ds => (A.data[ds.slice(0,7)] || []).filter(r => r.date === ds);
 const active = r => r.status !== 'キャンセル';
-function reload(){ A.data = {}; A.failed = {}; render(); }
+const isClosed = ds => (A.closed[ds.slice(0,7)] || []).includes(ds);
+const isRegular = ds => CONFIG.CLOSED_WEEKDAYS.includes(dow(ds));
+function reload(){ A.data = {}; A.closed = {}; A.failed = {}; render(); }
 
 /* ---------- views ---------- */
 function itemHTML(r, nextId){
@@ -262,6 +281,14 @@ function statsHTML(ds){
   const sum = a.reduce((s,r) => s + (r.total == null ? 0 : r.total), 0);
   return `<div class="stats"><div class="stat"><small>予約</small><b>${a.length}件</b></div><div class="stat"><small>来店済</small><b>${a.filter(r=>r.status==='来店済').length}件</b></div><div class="stat"><small>売上見込</small><b>${yen(sum)}</b></div></div>`;
 }
+/** 選択日の営業日表示: 休業の帯 + 臨時休業の登録/解除ボタン */
+function closureHTML(ds){
+  if(!A.data[ds.slice(0,7)]) return '';
+  if(isRegular(ds)) return '<div class="closed-bar">定休日です。</div>';
+  const bar = isClosed(ds) ? '<div class="closed-bar">この日は臨時休業です(予約サイトでは受付停止中)。</div>' : '';
+  if(ds < TODAY) return bar;
+  return bar + `<div class="closure"><button class="btn ghost" data-act="closure" data-v="${ds}" ${A.busy?'disabled':''}>${isClosed(ds) ? '臨時休業を解除する' : 'この日を臨時休業にする'}</button></div>`;
+}
 function todayView(){
   ensure(A.date);
   return `<div class="dnav"><button class="ib" data-act="day" data-v="-1" aria-label="前の日">‹</button>
@@ -269,7 +296,7 @@ function todayView(){
     <div style="display:flex;gap:8px;padding:0 16px;align-items:center"><button class="chip" data-act="gototoday">今日</button>
     <input type="date" value="${A.date}" data-f="pick" aria-label="日付を選ぶ" style="border:1px solid var(--line);border-radius:99px;padding:4px 12px;background:var(--paper);font-size:14px"></div>
     ${A.ok ? `<div class="ok" role="status">${esc(A.ok)}</div>` : ''}${A.msg ? `<div class="err" role="alert">${esc(A.msg)}</div>` : ''}
-    ${A.data[A.date.slice(0,7)] ? statsHTML(A.date) : ''}${listHTML(A.date)}`;
+    ${closureHTML(A.date)}${A.data[A.date.slice(0,7)] ? statsHTML(A.date) : ''}${listHTML(A.date)}`;
 }
 function calView(){
   const {y,m} = A, key = `${y}-${pad(m+1)}`; ensure(key+'-01'); ensure(A.sel);
@@ -278,12 +305,13 @@ function calView(){
   for(let i=0;i<first;i++) cells += '<span></span>';
   for(let d=1; d<=n; d++){
     const ds = ymd(y,m,d), c = A.data[key] ? on(ds).filter(active).length : 0;
-    cells += `<button class="cell ${ds===TODAY?'today':''} ${ds===A.sel?'sel':''}" data-act="sel" data-v="${ds}" aria-label="${m+1}月${d}日 ${c}件"><span>${d}</span>${c ? `<i>${c}</i>` : ''}</button>`;
+    const cl = A.data[key] && isClosed(ds), rg = isRegular(ds);
+    cells += `<button class="cell ${ds===TODAY?'today':''} ${ds===A.sel?'sel':''} ${cl?'closed':''}" data-act="sel" data-v="${ds}" aria-label="${m+1}月${d}日 ${rg?'定休日':cl?'臨時休業':c+'件'}"><span>${d}</span>${cl ? '<em>休</em>' : rg ? '<em class="reg">定休</em>' : c ? `<i>${c}</i>` : ''}</button>`;
   }
   return `<div class="mh"><button class="ib" data-act="month" data-v="-1" aria-label="前の月">‹</button><b>${y}年${m+1}月</b><button class="ib" data-act="month" data-v="1" aria-label="次の月">›</button></div>
     <div class="grid">${cells}</div>
     ${A.ok ? `<div class="ok" role="status">${esc(A.ok)}</div>` : ''}${A.msg ? `<div class="err" role="alert">${esc(A.msg)}</div>` : ''}
-    <div class="sub">${fmtDate(A.sel)}</div>${A.data[A.sel.slice(0,7)] ? statsHTML(A.sel) : ''}${listHTML(A.sel)}`;
+    <div class="sub">${fmtDate(A.sel)}</div>${closureHTML(A.sel)}${A.data[A.sel.slice(0,7)] ? statsHTML(A.sel) : ''}${listHTML(A.sel)}`;
 }
 function loginView(){
   return `<div class="login"><h1>${CONFIG.SALON}</h1><p>管理画面</p>
@@ -390,6 +418,19 @@ async function setStatus(st){
   } catch(e){ A.msg = errMsg(e.message); }
   A.busy = false; render();
 }
+async function setClosed(ds){
+  const closed = !isClosed(ds);
+  A.busy = true; A.msg = ''; A.ok = ''; render();
+  try{
+    const j = await api('adminSetClosed', {date:ds, closed});
+    if(!j.ok){ if(j.error === 'auth'){ logout(true); return; } throw new Error(j.error); }
+    A.ok = closed
+      ? `${fmtDate(ds)}を臨時休業にしました。` + (j.activeCount ? `この日には確定の予約が${j.activeCount}件あります。個別にキャンセルまたはご連絡してください。` : '')
+      : `${fmtDate(ds)}の臨時休業を解除しました。`;
+    reload();
+  } catch(e){ A.msg = errMsg(e.message); }
+  A.busy = false; render();
+}
 function newForm(){
   const ds = A.screen === 'cal' ? A.sel : A.date;
   const m = MENU[0];
@@ -439,6 +480,7 @@ app.addEventListener('click', e => {
     case 'open': A.sheet = v; A.msg = ''; A.ok = ''; render(); break;
     case 'close': A.sheet = null; A.form = null; A.msg = ''; render(); break;
     case 'status': setStatus(v); break;
+    case 'closure': setClosed(v); break;
     case 'new': newForm(); break;
     case 'create': create(false); break;
     case 'reload': reload(); break;
