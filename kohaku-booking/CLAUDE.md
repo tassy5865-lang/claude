@@ -41,7 +41,7 @@ gas/Code.gs (Web App: 実行=自分 / アクセス=全員)
 - `POST {action}`:
   - お客様: `sendCode` / `verifyCode`(メール6桁コード→6時間トークン) / `me` / `cancel` / `reschedule` / `updateProfile` / `logout`
   - LINE: `lineLinkCode`(要ログイン) / `lineLink`(IDトークン+連携コード) / `lineLogin`(IDトークン) / `lineUnlink`
-  - 管理: `adminLogin` / `adminList` / `adminSetStatus` / `adminCreate` / `adminSetClosed`(臨時休業の登録/解除) / `adminCustomers`(顧客一覧+集計) / `adminCustomerUpdate`(Instagram名・流入元・初回問い合わせ日・メモ)(トークン6時間。パスワードは `ADMIN_PASSWORD`)
+  - 管理: `adminLogin` / `adminList` / `adminSetStatus` / `adminCreate` / `adminSetClosed`(臨時休業の登録/解除) / `adminCustomers`(顧客一覧+集計) / `adminCustomerUpdate`(Instagram名・流入元・初回問い合わせ日・メモ) / `adminMenu`(メニュー・オプション一覧。表示OFFを含む) / `adminMenuSave` / `adminOptionSave`(1件の更新・新規追加。保存後に `menu:v1` キャッシュを消すので予約サイトへ即反映。検証違反は `{error:'bad_field', field}`、ID重複は `duplicate_id`)(トークン6時間。パスワードは `ADMIN_PASSWORD`)
   - `adminList` は `closures`(休業日の配列)を返す。予約の応答には `refSource`(流入元)・`inquiryId`(問い合わせID)が入る(既存の `source`=web/admin はそのまま)
 - 予約リンク(`index.html`): `?source=instagram_dm|instagram|line|web|other` / `&inquiry=<英数字-_ 32文字以内>` / `&menu=<メニューID>`。LIFF経由(`liff.state`)も解釈。無効な値は無視。予約POSTの `source` / `inquiry` をGASが再検証して保存する
 - レスポンスは `{ok:true,...}` / `{ok:false,error:'code'}`。エラーコード→日本語は `index.html` の `errMsg` / `admin.html` の `errMsg`。
@@ -65,7 +65,7 @@ gas/Code.gs (Web App: 実行=自分 / アクセス=全員)
 - `index.html` の `CONFIG`: `GAS_URL`, `LIFF_ID`, 営業時間, 刻み, `BUFFER_MIN`, `CAPACITY`, 定休日, 先行受付, `NOTICE`
 - `admin.html` の `CONFIG`: `GAS_URL`, `SITE_URL`(予約リンク発行のベースURL。空なら同じフォルダの `index.html`)。流入元の5種類(`instagram_dm` 等)は `index.html` / `admin.html` / `gas/Code.gs` の3箇所をそろえる
 - `gas/Code.gs` の `CONFIG`: 上記と**同じ意味の値**(CAPACITY/BUFFER_MIN/CLOSED_WEEKDAYS/OPEN/CLOSE/MIN_ADVANCE_HOURS)を持つ → 変更時は両方そろえる
-- メニュー/オプションの**正は `メニュー`/`オプション`シート**(オーナーが直接編集。反映は最大5分遅れ)。`index.html` の `MENU`/`OPTIONS`、`admin.html` の `MENU` は**予備配列**(デモ・取得失敗時用)で、`gas/Code.gs` の `SEED_MENU`(表示ON)と同じ内容に保つ(`tests/menu-front.test.js` が検査)。カテゴリ `CATS` は `index.html` に固定
+- メニュー/オプションの**正は `メニュー`/`オプション`シート**(管理画面の「メニュー」画面から編集・新規追加でき、保存後は即反映。シートを直接編集した場合の反映は最大5分遅れ。IDは作成後に変更不可・削除はせず表示=OFF)。`index.html` の `MENU`/`OPTIONS`、`admin.html` の `MENU` は**予備配列**(デモ・取得失敗時用)で、`gas/Code.gs` の `SEED_MENU`(表示ON)と同じ内容に保つ(`tests/menu-front.test.js` が検査)。カテゴリ `CATS` は `index.html` に固定
 - 秘密情報は **スクリプト プロパティ**: `ADMIN_PASSWORD`, `LINE_CHANNEL_ACCESS_TOKEN`, `LINE_LOGIN_CHANNEL_ID`, `LIFF_ID`。コードに直書き・コミット禁止
 
 ## 設計上の判断(変えるなら理由を確認)
@@ -77,10 +77,10 @@ gas/Code.gs (Web App: 実行=自分 / アクセス=全員)
 - 管理画面のURLは予約サイトと別の場所に置く想定(noindex付き)。
 
 ## 実装済み / 未実装
-**実装済み**: メニュー/オプションのシート管理 + 予約時のサーバー側料金再計算 / 予約フロー(7ステップ)/ My Kohaku(次回・履歴・クーポン表示・登録情報)/ 日時変更・キャンセル / 管理画面(今日・カレンダー・詳細・状態変更・予約追加・**営業日(臨時休業の登録/解除)**・**顧客一覧/詳細/編集**・**予約リンク発行**。PCは左サイドバー、スマホは下タブ)/ 予約リンクによる流入元・問い合わせIDの記録とメニュー事前選択 / 顧客ID・LINE userId保存項目 / LINE連携(LIFF)/ 確認・2日前・当日通知
+**実装済み**: メニュー/オプションのシート管理 + 予約時のサーバー側料金再計算 / 予約フロー(7ステップ)/ My Kohaku(次回・履歴・クーポン表示・登録情報)/ 日時変更・キャンセル / 管理画面(今日・カレンダー・詳細・状態変更・予約追加・**営業日(臨時休業の登録/解除)**・**顧客一覧/詳細/編集**・**予約リンク発行**・**メニュー/オプションの編集・追加**。PCは左サイドバー、スマホは下タブ)/ 予約リンクによる流入元・問い合わせIDの記録とメニュー事前選択 / 顧客ID・LINE userId保存項目 / LINE連携(LIFF)/ 確認・2日前・当日通知
 
 **未実装(優先度の目安)**
-1. 管理画面の残り: **クーポン管理**、**売上分析**、**メニュー・料金設定**(今はシートを直接編集)、**スタッフ管理**。いずれもナビ(`admin.html` の `NAV` / `VIEWS`)に足す
+1. 管理画面の残り: **クーポン管理**、**売上・来店分析**、**スタッフ管理**。いずれもナビ(`admin.html` の `NAV` / `VIEWS`)に足す
 2. クーポンの**予約時適用**(今は表示のみ。コードを来店時に伝える運用)
 3. ~~管理画面でキャンセルした際のお客様への通知~~ → 実装済み(`adminSetStatus` の `notify`、詳細画面のチェックで ON/OFF。GAS実機は未確認)
 4. LINEブロック判定の実機調整(`linePush_` の停止条件は推測。実際の応答を見て調整)
