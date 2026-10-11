@@ -319,6 +319,93 @@ function menuApi_(fresh) {
   return res;
 }
 
+/* =========================================================
+ * メニュー・料金設定(管理画面から編集)
+ *  シート(メニュー/オプション)が正。管理画面は行を読み書きするだけ。IDは作成後に変更しない・削除しない。
+ * ========================================================= */
+const MENU_CATS = ['first', 'rec', 'aroma', 'facial', 'steam', 'pair', 'omakase'];   // index.html の CATS と同じ
+const MENU_GROUPS = ['aroma', 'facial', 'steam', 'pair', 'omakase'];
+const MENU_KINDS = ['', 'pair', 'omakase'];
+
+/** 整数だけを許す数値化(全角・カンマ・円記号は numOrNull_ が除去)。空は null、不正は NaN */
+function intOrNull_(v) {
+  const n = numOrNull_(v);
+  if (n === null || isNaN(n)) return n;
+  return Math.floor(n) === n ? n : NaN;
+}
+
+function fieldErr_(field) { return { error: 'bad_field', field: field }; }
+function strOf_(v) { return String(v === undefined || v === null ? '' : v); }
+
+/** ID・名前・表示・並び順の共通検証。問題なければ null */
+function validateCommon_(item, create, ids) {
+  const id = strOf_(item.id).trim();
+  if (create) {
+    if (id && !/^[A-Za-z0-9_-]{1,40}$/.test(id)) return fieldErr_('id');
+    if (id && ids.indexOf(id) >= 0) return { error: 'duplicate_id', field: 'id' };
+  }
+  const name = strOf_(item.name).trim();
+  if (name.length < 1 || name.length > 60) return fieldErr_('name');
+  if (typeof item.show !== 'boolean') return fieldErr_('show');
+  const order = intOrNull_(item.order);
+  if (order === null || isNaN(order) || order > 9999) return fieldErr_('order');
+  return null;
+}
+
+/** メニュー1件の検証。問題なければ ''、あれば {error, field}。ids は既存のメニューID一覧(create時の重複検査用) */
+function validateMenuItem_(item, create, ids) {
+  item = item || {};
+  const common = validateCommon_(item, create, ids || []);
+  if (common) return common;
+  if (strOf_(item.desc).length > 200) return fieldErr_('desc');
+  const kind = strOf_(item.kind);
+  if (MENU_KINDS.indexOf(kind) < 0) return fieldErr_('kind');
+  const min = intOrNull_(item.min);
+  if (kind === 'omakase') {
+    if (min !== null && (isNaN(min) || min > 300)) return fieldErr_('min');
+  } else if (min === null || isNaN(min) || min < 10 || min > 300) {
+    return fieldErr_('min');
+  }
+  const price = intOrNull_(item.price);
+  if (price !== null && (isNaN(price) || price > 1000000)) return fieldErr_('price');
+  const cats = item.cats;
+  if (!Array.isArray(cats) || cats.length === 0 || cats.some(function (c) { return MENU_CATS.indexOf(c) < 0; })) return fieldErr_('cats');
+  if (MENU_GROUPS.indexOf(strOf_(item.g)) < 0) return fieldErr_('g');
+  return '';
+}
+
+/** オプション1件の検証(料金は必須、所要分は0〜300) */
+function validateOptionItem_(item, create, ids) {
+  item = item || {};
+  const common = validateCommon_(item, create, ids || []);
+  if (common) return common;
+  const min = intOrNull_(item.min);
+  if (min === null || isNaN(min) || min > 300) return fieldErr_('min');
+  const price = intOrNull_(item.price);
+  if (price === null || isNaN(price) || price > 1000000) return fieldErr_('price');
+  return '';
+}
+
+/** 検証済みの item → メニューシートの1行(MENU_HEADERS の並び、全て文字列) */
+function menuRowFromItem_(item) {
+  const min = intOrNull_(item.min), price = intOrNull_(item.price);
+  return [strOf_(item.id), strOf_(item.name).trim(), min === null ? '' : String(min), price === null ? '' : String(price),
+          strOf_(item.desc).trim(), item.cats.join(','), strOf_(item.g), strOf_(item.kind), item.show ? 'ON' : 'OFF', String(intOrNull_(item.order))];
+}
+/** 検証済みの item → オプションシートの1行(OPTION_HEADERS の並び、全て文字列) */
+function optionRowFromItem_(item) {
+  return [strOf_(item.id), strOf_(item.name).trim(), String(intOrNull_(item.min)), String(intOrNull_(item.price)),
+          item.show ? 'ON' : 'OFF', String(intOrNull_(item.order))];
+}
+
+/** 既存IDの「<prefix>-数字」の最大+1 で新しいIDを作る */
+function nextItemId_(prefix, ids) {
+  const re = new RegExp('^' + prefix + '-(\\d+)$');
+  let max = 0;
+  (ids || []).forEach(function (id) { const m = re.exec(String(id)); if (m) max = Math.max(max, Number(m[1])); });
+  return prefix + '-' + (max + 1);
+}
+
 /* ---------- 検証 ---------- */
 function validate_(d) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(d.date || '')) return 'bad_date';
