@@ -137,6 +137,11 @@ main{flex:1;padding-bottom:150px}
   main{padding-bottom:40px}
   .fab{right:24px;bottom:24px}
 }
+/* customers */
+.cfilter{display:grid;grid-template-columns:1fr auto;gap:8px;padding:14px 16px 0}
+.cfilter input,.cfilter select{min-height:44px;padding:8px 12px;border:1px solid var(--line);border-radius:6px;background:#fff;font-size:16px}
+.hist{list-style:none;margin:0;padding:0}
+.hist li{padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -203,6 +208,24 @@ const demo = (() => {
 })();
 
 const demoClosed = new Set();   // デモ表示の臨時休業(画面内のみ保持)
+const demoCustFields = new Map();   // 顧客ID → 手入力項目(デモ表示は画面内のメモリのみ)
+/** デモ予約から顧客一覧を作る(GAS の customerStats_ と同じ集計) */
+function demoCustomers(){
+  const srcs = ['instagram_dm','instagram','line','web'], byId = new Map();
+  demo.forEach(r => { if(r.customerId && !byId.has(r.customerId)) byId.set(r.customerId, r); });
+  const byTime = (a,b) => (a.date+a.time) < (b.date+b.time) ? -1 : 1;
+  return [...byId.values()].map((r, i) => {
+    if(!demoCustFields.has(r.customerId)) demoCustFields.set(r.customerId, {instagram: i % 2 === 0 ? '@guest'+(i+1) : '', refSource: srcs[i % srcs.length], inquiryDate:'', inquiryId:'', memo:''});
+    const mine = demo.filter(x => x.customerId === r.customerId);
+    const visited = mine.filter(x => x.status === '来店済');
+    const upcoming = mine.filter(x => x.status === '確定' && x.date >= TODAY).sort(byTime);
+    return {id:r.customerId, name:r.name, kana:r.kana, tel:r.tel, email:r.email, ...demoCustFields.get(r.customerId),
+      lineLinked:r.lineLinked, visits:visited.length, reservations:mine.filter(x => x.status !== 'キャンセル').length,
+      lastVisit: visited.reduce((m,x) => x.date > m ? x.date : m, ''),
+      next: upcoming[0] ? upcoming[0].date + ' ' + upcoming[0].time : '',
+      history: mine.slice().sort(byTime).reverse().map(x => ({date:x.date, time:x.time, menuName:x.menuName, status:x.status}))};
+  });
+}
 
 /** スプレッドシートのメニューを取得。失敗時は予備配列のまま(おまかせは管理画面では選べない) */
 async function loadMenu(){
@@ -246,6 +269,13 @@ async function api(action, extra = {}){
         minutes:extra.minutes, name:extra.name, kana:extra.kana||'', tel:extra.tel||'', email:extra.email||'', visit:extra.visit||'', customerId:'', source:'admin', note:'(管理画面から登録)'+(extra.note?'\n'+extra.note:''), menuId:''});
       return {ok:true, id};
     }
+    case 'adminCustomers': return {ok:true, customers:demoCustomers()};
+    case 'adminCustomerUpdate': {
+      if(!demoCustFields.has(extra.id)) return {ok:false, error:'not_found'};
+      if(String(extra.instagram||'').length > 100 || String(extra.memo||'').length > 1000) return {ok:false, error:'too_long'};
+      demoCustFields.set(extra.id, {...demoCustFields.get(extra.id), instagram:extra.instagram||'', refSource:extra.refSource||'', inquiryDate:extra.inquiryDate||'', memo:extra.memo||''});
+      return {ok:true};
+    }
   }
   return {ok:false, error:'unknown_action'};
 }
@@ -253,11 +283,12 @@ async function api(action, extra = {}){
 /* ---------- state ---------- */
 const A = {
   token:'', screen:'today', date:TODAY, y:+TODAY.slice(0,4), m:+TODAY.slice(5,7)-1, sel:TODAY,
-  section:'reserve', data:{}, closed:{}, loading:{}, failed:{}, msg:'', ok:'', sheet:null, form:null, busy:false, pw:'', pwMsg:''
+  section:'reserve', cust:null, custLoading:false, custFailed:false, custQ:'', custSrc:'', custSel:null, custForm:null,
+  data:{}, closed:{}, loading:{}, failed:{}, msg:'', ok:'', sheet:null, form:null, busy:false, pw:'', pwMsg:''
 };
 try{ A.token = sessionStorage.getItem('kohaku_admin') || ''; }catch(e){}
 const saveTok = () => { try{ sessionStorage.setItem('kohaku_admin', A.token); }catch(e){} };
-const errMsg = c => ({bad_password:'パスワードが違います', locked:'失敗が続いたため、10分ほど待ってからやり直してください', not_configured:'パスワードが未設定です。スクリプト プロパティに ADMIN_PASSWORD を追加してください', conflict:'他の予約と時間が重なっています', already_cancelled:'キャンセル済みの予約は変更できません', not_found:'予約が見つかりません', closed_day:'定休日は設定できません', bad_date:'過去の日付は設定できません', multi_day_event:'複数日にまたがる休業予定は、Googleカレンダーから解除してください', bad_tel:'電話番号を正しく入力してください', bad_email:'メールアドレスを正しく入力してください'}[c] || '処理できませんでした。時間をおいてもう一度お試しください');
+const errMsg = c => ({bad_password:'パスワードが違います', locked:'失敗が続いたため、10分ほど待ってからやり直してください', not_configured:'パスワードが未設定です。スクリプト プロパティに ADMIN_PASSWORD を追加してください', conflict:'他の予約と時間が重なっています', already_cancelled:'キャンセル済みの予約は変更できません', not_found:'予約が見つかりません', bad_source:'流入元が正しくありません', too_long:'入力が長すぎます(Instagram名は100文字、メモは1000文字まで)', closed_day:'定休日は設定できません', bad_date:'過去の日付は設定できません', multi_day_event:'複数日にまたがる休業予定は、Googleカレンダーから解除してください', bad_tel:'電話番号を正しく入力してください', bad_email:'メールアドレスを正しく入力してください'}[c] || '処理できませんでした。時間をおいてもう一度お試しください');
 
 /* ---------- data ---------- */
 function ensure(ds){
@@ -274,7 +305,7 @@ const on = ds => (A.data[ds.slice(0,7)] || []).filter(r => r.date === ds);
 const active = r => r.status !== 'キャンセル';
 const isClosed = ds => (A.closed[ds.slice(0,7)] || []).includes(ds);
 const isRegular = ds => CONFIG.CLOSED_WEEKDAYS.includes(dow(ds));
-function reload(){ A.data = {}; A.closed = {}; A.failed = {}; render(); }
+function reload(){ A.data = {}; A.closed = {}; A.failed = {}; A.cust = null; A.custFailed = false; render(); }
 
 /* ---------- views ---------- */
 function itemHTML(r, nextId){
@@ -391,6 +422,71 @@ const NAV = [['reserve','予約']];
 const VIEWS = { reserve: () => A.screen === 'today' ? todayView() : calView() };
 const navBtns = () => NAV.map(([k,l]) => `<button role="tab" aria-selected="${A.section===k}" data-act="section" data-v="${k}">${l}</button>`).join('');
 
+/* ---------- 顧客 ---------- */
+const SRC_LABEL = {instagram_dm:'Instagram DM', instagram:'Instagram', line:'LINE', web:'予約サイト', other:'電話・その他'};
+function ensureCustomers(){
+  if(A.cust || A.custLoading || A.custFailed) return;
+  A.custLoading = true;
+  api('adminCustomers').then(j => {
+    if(!j.ok){ if(j.error === 'auth'){ logout(true); return; } throw new Error(j.error); }
+    A.cust = j.customers;
+  }).catch(() => { A.custFailed = true; }).finally(() => { A.custLoading = false; render(); });
+}
+function custFiltered(){
+  const q = A.custQ.trim().toLowerCase(), src = A.custSrc;
+  return (A.cust || []).filter(c => (!src || c.refSource === src) &&
+      (!q || [c.name, c.kana, c.tel, c.instagram, c.id, c.email].some(v => String(v || '').toLowerCase().includes(q))))
+    .sort((a,b) => (b.lastVisit || '').localeCompare(a.lastVisit || '') || a.id.localeCompare(b.id));
+}
+function custRowHTML(c){
+  return `<li><button class="item" data-act="cust" data-v="${esc(c.id)}"><span class="b">
+    <span class="n">${esc(c.name)} 様${c.refSource ? `<span class="tag">${esc(SRC_LABEL[c.refSource] || c.refSource)}</span>` : ''}${c.lineLinked ? '<span class="tag new">LINE連携</span>' : ''}</span>
+    <span class="m" style="display:block">${c.visits}回来店${c.lastVisit ? ' / 最終 ' + esc(c.lastVisit) : ''}${c.next ? ' / 次回 ' + esc(c.next) : ''}</span></span></button></li>`;
+}
+function custListHTML(){
+  const l = custFiltered();
+  return l.length ? `<ul class="list">${l.map(custRowHTML).join('')}</ul>` : '<p class="empty">該当するお客様はいません。</p>';
+}
+function customersView(){
+  ensureCustomers();
+  if(A.custFailed) return `<div class="err" role="alert">顧客を取得できませんでした。</div><div style="padding:12px 16px"><button class="btn ghost" data-act="reload">もう一度読み込む</button></div>`;
+  if(!A.cust) return '<p class="loading">読み込み中…</p>';
+  const opts = Object.keys(SRC_LABEL).map(k => `<option value="${k}" ${A.custSrc===k?'selected':''}>${SRC_LABEL[k]}</option>`).join('');
+  return `<div class="cfilter"><input type="search" id="cust-q" data-f="custq" value="${esc(A.custQ)}" placeholder="名前・電話・Instagram名・顧客IDで検索" aria-label="顧客を検索">
+      <select id="cust-src" data-f="custsrc" aria-label="流入元で絞り込む"><option value="">すべて</option>${opts}</select></div>
+    ${A.ok ? `<div class="ok" role="status">${esc(A.ok)}</div>` : ''}
+    <div class="sub">お客様 ${A.cust.length}名</div><div id="cust-list">${custListHTML()}</div>`;
+}
+function custSheetHTML(){
+  const c = (A.cust || []).find(x => x.id === A.custSel), f = A.custForm;
+  if(!c || !f) return '';
+  const tel = String(c.tel || '').replace(/[^\d+]/g, '');
+  const hist = c.history.length ? c.history.map(h => `<li>${esc(fmtDate(h.date))} ${esc(h.time)}　${esc(h.menuName)}<span class="tag ${h.status==='キャンセル'?'x':h.status==='来店済'?'ok':''}">${esc(h.status)}</span></li>`).join('') : '<li>予約履歴はありません</li>';
+  const opts = Object.keys(SRC_LABEL).map(k => `<option value="${k}" ${f.refSource===k?'selected':''}>${SRC_LABEL[k]}</option>`).join('');
+  return `<div class="back" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="顧客の詳細" data-stop="1">
+    <h2>${esc(c.name)} 様</h2><div class="sm">${esc(c.kana)}　顧客ID ${esc(c.id)}</div>
+    <dl class="dl">
+      <div><dt>電話</dt><dd>${c.tel ? `<a href="tel:${tel}">${esc(c.tel)}</a>` : '—'}</dd></div>
+      <div><dt>メール</dt><dd>${c.email ? `<a href="mailto:${esc(c.email)}">${esc(c.email)}</a>` : '—'}</dd></div>
+      <div><dt>LINE</dt><dd>${c.lineLinked ? '連携済み' : '未連携'}</dd></div>
+      <div><dt>来店</dt><dd>${c.visits}回 / 予約${c.reservations}件${c.lastVisit ? '<br>最終来店 ' + esc(c.lastVisit) : ''}${c.next ? '<br>次回予約 ' + esc(c.next) : ''}</dd></div>
+      <div><dt>問い合わせID</dt><dd>${esc(c.inquiryId || '—')}</dd></div>
+    </dl>
+    <h3 class="sub" style="padding:0 0 4px;font-size:16px">予約履歴</h3><ul class="hist">${hist}</ul>
+    <div style="height:14px"></div>
+    <div class="f"><label for="c-instagram">Instagram名</label><input id="c-instagram" data-f="cform" data-k="instagram" value="${esc(f.instagram)}" maxlength="100"></div>
+    <div class="row2">
+      <div class="f"><label for="c-src">流入元</label><select id="c-src" data-f="cform" data-k="refSource"><option value="">未設定</option>${opts}</select></div>
+      <div class="f"><label for="c-idate">初回問い合わせ日</label><input id="c-idate" type="date" data-f="cform" data-k="inquiryDate" value="${esc(f.inquiryDate)}"></div>
+    </div>
+    <div class="f"><label for="c-memo">メモ(DM対応の記録など)</label><textarea id="c-memo" data-f="cform" data-k="memo" maxlength="1000">${esc(f.memo)}</textarea></div>
+    ${A.msg ? `<div class="err" role="alert" style="margin:0 0 10px">${esc(A.msg)}</div>` : ''}
+    <div class="acts"><button class="btn" data-act="custsave" ${A.busy?'disabled':''}>${A.busy?'保存中…':'保存する'}</button><button class="btn ghost" data-act="close">閉じる</button></div>
+  </div></div>`;
+}
+VIEWS.customers = customersView;
+NAV.push(['customers','顧客']);
+
 /* ---------- render ---------- */
 const app = document.getElementById('app');
 function render(){
@@ -412,7 +508,7 @@ function render(){
     </div>
     <nav class="bnav" role="tablist" aria-label="メニュー">${navBtns()}</nav>
     ${A.section==='reserve' ? '<button class="fab" data-act="new">＋ 予約追加</button>' : ''}
-    ${A.form ? formHTML() : A.sheet ? sheetHTML() : ''}`;
+    ${A.form ? formHTML() : A.sheet ? sheetHTML() : A.custSel ? custSheetHTML() : ''}`;
   window.scrollTo(0, scrollY);
 }
 
@@ -427,7 +523,7 @@ async function login(){
   A.busy = false; render();
 }
 function logout(expired){
-  A.token = ''; A.data = {}; A.loading = {}; A.failed = {}; A.sheet = null; A.form = null; A.pw = ''; A.section = 'reserve';
+  A.token = ''; A.data = {}; A.loading = {}; A.failed = {}; A.sheet = null; A.form = null; A.pw = ''; A.section = 'reserve'; A.cust = null; A.custFailed = false; A.custSel = null; A.custForm = null;
   A.pwMsg = expired === true ? 'ログインの有効期限が切れました。もう一度ログインしてください。' : '';
   saveTok(); render();
 }
@@ -458,6 +554,19 @@ async function setClosed(ds){
   } catch(e){ A.msg = errMsg(e.message); }
   A.busy = false; render();
 }
+async function custSave(){
+  const f = A.custForm;
+  A.busy = true; A.msg = ''; render();
+  try{
+    const v = {instagram:f.instagram.trim(), refSource:f.refSource, inquiryDate:f.inquiryDate, memo:f.memo.trim()};
+    const j = await api('adminCustomerUpdate', {id:A.custSel, ...v});
+    if(!j.ok){ if(j.error === 'auth'){ logout(true); return; } throw new Error(j.error); }
+    Object.assign(A.cust.find(x => x.id === A.custSel), v);
+    A.custSel = null; A.custForm = null; A.ok = '顧客情報を保存しました。';
+  } catch(e){ A.msg = errMsg(e.message); }
+  A.busy = false; render();
+}
+const refreshCustList = () => { const el = document.getElementById('cust-list'); if(el) el.innerHTML = custListHTML(); };
 function newForm(){
   const ds = A.screen === 'cal' ? A.sel : A.date;
   const m = MENU[0];
@@ -506,8 +615,10 @@ app.addEventListener('click', e => {
     case 'month': { let y = A.y, m = A.m + Number(v); if(m < 0){m = 11; y--} if(m > 11){m = 0; y++} A.y = y; A.m = m; A.sel = ymd(y,m,(y===+TODAY.slice(0,4)&&m===+TODAY.slice(5,7)-1) ? +TODAY.slice(8) : 1); A.ok = ''; render(); break; }
     case 'sel': A.sel = v; A.ok = ''; render(); break;
     case 'open': A.sheet = v; A.msg = ''; A.ok = ''; render(); break;
-    case 'close': A.sheet = null; A.form = null; A.msg = ''; render(); break;
+    case 'close': A.sheet = null; A.form = null; A.custSel = null; A.custForm = null; A.msg = ''; render(); break;
     case 'status': setStatus(v); break;
+    case 'cust': { const c = (A.cust || []).find(x => x.id === v); if(!c) break; A.custSel = v; A.custForm = {instagram:c.instagram, refSource:c.refSource, inquiryDate:c.inquiryDate, memo:c.memo}; A.msg = ''; A.ok = ''; render(); break; }
+    case 'custsave': custSave(); break;
     case 'closure': setClosed(v); break;
     case 'new': newForm(); break;
     case 'create': create(false); break;
@@ -518,6 +629,9 @@ app.addEventListener('input', e => {
   const t = e.target, f = t.dataset.f;
   if(f === 'pw') A.pw = t.value;
   else if(f === 'form') A.form[t.dataset.k] = t.value;
+  else if(f === 'custq'){ A.custQ = t.value; refreshCustList(); }
+  else if(f === 'custsrc'){ A.custSrc = t.value; refreshCustList(); }
+  else if(f === 'cform'){ A.custForm[t.dataset.k] = t.value; }
 });
 app.addEventListener('change', e => {
   const t = e.target, f = t.dataset.f;
@@ -530,7 +644,7 @@ app.addEventListener('change', e => {
   else if(f === 'form' && t.dataset.k === 'time') A.form.time = t.value;
 });
 app.addEventListener('keydown', e => { if(e.key === 'Enter' && e.target.dataset.f === 'pw') login(); });
-document.addEventListener('keydown', e => { if(e.key === 'Escape' && (A.sheet || A.form)){ A.sheet = null; A.form = null; A.msg = ''; render(); } });
+document.addEventListener('keydown', e => { if(e.key === 'Escape' && (A.sheet || A.form || A.custSel)){ A.sheet = null; A.form = null; A.custSel = null; A.custForm = null; A.msg = ''; render(); } });
 render();
 loadMenu();
 </script>

@@ -107,3 +107,54 @@ test('管理画面: ナビ(サイドバー/下タブ)があり、予約セクシ
   assert.ok(d.querySelector('.fab'), '予約セクションでは予約追加ボタンが出る');
   assert.deepStrictEqual(errors, []);
 });
+
+test('管理画面: 顧客一覧 → 検索 → 流入元で絞り込み → 詳細 → 編集保存(デモ表示)', async () => {
+  const { click, type, text, d, errors } = load('admin.html');
+  type('#pw', 'demo'); click('[data-act=login]'); await sleep(1000);
+  click('[data-act=section][data-v=customers]'); await sleep(700);
+  const items = () => [...d.querySelectorAll('#cust-list .item')];
+  const total = items().length;
+  assert.ok(total >= 5, '顧客が一覧に出る');
+
+  // 検索: 入力してもフォーカスされた入力欄が作り直されない(1文字ごとに入力が途切れない)
+  const q = d.querySelector('#cust-q');
+  type('#cust-q', '田中'); await sleep(50);
+  assert.strictEqual(d.querySelector('#cust-q'), q, '検索欄が再描画で置き換わらない');
+  assert.ok(items().length >= 1 && items().length < total);
+  assert.ok(items().every(x => /田中/.test(x.textContent)));
+  type('#cust-q', ''); await sleep(50);
+  assert.strictEqual(items().length, total);
+
+  // 流入元の絞り込み
+  type('#cust-src', 'line'); await sleep(50);
+  assert.ok(items().length >= 1 && items().length < total);
+  assert.ok(items().every(x => x.querySelector('.tag').textContent === 'LINE'), '先頭のタグ=流入元がLINE');
+  type('#cust-src', ''); await sleep(50);
+
+  // 詳細 → 編集 → 保存
+  click('#cust-list .item'); await sleep(50);
+  assert.match(text('.sheet'), /予約履歴/);
+  type('#c-instagram', '@tanaka_test');
+  type('#c-src', 'instagram_dm');
+  type('#c-idate', '2026-10-04');
+  type('#c-memo', '肩こり相談 =HYPERLINK("x")');
+  click('[data-act=custsave]'); await sleep(700);
+  assert.match(text(), /顧客情報を保存しました/);
+  click('#cust-list .item'); await sleep(50);
+  assert.strictEqual(d.querySelector('#c-instagram').value, '@tanaka_test');
+  assert.strictEqual(d.querySelector('#c-memo').value, '肩こり相談 =HYPERLINK("x")');
+  assert.deepStrictEqual(errors, []);
+});
+
+test('管理画面: 顧客の詳細は HTML をエスケープして表示する', async () => {
+  const { w, click, type, d, errors } = load('admin.html');
+  type('#pw', 'demo'); click('[data-act=login]'); await sleep(1000);
+  click('[data-act=section][data-v=customers]'); await sleep(700);
+  click('#cust-list .item'); await sleep(50);
+  type('#c-memo', '<img src=x onerror=window.__pwned=1>');
+  click('[data-act=custsave]'); await sleep(700);
+  click('#cust-list .item'); await sleep(50);
+  assert.strictEqual(w.__pwned, undefined);
+  assert.strictEqual(d.querySelector('.sheet img'), null);
+  assert.deepStrictEqual(errors, []);
+});
