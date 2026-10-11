@@ -16,7 +16,7 @@ GAS側の変更は、可能なら実機(テスト用スプレッドシート+テ
 | `admin.html` | 管理画面(今日の予約・カレンダー・予約追加)。パスワード認証 |
 | `gas/Code.gs` | バックエンド全体(Web App)。`doGet`=空き状況、`doPost`=予約登録+各種action |
 | `gas/appsscript.json` | GASマニフェスト(Asia/Tokyo、Webアプリ公開設定) |
-| `tests/` | jsdomによるフロントのスモークテスト。`npm test` |
+| `tests/` | jsdomによるフロントのスモークテスト + GAS純関数のテスト(Node `vm`)。`npm test` |
 | `docs/` | 参考デザイン画像、画面遷移 |
 | `docs/superpowers/` | 設計書(specs)と実装計画(plans)。メニューのシート化は `specs/2026-10-06-menu-sheet-design.md` |
 
@@ -41,13 +41,15 @@ gas/Code.gs (Web App: 実行=自分 / アクセス=全員)
 - `POST {action}`:
   - お客様: `sendCode` / `verifyCode`(メール6桁コード→6時間トークン) / `me` / `cancel` / `reschedule` / `updateProfile` / `logout`
   - LINE: `lineLinkCode`(要ログイン) / `lineLink`(IDトークン+連携コード) / `lineLogin`(IDトークン) / `lineUnlink`
-  - 管理: `adminLogin` / `adminList` / `adminSetStatus` / `adminCreate`(トークン6時間。パスワードは `ADMIN_PASSWORD`)
+  - 管理: `adminLogin` / `adminList` / `adminSetStatus` / `adminCreate` / `adminSetClosed`(臨時休業の登録/解除) / `adminCustomers`(顧客一覧+集計) / `adminCustomerUpdate`(Instagram名・流入元・初回問い合わせ日・メモ)(トークン6時間。パスワードは `ADMIN_PASSWORD`)
+  - `adminList` は `closures`(休業日の配列)を返す。予約の応答には `refSource`(流入元)・`inquiryId`(問い合わせID)が入る(既存の `source`=web/admin はそのまま)
+- 予約リンク(`index.html`): `?source=instagram_dm|instagram|line|web|other` / `&inquiry=<英数字-_ 32文字以内>` / `&menu=<メニューID>`。LIFF経由(`liff.state`)も解釈。無効な値は無視。予約POSTの `source` / `inquiry` をGASが再検証して保存する
 - レスポンスは `{ok:true,...}` / `{ok:false,error:'code'}`。エラーコード→日本語は `index.html` の `errMsg` / `admin.html` の `errMsg`。
 
 ## データモデル(スプレッドシート)
 **列の追加は必ず末尾。既存列の並び替え・削除は禁止**(コードが列番号で参照している)。定義は `gas/Code.gs` の `HEADERS` / `CUSTOMER_HEADERS` と冒頭コメント。
-- **予約**(24列): 予約ID, 受付日時, 予約ステータス(確定/来店済/キャンセル), 日付, 開始, 終了, メニュー, オプション, 合計金額, 所要分, お名前, フリガナ, 電話, メール, 初回/再来, ご要望, カレンダーEventID, メニューID, 顧客ID, 予約日時(ISO), 流入経路(web/admin/将来line), 2日前リマインド送信日時, 更新日時, 当日リマインド送信日時
-- **顧客**: 顧客ID(C000001), メール, お名前, フリガナ, 電話, **LINE userId**, LINE連携日時, LINE通知(許可/停止), 登録日時, 更新日時, メモ。メールで名寄せ
+- **予約**(26列): 予約ID, 受付日時, 予約ステータス(確定/来店済/キャンセル), 日付, 開始, 終了, メニュー, オプション, 合計金額, 所要分, お名前, フリガナ, 電話, メール, 初回/再来, ご要望, カレンダーEventID, メニューID, 顧客ID, 予約日時(ISO), 流入経路(web/admin/将来line), 2日前リマインド送信日時, 更新日時, 当日リマインド送信日時, 流入元(instagram_dm等), 問い合わせID
+- **顧客**: 顧客ID(C000001), メール, お名前, フリガナ, 電話, **LINE userId**, LINE連携日時, LINE通知(許可/停止), 登録日時, 更新日時, メモ, **Instagram名, 流入元, 初回問い合わせ日, 問い合わせID**(末尾4列)。メールで名寄せ。流入元・問い合わせIDは予約リンクから「空のときだけ」埋め、手入力した値は上書きしない。来店回数・最終来店・予約履歴は保存せず予約シートから計算して表示する
 - **メニュー**(10列、`MENU_HEADERS`): メニューID, 名前, 所要分, 料金(空=当日案内), 説明, カテゴリ(カンマ区切り), グループ, 種別(空/pair/omakase), 表示(ON/OFF), 並び順。**メニューIDは変更禁止**(既存予約・「同じメニューで予約」が参照)。やめるメニューは削除せず表示=OFF
 - **オプション**(6列、`OPTION_HEADERS`): オプションID, 名前, 所要分, 料金, 表示(ON/OFF), 並び順
 - **クーポン**: コード, 名称, 内容, 対象メール(空=全員), 開始日, 期限, 状態(有効/無効/使用済)
@@ -61,6 +63,7 @@ gas/Code.gs (Web App: 実行=自分 / アクセス=全員)
 
 ## 設定の置き場所(同じ値が複数箇所にあるので注意)
 - `index.html` の `CONFIG`: `GAS_URL`, `LIFF_ID`, 営業時間, 刻み, `BUFFER_MIN`, `CAPACITY`, 定休日, 先行受付, `NOTICE`
+- `admin.html` の `CONFIG`: `GAS_URL`, `SITE_URL`(予約リンク発行のベースURL。空なら同じフォルダの `index.html`)。流入元の5種類(`instagram_dm` 等)は `index.html` / `admin.html` / `gas/Code.gs` の3箇所をそろえる
 - `gas/Code.gs` の `CONFIG`: 上記と**同じ意味の値**(CAPACITY/BUFFER_MIN/CLOSED_WEEKDAYS/OPEN/CLOSE/MIN_ADVANCE_HOURS)を持つ → 変更時は両方そろえる
 - メニュー/オプションの**正は `メニュー`/`オプション`シート**(オーナーが直接編集。反映は最大5分遅れ)。`index.html` の `MENU`/`OPTIONS`、`admin.html` の `MENU` は**予備配列**(デモ・取得失敗時用)で、`gas/Code.gs` の `SEED_MENU`(表示ON)と同じ内容に保つ(`tests/menu-front.test.js` が検査)。カテゴリ `CATS` は `index.html` に固定
 - 秘密情報は **スクリプト プロパティ**: `ADMIN_PASSWORD`, `LINE_CHANNEL_ACCESS_TOKEN`, `LINE_LOGIN_CHANNEL_ID`, `LIFF_ID`。コードに直書き・コミット禁止
@@ -74,10 +77,10 @@ gas/Code.gs (Web App: 実行=自分 / アクセス=全員)
 - 管理画面のURLは予約サイトと別の場所に置く想定(noindex付き)。
 
 ## 実装済み / 未実装
-**実装済み**: メニュー/オプションのシート管理 + 予約時のサーバー側料金再計算 / 予約フロー(7ステップ)/ My Kohaku(次回・履歴・クーポン表示・登録情報)/ 日時変更・キャンセル / 管理画面(今日・カレンダー・詳細・状態変更・予約追加)/ 顧客ID・LINE userId保存項目 / LINE連携(LIFF)/ 確認・2日前・当日通知
+**実装済み**: メニュー/オプションのシート管理 + 予約時のサーバー側料金再計算 / 予約フロー(7ステップ)/ My Kohaku(次回・履歴・クーポン表示・登録情報)/ 日時変更・キャンセル / 管理画面(今日・カレンダー・詳細・状態変更・予約追加・**営業日(臨時休業の登録/解除)**・**顧客一覧/詳細/編集**・**予約リンク発行**。PCは左サイドバー、スマホは下タブ)/ 予約リンクによる流入元・問い合わせIDの記録とメニュー事前選択 / 顧客ID・LINE userId保存項目 / LINE連携(LIFF)/ 確認・2日前・当日通知
 
 **未実装(優先度の目安)**
-1. 管理画面の残り: **営業日**(臨時休業=終日予定の登録/解除)、**顧客一覧**、**クーポン管理**、**売上分析**
+1. 管理画面の残り: **クーポン管理**、**売上分析**、**メニュー・料金設定**(今はシートを直接編集)、**スタッフ管理**。いずれもナビ(`admin.html` の `NAV` / `VIEWS`)に足す
 2. クーポンの**予約時適用**(今は表示のみ。コードを来店時に伝える運用)
 3. ~~管理画面でキャンセルした際のお客様への通知~~ → 実装済み(`adminSetStatus` の `notify`、詳細画面のチェックで ON/OFF。GAS実機は未確認)
 4. LINEブロック判定の実機調整(`linePush_` の停止条件は推測。実際の応答を見て調整)
@@ -96,7 +99,7 @@ npm run check:gas   # gas/Code.gs の構文チェック
 # GASの反映(任意): npm i -g @google/clasp → clasp login → clasp create/clone → rootDir を gas に設定して clasp push
 ```
 - 静的ファイルのプレビュー: `npx serve .`。`GAS_URL` を空にしたままならデモ表示で全画面を確認できる。
-- GASを変更したら「デプロイを管理」から**新バージョン**で更新(URLは変わらない)。列追加時・メニュー機能の初回導入時は `setup` を再実行(`メニュー`/`オプション`シートが初期データ付きで作られる)。
+- GASを変更したら「デプロイを管理」から**新バージョン**で更新(URLは変わらない)。列追加時・メニュー機能の初回導入時は `setup` を再実行(`メニュー`/`オプション`シートが初期データ付きで作られる)。顧客・予約シートの列追加(流入元など)も `setup` 再実行で見出しが入る(`ensureColumns_` が書き込み時にも列を足す)。
 - **公開の順序**: 先にGASを更新して `setup` → その後に `index.html` を公開。逆だと予約が `bad_menu` で失敗する(旧GASは新ペイロードの `total` 無しを受ける)。
 
 ## コーディング規約
