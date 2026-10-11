@@ -36,7 +36,7 @@ button{cursor:pointer}
 .tabs .wrap{display:flex}
 .tabs button{flex:1;border:0;background:none;padding:13px 0;font-size:15px;color:var(--muted);border-bottom:3px solid transparent}
 .tabs button[aria-selected=true]{color:var(--brown);font-weight:700;border-bottom-color:var(--caramel)}
-main{flex:1;padding-bottom:96px}
+main{flex:1;padding-bottom:150px}
 
 /* controls */
 .dnav{display:flex;align-items:center;gap:8px;padding:14px 16px 6px}
@@ -91,7 +91,7 @@ main{flex:1;padding-bottom:96px}
 .sub{font-family:var(--serif);font-size:18px;color:var(--brown);padding:16px 16px 0}
 
 /* fab */
-.fab{position:fixed;right:max(16px,calc(50vw - 390px + 16px));bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:6;border:0;border-radius:99px;background:var(--brown);color:#fff;padding:13px 20px;font-weight:700;box-shadow:0 4px 14px rgba(60,40,20,.28)}
+.fab{position:fixed;right:max(16px,calc(50vw - 390px + 16px));bottom:calc(70px + env(safe-area-inset-bottom,0px));z-index:6;border:0;border-radius:99px;background:var(--brown);color:#fff;padding:13px 20px;font-weight:700;box-shadow:0 4px 14px rgba(60,40,20,.28)}
 
 /* login */
 .login{max-width:380px;margin:60px auto;padding:0 20px;width:100%}
@@ -121,6 +121,22 @@ main{flex:1;padding-bottom:96px}
 .dl dd{margin:0;flex:1;word-break:break-word}
 .dl a{color:var(--brown)}
 .acts{display:grid;gap:8px;margin-top:6px}
+/* nav: スマホ=下タブ / PC=左サイドバー */
+.shell{flex:1;display:flex;min-width:0}
+.content{flex:1;min-width:0;display:flex;flex-direction:column}
+.side{display:none}
+.bnav{position:fixed;left:0;right:0;bottom:0;z-index:8;display:flex;background:var(--paper);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+.bnav button{flex:1;min-height:52px;border:0;border-top:3px solid transparent;background:none;font-size:13.5px;color:var(--muted)}
+.bnav button[aria-selected=true]{color:var(--brown);font-weight:700;border-top-color:var(--caramel)}
+@media(min-width:900px){
+  .side{display:block;flex:none;width:208px;background:var(--ink);padding:18px 0}
+  .side button{display:block;width:100%;min-height:48px;text-align:left;border:0;border-left:4px solid transparent;background:none;color:#E9DCC8;padding:12px 22px;font-size:15px}
+  .side button[aria-selected=true]{background:rgba(255,255,255,.08);color:#fff;font-weight:700;border-left-color:var(--caramel)}
+  .bnav{display:none}
+  .wrap{max-width:900px}
+  main{padding-bottom:40px}
+  .fab{right:24px;bottom:24px}
+}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -237,7 +253,7 @@ async function api(action, extra = {}){
 /* ---------- state ---------- */
 const A = {
   token:'', screen:'today', date:TODAY, y:+TODAY.slice(0,4), m:+TODAY.slice(5,7)-1, sel:TODAY,
-  data:{}, closed:{}, loading:{}, failed:{}, msg:'', ok:'', sheet:null, form:null, busy:false, pw:'', pwMsg:''
+  section:'reserve', data:{}, closed:{}, loading:{}, failed:{}, msg:'', ok:'', sheet:null, form:null, busy:false, pw:'', pwMsg:''
 };
 try{ A.token = sessionStorage.getItem('kohaku_admin') || ''; }catch(e){}
 const saveTok = () => { try{ sessionStorage.setItem('kohaku_admin', A.token); }catch(e){} };
@@ -370,6 +386,11 @@ function formHTML(){
   </div></div>`;
 }
 
+/** ナビの項目と画面。新しい画面はここに足す(key → 表示名 / key → 描画関数) */
+const NAV = [['reserve','予約']];
+const VIEWS = { reserve: () => A.screen === 'today' ? todayView() : calView() };
+const navBtns = () => NAV.map(([k,l]) => `<button role="tab" aria-selected="${A.section===k}" data-act="section" data-v="${k}">${l}</button>`).join('');
+
 /* ---------- render ---------- */
 const app = document.getElementById('app');
 function render(){
@@ -380,11 +401,17 @@ function render(){
   app.innerHTML = `
     ${CONFIG.GAS_URL ? '' : '<div class="demo">デモ表示中:データは保存されません</div>'}
     <header class="top"><div class="wrap"><div><b>${CONFIG.SALON}</b><small>管理</small></div><button data-act="logout">ログアウト</button></div></header>
-    <nav class="tabs"><div class="wrap" role="tablist">
-      <button role="tab" aria-selected="${A.screen==='today'}" data-act="screen" data-v="today">今日の予約</button>
-      <button role="tab" aria-selected="${A.screen==='cal'}" data-act="screen" data-v="cal">カレンダー</button></div></nav>
-    <main><div class="wrap">${A.screen==='today' ? todayView() : calView()}</div></main>
-    <button class="fab" data-act="new">＋ 予約追加</button>
+    <div class="shell">
+      <aside class="side" role="tablist" aria-label="メニュー">${navBtns()}</aside>
+      <div class="content">
+        ${A.section==='reserve' ? `<nav class="tabs"><div class="wrap" role="tablist">
+          <button role="tab" aria-selected="${A.screen==='today'}" data-act="screen" data-v="today">今日の予約</button>
+          <button role="tab" aria-selected="${A.screen==='cal'}" data-act="screen" data-v="cal">カレンダー</button></div></nav>` : ''}
+        <main><div class="wrap">${(VIEWS[A.section] || VIEWS.reserve)()}</div></main>
+      </div>
+    </div>
+    <nav class="bnav" role="tablist" aria-label="メニュー">${navBtns()}</nav>
+    ${A.section==='reserve' ? '<button class="fab" data-act="new">＋ 予約追加</button>' : ''}
     ${A.form ? formHTML() : A.sheet ? sheetHTML() : ''}`;
   window.scrollTo(0, scrollY);
 }
@@ -400,7 +427,7 @@ async function login(){
   A.busy = false; render();
 }
 function logout(expired){
-  A.token = ''; A.data = {}; A.loading = {}; A.failed = {}; A.sheet = null; A.form = null; A.pw = '';
+  A.token = ''; A.data = {}; A.loading = {}; A.failed = {}; A.sheet = null; A.form = null; A.pw = ''; A.section = 'reserve';
   A.pwMsg = expired === true ? 'ログインの有効期限が切れました。もう一度ログインしてください。' : '';
   saveTok(); render();
 }
@@ -473,6 +500,7 @@ app.addEventListener('click', e => {
     case 'login': login(); break;
     case 'logout': logout(false); break;
     case 'screen': A.screen = v; A.ok = ''; A.msg = ''; render(); break;
+    case 'section': A.section = v; A.sheet = null; A.form = null; A.ok = ''; A.msg = ''; render(); break;
     case 'day': A.date = addDays(A.date, Number(v)); A.ok = ''; render(); break;
     case 'gototoday': A.date = TODAY; A.ok = ''; render(); break;
     case 'month': { let y = A.y, m = A.m + Number(v); if(m < 0){m = 11; y--} if(m > 11){m = 0; y++} A.y = y; A.m = m; A.sel = ymd(y,m,(y===+TODAY.slice(0,4)&&m===+TODAY.slice(5,7)-1) ? +TODAY.slice(8) : 1); A.ok = ''; render(); break; }

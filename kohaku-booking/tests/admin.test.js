@@ -97,3 +97,13 @@ test('管理画面: ログイン → 今日の予約 → 詳細/状態変更 →
   assert.match(text('#app'), /パスワード/);
   assert.deepStrictEqual(errors, []);
 });
+
+test('管理画面: ナビ(サイドバー/下タブ)があり、予約セクションにだけ「予約追加」ボタンが出る', async () => {
+  const { click, type, d, errors } = load('admin.html');
+  type('#pw', 'demo'); click('[data-act=login]'); await sleep(1000);
+  assert.ok(d.querySelector('.side [data-act=section][data-v=reserve]'), 'サイドバー');
+  assert.ok(d.querySelector('.bnav [data-act=section][data-v=reserve]'), '下タブ');
+  assert.strictEqual(d.querySelector('.side [data-v=reserve]').getAttribute('aria-selected'), 'true');
+  assert.ok(d.querySelector('.fab'), '予約セクションでは予約追加ボタンが出る');
+  assert.deepStrictEqual(errors, []);
+});
