@@ -871,7 +871,9 @@ function ensureAna(){
   api('adminAnalytics', {from:N.from, to:N.to}).then(j => {
     if(!j.ok){ if(j.error === 'auth'){ logout(true); return; } throw new Error(j.error); }
     if(key === A.ana.from + '~' + A.ana.to) N.data = j;   // 期間が切り替わっていたら捨てる(次の描画で取り直す)
-  }).catch(e => { N.failed = true; N.err = e && e.message; }).finally(() => { N.loading = false; render(); });
+  }).catch(e => {
+    if(key === A.ana.from + '~' + A.ana.to){ N.failed = true; N.err = e && e.message; }   // 古い期間のエラーは捨てる(次の描画で取り直す)
+  }).finally(() => { N.loading = false; render(); });
 }
 const pctText = v => v == null ? '—' : (Math.round(v * 1000) / 10) + '%';
 const deltaText = (cur, prev) => prev ? ((cur >= prev ? '+' : '') + (Math.round((cur - prev) / prev * 1000) / 10) + '%') : '—';

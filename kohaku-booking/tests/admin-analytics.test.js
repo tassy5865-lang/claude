@@ -93,6 +93,23 @@ test('分析: メニュー名・流入元の HTML をエスケープする', asy
   assert.deepStrictEqual(errors, []);
 });
 
+test('分析: 期間を切り替えたあとに古い期間の取得が失敗しても、新しい期間はエラー表示にならない', async () => {
+  const t = load('admin.html');
+  const { w, d, click, errors } = t;
+  t.type('#pw', 'demo'); t.click('[data-act=login]'); await sleep(1000);
+  // 最初の adminAnalytics だけ保留にして、あとで失敗させる
+  w.eval(`(() => { const o = api; let n = 0; window.__rejectFirst = null;
+    api = function(a, e){ if(a === 'adminAnalytics' && n++ === 0) return new Promise((_, rj) => { window.__rejectFirst = rj; }); return o(a, e); }; })()`);
+  click('[data-act=section][data-v=analytics]'); await sleep(200);
+  assert.ok(w.__rejectFirst, '最初の取得が保留中');
+  click('[data-act=anaperiod][data-v=last]'); await sleep(100);
+  w.__rejectFirst(new Error('network'));
+  await sleep(900);
+  assert.ok(d.querySelector('#ana-summary'), '新しい期間の集計が表示される');
+  assert.strictEqual(d.querySelector('[data-act=anaperiod][data-v=last]').getAttribute('aria-pressed'), 'true');
+  assert.deepStrictEqual(errors, []);
+});
+
 test('分析: ナビに「分析」があり、画面が切り替わる', async () => {
   const { d } = await open();
   assert.ok(d.querySelector('.side [data-act=section][data-v=analytics]'));
