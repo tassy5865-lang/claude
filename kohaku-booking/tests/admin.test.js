@@ -16,9 +16,10 @@ test('管理画面: キャンセル時の通知チェック(デモ表示)', asyn
   const open = async () => {
     if (!findItem()) {
       click('[data-act=screen][data-v=cal]'); await sleep(300);
-      const cells = [...d.querySelectorAll('.cell[data-act=sel]')];
-      const from = cells.findIndex(c => c.classList.contains('today'));
-      for (const c of cells.slice(from + 1)) { c.click(); await sleep(100); if (findItem()) break; }
+      // 日付を選ぶたびにカレンダーが再描画されるので、セルは毎回取り直す
+      const getCells = () => [...d.querySelectorAll('.cell[data-act=sel]')];
+      const from = getCells().findIndex(c => c.classList.contains('today'));
+      for (let i = from + 1; i < getCells().length; i++) { getCells()[i].click(); await sleep(100); if (findItem()) break; }
     }
     const it = findItem();
     assert.ok(it, '確定の予約が見つかりません');
