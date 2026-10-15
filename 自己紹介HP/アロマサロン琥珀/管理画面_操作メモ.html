@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>琥珀 管理画面 操作メモ</title>
+<style>
+:root { --bg:#fffdfc; --text:#4b443f; --amber:#8e5b32; --line:#d9cfc4; --soft:#f7f3ed; }
+@media (prefers-color-scheme: dark) { :root { --bg:#2a2622; --text:#efe8df; --amber:#d9a066; --line:#51483f; --soft:#332e29; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--text); font:17px/1.9 "Noto Sans JP","Yu Gothic","Hiragino Sans",sans-serif; }
+main { max-width:720px; margin:0 auto; padding:24px 16px 64px; }
+h1 { font-size:1.5rem; margin:0 0 4px; color:var(--amber); }
+h2 { font-size:1.15rem; margin:36px 0 8px; padding-bottom:4px; border-bottom:2px solid var(--amber); }
+p, li { margin:6px 0; }
+ol, ul { padding-left:1.4em; }
+.box { background:var(--soft); border:1px solid var(--line); border-radius:10px; padding:12px 16px; margin:14px 0; }
+.ng { border-left:4px solid #b4503c; }
+.key { font-weight:700; color:var(--amber); }
+table { width:100%; border-collapse:collapse; margin:10px 0; font-size:.95rem; }
+th, td { border:1px solid var(--line); padding:8px; text-align:left; vertical-align:top; }
+th { background:var(--soft); width:34%; }
+code { background:var(--soft); padding:1px 6px; border-radius:4px; }
+@media print { body { font-size:12pt; } h2 { break-after:avoid; } .box, tr { break-inside:avoid; } }
+</style>
+</head>
+<body>
+<main>
+<h1>琥珀 ホームページの更新メモ</h1>
+<p>写真・文章・お知らせ・料金を、スマホやパソコンから自分で直せます。直した内容は「公開する」を押すと、1〜2分でホームページに反映されます。</p>
+
+<h2>1. 開く</h2>
+<ol>
+  <li>次のアドレスを開きます(ブックマークしておくと便利です)。<br><code>https://tassy5865-lang.github.io/kohaku-site/admin/</code></li>
+  <li>パスワードを入れて「入る」を押します。</li>
+</ol>
+<p class="box">パスワードは、他の人に見せたり、メモを人目につく所に置いたりしないでください。</p>
+
+<h2>2. 画面の見かた</h2>
+<ul>
+  <li>上の4つのタブで、直したい場所を選びます。<br><span class="key">文章</span> ／ <span class="key">料金・メニュー</span> ／ <span class="key">写真</span> ／ <span class="key">お知らせ</span></li>
+  <li>パソコンでは右側、スマホでは下に「プレビュー」(仕上がりの見本)が出ます。入力するとすぐ変わります。</li>
+  <li>一番上に「未公開の変更が○か所あります」と出ます。<b>この段階では、まだホームページは変わりません。</b></li>
+</ul>
+
+<h2>3. 公開する(いつも同じ手順)</h2>
+<ol>
+  <li>直したい内容を入力します。</li>
+  <li>右上の「<span class="key">公開する</span>」を押します。</li>
+  <li>確認の画面に、変更した場所の一覧が出ます。間違いがないか見ます。</li>
+  <li>もう一度「<span class="key">公開する</span>」を押します。</li>
+  <li>「公開しました」と出たら完了です。1〜2分後にホームページを開いて確認します(古い表示が出るときは、ページを更新します)。</li>
+</ol>
+<p class="box">やめたいときは、確認画面の「やめる」を押します。何も変わりません。</p>
+
+<h2>4. お知らせ(臨時休業・営業日の変更)</h2>
+<ol>
+  <li>「お知らせ」タブを開きます。</li>
+  <li>文を入れます。例:<code>10月28日(火)は臨時休業いたします。</code></li>
+  <li>「公開する」を押します。ページの一番上に帯で表示されます。</li>
+</ol>
+<p><span class="key">お知らせを消すとき</span>は、文を全部消して「公開する」を押します(空にすると帯が出なくなります)。</p>
+
+<h2>5. 料金・メニュー</h2>
+<ol>
+  <li>「料金・メニュー」タブを開きます。</li>
+  <li>金額の欄を直します。<code>6500</code> や <code>6,500円</code> と入れると、自動で <code>¥6,500</code> に整います。</li>
+  <li>メニューを増やすときは「行を追加」、順番を変えるときは「↑」「↓」、消すときは「削除」を使います。</li>
+</ol>
+<p class="box ng">金額が <code>1万</code> や <code>六千円</code> のような書き方だと、公開できません。数字で入れてください。</p>
+
+<h2>6. 文章(自己紹介・不調の説明・こだわり・よくある質問)</h2>
+<ul>
+  <li>「文章」タブで、枠の中の文を直します。</li>
+  <li>段落を分けたいときは、<b>空行</b>を1行入れます。</li>
+  <li>見出しにしたい行は、行の頭に <code>## </code>(シャープ2つとスペース)を付けます。</li>
+  <li>「よくある質問」は、質問と答えを1組ずつ入れます。「質問を追加」で増やせます。</li>
+</ul>
+
+<h2>7. 写真の差し替え</h2>
+<ol>
+  <li>「写真」タブを開きます。</li>
+  <li>差し替えたい場所の「写真を差し替える」を押し、写真を選びます。</li>
+  <li>自動で小さく整えられます(大きな写真のままで大丈夫です)。</li>
+  <li>「説明文」に、写真の内容を短く入れます(例:<code>落ち着いた雰囲気の施術室</code>)。写真が出ないときや、目の見えない方に読み上げられます。</li>
+  <li>「公開する」を押します。</li>
+</ol>
+<table>
+  <tr><th>使える写真</th><td>JPEG・PNG(スマホで撮った普通の写真)</td></tr>
+  <tr><th>使えない写真</th><td>iPhone の特殊形式(HEIC)や PDF は断られます。「この写真は読み込めませんでした」と出たら、別の写真を選んでください。</td></tr>
+  <tr><th>大きさの目安</th><td>30MB まで</td></tr>
+</table>
+
+<h2>8. こんなときは</h2>
+<table>
+  <tr><th>「公開できません」と赤い文字が出た</th><td>確認画面の赤い文字に、直す場所が書いてあります。そこを直して、もう一度「公開する」を押します。</td></tr>
+  <tr><th>禁止の言葉があると出た</th><td>「改善します」「治ります」など、効果を言い切る表現は使えません。別の言い方に直してください。</td></tr>
+  <tr><th>入力の途中で画面を閉じた</th><td>次に開いたとき「前回の下書きを復元しました」と出ます。続きから直せます。</td></tr>
+  <tr><th>他の人が先に更新していた</th><td>自分の変更を上書きしないよう、公開が止まります。ページを開き直して、もう一度やり直してください。</td></tr>
+  <tr><th>パスワードを入れても入れない</th><td>全角・半角、大文字・小文字を確認してください。分からなくなったら、制作者に連絡してください。</td></tr>
+  <tr><th>急に「公開できませんでした」と出続ける</th><td>約3か月ごとに更新が必要な鍵があります。制作者に連絡してください。</td></tr>
+  <tr><th>公開したのに変わらない</th><td>1〜2分待ってから、ページを更新してください。</td></tr>
+</table>
+
+<h2>9. ひとことメモ</h2>
+<ul>
+  <li>失敗しても、前の状態に戻せます。困ったら、そのまま閉じて制作者に連絡してください。</li>
+  <li>この画面は、検索には出ません。アドレスを知っている人だけ開けます。</li>
+</ul>
+</main>
+</body>
+</html>
