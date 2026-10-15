@@ -61,3 +61,10 @@ kohaku-site (新リポジトリ, GitHub Pages)
 - 店主へ渡すパスワードの受け渡し方法と、トークン期限切れ時の差し替え手順(田代さん側の運用)
 - `kohaku-site` を公開リポジトリにするか(Pages の制約上、無料プランでは公開が前提)。公開の場合、暗号文と店主の原稿が誰でも見える点を店主へ説明する
 - お知らせ帯の見た目(色・位置)は実装時にサイトのデザインに合わせて決める
+
+## 計画段階での補正(2026-10-15)
+実装計画(`docs/superpowers/plans/2026-10-15-kohaku-admin.md`)の作成時に、既存コードを読んで次を補正した。
+- 編集範囲の目印は `data-edit` 属性ではなく **HTML コメント**(`<!--edit:KEY-->…<!--/edit:KEY-->`)にする。写真のみ `data-photo` 属性。DOM を再シリアライズすると `index.html` 全体が整形し直され、JSON-LD・GA4 が変わる恐れがあるため。
+- `index.html` には canonical / og:url / og:image / JSON-LD の url が**すでにある**(旧URL)。「追加」ではなく「新URLへの置換」。
+- 保存は画像ごとの `PUT contents` ではなく、Git Data API で `index.html` と画像を **1 コミット**にまとめる。
+- 検査ルールは `tools/rules.json` に集約して Python と JS で共有する。固定の料金リスト(`PRICES`/`ROWS`)は、店主が料金を直すと検査が落ちるため廃止し、形式検査に置き換える。
