@@ -323,8 +323,8 @@ let OPTIONS = [
 const OMAKASE_MINS = [60,90,120];
 /** メニューが1件も無いカテゴリは出さない(メニュー改訂で空になったカテゴリ対策) */
 const visibleCats = () => CATS.filter(c => MENU.some(m => m.cats.includes(c.id)));
-/** そのメニューで選べるオプション(menus が空なら全メニュー共通) */
-const optsFor = m => OPTIONS.filter(o => !o.menus || !o.menus.length || o.menus.includes(m.id));
+/** そのメニューで選べるオプション(menus が空なら全メニュー共通)。料金の高い順、同額はシートの並び順 */
+const optsFor = m => OPTIONS.filter(o => !o.menus || !o.menus.length || o.menus.includes(m.id)).sort((x, y) => (+y.price || 0) - (+x.price || 0));
 let MENU_LOADING = !!CONFIG.GAS_URL;
 const MENU_TIMEOUT_MS = 8000;
 /** 予約リンクの menu= を、メニュー一覧が確定した後に一度だけ反映する(一致しなければ何もしない) */

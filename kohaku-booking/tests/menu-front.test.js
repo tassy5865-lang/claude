@@ -194,6 +194,6 @@ test('オプションは対象メニューでだけ表示され、メニュー�
     return [...t.d.querySelectorAll('input[data-f=opt]')].map(i => i.value);
   };
   assert.deepStrictEqual(await optsOf('rec', 'total120'), ['chg-makomo', 'chg-rose', 'kucha']);
-  assert.deepStrictEqual(await optsOf('facial', 'f-getto50'), ['kucha', 'fx-body60', 'fx-makomo30', 'fx-yomogi30', 'fx-foot30']);
+  assert.deepStrictEqual(await optsOf('facial', 'f-getto50'), ['fx-body60', 'fx-makomo30', 'fx-yomogi30', 'fx-foot30', 'kucha'], 'オプションは料金の高い順');
   assert.deepStrictEqual(await optsOf('aroma', 'aroma60'), [], '対象メニューの指定が無いコースにはオプション欄が出ない');
 });
