@@ -185,7 +185,7 @@ test('オプションは対象メニューでだけ表示され、メニュー�
   const first = load('index.html');
   await sleep(100);
   const cats = [...first.d.querySelectorAll('[data-act=cat]')].map(b => b.dataset.v);
-  assert.deepStrictEqual(cats, ['first', 'rec', 'aroma', 'facial', 'steam', 'pair'], '空の おまかせ は出ない');
+  assert.deepStrictEqual(cats, ['first', 'rec', 'steam', 'aroma', 'facial', 'pair'], '空の おまかせ は出ない');
   const optsOf = async (cat, id) => {
     const t = load('index.html');
     await sleep(100);
