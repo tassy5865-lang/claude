@@ -247,33 +247,35 @@ const CATS = [
 ];
 // 予備: GAS の menu API が使えないとき(デモ・取得失敗)に使う。内容は gas/Code.gs の SEED_MENU(表示ON)と同じにすること
 let MENU = [
-  {id:'first100', name:'アロマボディトリートメント × まこも蒸し(初回限定)', min:100, price:10000, desc:'体質診断チェック付き / 通常 ¥12,000', cats:['first'], g:'steam'},
-  {id:'aroma60',  name:'Relax アロマボディトリートメント', min:60,  price:7000,  desc:'やさしい香りと心地よいタッチで',   cats:['aroma','first'], g:'aroma'},
-  {id:'aroma80',  name:'満足 アロマボディトリートメント',  min:80,  price:9000,  desc:'たっぷりの時間で全身をゆるめる', cats:['aroma'],         g:'aroma'},
-  {id:'aroma100', name:'疲労回復 アロマボディトリートメント', min:100, price:11000, desc:'溜まった疲れをほどき、巡りのよい体へ', cats:['aroma','rec'], g:'aroma'},
-  {id:'f-light',  name:'ローズフェイシャル A', min:40, price:5600,  desc:'フェイシャル30分(シートパック付き)+ 頭ほぐし10分', cats:['facial','first'], g:'facial'},
-  {id:'f-relax',  name:'ローズフェイシャル B', min:65, price:8100,  desc:'フェイシャル30分(シートパック付き)+ 頭ほぐし35分(上衣に着替えます)', cats:['facial','rec'], g:'facial'},
-  {id:'f-onkatsu',name:'ローズフェイシャル C', min:70, price:11600, desc:'フェイシャル30分(シートパック付き)+ 頭ほぐし10分 + よもぎ蒸し', cats:['facial'], g:'facial'},
-  {id:'f-premium',name:'ローズフェイシャル D', min:95, price:14100, desc:'フェイシャル30分(シートパック付き)+ 頭ほぐし35分 + よもぎ蒸し', cats:['facial','rec'], g:'facial'},
-  {id:'set90',    name:'Relax アロマボディトリートメント + よもぎ蒸し', min:90,  price:10000, desc:'アロマボディ + よもぎ蒸し', cats:['steam','rec'], g:'steam'},
-  {id:'set110',   name:'満足 アロマボディトリートメント + よもぎ蒸し',  min:110, price:12000, desc:'アロマボディ + よもぎ蒸し', cats:['steam'],       g:'steam'},
-  {id:'set130',   name:'疲労回復 アロマボディトリートメント + よもぎ蒸し', min:130, price:14000, desc:'アロマボディ + よもぎ蒸し', cats:['steam'],    g:'steam'},
-  {id:'course110',name:'全身満たされる110分コース', min:110, price:13000, desc:'ボディ50分 + ローズフェイシャル + よもぎ蒸し(おすすめ)', cats:['steam','rec'], g:'steam'},
-  {id:'course140',name:'全身満たされる140分コース', min:140, price:18600, desc:'ボディ80分 + ローズフェイシャル + まこも蒸し',             cats:['steam'],       g:'steam'},
-  {id:'p-yomogi',      name:'ペア よもぎ蒸し(2名分)',                  min:40, price:6000,  desc:'大切な人と一緒に',        cats:['pair'], g:'pair', kind:'pair'},
-  {id:'p-makomo',      name:'ペア まこも蒸し(2名分)',                  min:40, price:12000, desc:'大切な人と一緒に',        cats:['pair'], g:'pair', kind:'pair'},
-  {id:'p-yomogi-foot', name:'ペア よもぎ蒸し + フットまたは頭ほぐし30分(2名分)', min:70, price:12000, desc:'蒸しのあとに足と頭を癒す', cats:['pair'], g:'pair', kind:'pair'},
-  {id:'p-makomo-foot', name:'ペア まこも蒸し + フットまたは頭ほぐし30分(2名分)', min:70, price:18000, desc:'蒸しのあとに足と頭を癒す', cats:['pair'], g:'pair', kind:'pair'},
-  {id:'omakase', name:'おまかせ相談予約', min:60, price:null, desc:'セラピストに相談して、その日の内容を決めるコースです。', cats:['omakase'], g:'omakase', kind:'omakase'}
+  {id:"total120", name:"トータルケアコース", min:120, price:12800, desc:"疲れも美容も叶える全身満たされるトータルケア / よもぎ蒸し + アロマフェイシャル(シートパック付き)+ アロマボディ60分", cats:["rec","steam"], g:"steam"},
+  {id:"long-makomo", name:"スペシャルロングコース(まこも蒸し)", min:130, price:16800, desc:"足の重だるさから脳疲労まで全身の疲れをほどく / まこも蒸し + アロマボディ100分", cats:["steam"], g:"steam"},
+  {id:"long-yomogi", name:"スペシャルロングコース(よもぎ蒸し)", min:130, price:13800, desc:"足の重だるさから脳疲労まで全身の疲れをほどく / よもぎ蒸し + アロマボディ100分", cats:["steam"], g:"steam"},
+  {id:"onkatsu-makomo", name:"全身アロマ温活コース(まこも蒸し)", min:90, price:12800, desc:"これからの私を整える。温めてゆるめる / まこも蒸し + アロマボディ60分", cats:["steam"], g:"steam"},
+  {id:"onkatsu-yomogi", name:"全身アロマ温活コース(よもぎ蒸し)", min:90, price:9800, desc:"これからの私を整える。温めてゆるめる / よもぎ蒸し + アロマボディ60分", cats:["steam"], g:"steam"},
+  {id:"f-rose50", name:"潤艶肌フェイシャルコース(ローズ)", min:50, price:7000, desc:"乾燥が気になる大人肌に / ローズフェイシャル(シートパック付き)+ デコルテ + ヘッド", cats:["facial"], g:"facial"},
+  {id:"f-getto50", name:"潤艶肌フェイシャルコース(月桃)", min:50, price:7000, desc:"乾燥が気になる大人肌に / 月桃フェイシャル(シートパック付き)+ デコルテ + ヘッド", cats:["facial"], g:"facial"},
+  {id:"aroma100", name:"癒しのアロマボディ 100分", min:100, price:11000, desc:"全身ゆるめる癒しのアロマボディ", cats:["aroma"], g:"aroma"},
+  {id:"aroma80", name:"癒しのアロマボディ 80分", min:80, price:9000, desc:"全身ゆるめる癒しのアロマボディ", cats:["aroma"], g:"aroma"},
+  {id:"aroma60", name:"癒しのアロマボディ 60分", min:60, price:7000, desc:"全身ゆるめる癒しのアロマボディ", cats:["aroma"], g:"aroma"},
+  {id:"f-light", name:"フェイシャルトリートメント", min:40, price:4630, desc:"美肌整うフェイシャル(シートパック、プチヘッド付き)", cats:["facial"], g:"facial"},
+  {id:"p-makomo", name:"ペア まこも蒸し(2名分)", min:40, price:12000, desc:"2人で温活ペア蒸し", cats:["pair"], g:"pair", kind:"pair"},
+  {id:"p-yomogi", name:"ペア よもぎ蒸し(2名分)", min:40, price:6000, desc:"2人で温活ペア蒸し", cats:["pair"], g:"pair", kind:"pair"}
 ];
+// menus が空のオプションは全メニュー共通。入っていれば、そのメニューIDの予約でだけ表示する
 let OPTIONS = [
-  {id:'head', name:'頭ほぐし',   min:10, price:1500},
-  {id:'foot', name:'フット',     min:10, price:1500},
-  {id:'hand', name:'ハンド',     min:10, price:1500},
-  {id:'stone',name:'ホットストーン', min:0, price:2000},
-  {id:'bath', name:'フットバス', min:0,  price:1000}
+  {id:"chg-makomo", name:"まこも蒸しに変更", min:0, price:3000, menus:["total120"]},
+  {id:"chg-rose", name:"ローズフェイシャルに変更", min:0, price:1000, menus:["total120"]},
+  {id:"kucha", name:"毛穴洗浄クチャパック", min:0, price:1000, menus:["total120","f-rose50","f-getto50"]},
+  {id:"fx-body60", name:"アロマボディトリートメント60分(セット価格)", min:60, price:6500, menus:["f-rose50","f-getto50"]},
+  {id:"fx-makomo30", name:"まこも蒸し30分(セット価格)", min:30, price:6000, menus:["f-rose50","f-getto50"]},
+  {id:"fx-yomogi30", name:"よもぎ蒸し30分(セット価格)", min:30, price:3000, menus:["f-rose50","f-getto50"]},
+  {id:"fx-foot30", name:"フットトリートメント30分(セット価格)", min:30, price:2500, menus:["f-rose50","f-getto50"]}
 ];
 const OMAKASE_MINS = [60,90,120];
+/** メニューが1件も無いカテゴリは出さない(メニュー改訂で空になったカテゴリ対策) */
+const visibleCats = () => CATS.filter(c => MENU.some(m => m.cats.includes(c.id)));
+/** そのメニューで選べるオプション(menus が空なら全メニュー共通) */
+const optsFor = m => OPTIONS.filter(o => !o.menus || !o.menus.length || o.menus.includes(m.id));
 let MENU_LOADING = !!CONFIG.GAS_URL;
 const MENU_TIMEOUT_MS = 8000;
 /** 予約リンクの menu= を、メニュー一覧が確定した後に一度だけ反映する(一致しなければ何もしない) */
@@ -530,16 +532,18 @@ const screens = {
     return `
     <section class="hero"><img src="images/hero.jpg" width="825" height="1100" alt="" fetchpriority="high"><div class="in"><p>香りに包まれ、<br>ふっと力を抜いて、<br>本来の自分に戻る時間。</p><button class="btn-pill" type="button" data-act="start">予約をはじめる <span aria-hidden="true">→</span></button></div></section>
     <h2>ご予約はこちらから</h2>
-    <ul class="cats">${CATS.map(c => `<li><button class="cat" data-act="cat" data-v="${c.id}"><span class="n"><b>${c.name}</b><span>${c.sub}</span></span></button></li>`).join('')}</ul>
+    <ul class="cats">${visibleCats().map(c => `<li><button class="cat" data-act="cat" data-v="${c.id}"><span class="n"><b>${c.name}</b><span>${c.sub}</span></span></button></li>`).join('')}</ul>
     <h2>ご予約済みの方</h2>
     <ul class="cats"><li><button class="cat" data-act="my"><span class="n"><b>My Kohaku</b><span>次回予約・予約履歴・クーポン</span></span></button></li></ul>`;
   },
   menu(){
     if(MENU_LOADING) return `<p class="note" style="text-align:center;padding:40px 0">メニューを読み込み中…</p>`;
+    const vcats = visibleCats();
+    if(vcats.length && !vcats.some(c => c.id === S.cat)) S.cat = vcats[0].id;
     const cat = CATS.find(c => c.id === S.cat);
     const items = MENU.filter(m => m.cats.includes(S.cat));
     return `
-    <div class="tabs" role="tablist">${CATS.map(c => `<button class="tab" role="tab" aria-selected="${c.id===S.cat}" data-act="cat" data-v="${c.id}">${c.name}</button>`).join('')}</div>
+    <div class="tabs" role="tablist">${vcats.map(c => `<button class="tab" role="tab" aria-selected="${c.id===S.cat}" data-act="cat" data-v="${c.id}">${c.name}</button>`).join('')}</div>
     <p class="catdesc">${cat.desc}</p>
     <ul class="mlist">${items.map(m => `
       <li><button class="mcard" data-act="pick" data-v="${m.id}">
@@ -559,12 +563,13 @@ const screens = {
       <div class="chips">${CONCERNS.map(c => `<label class="chip"><input type="checkbox" data-f="concern" value="${c}" ${S.omakase.concerns.includes(c)?'checked':''}><span>${c}</span></label>`).join('')}</div>
       <p class="note">施術内容と料金は、当日セラピストとご相談のうえ決定します。</p>`;
     } else {
-      body = `
+      const opts = optsFor(m);
+      body = opts.length ? `
       <h2>オプション<span style="font-size:12px;color:var(--muted);font-family:var(--sans);margin-left:8px">必要に応じて追加</span></h2>
-      <div class="rows">${OPTIONS.map(o => `
+      <div class="rows">${opts.map(o => `
         <label class="row"><input type="checkbox" data-f="opt" value="${o.id}" ${S.opts.includes(o.id)?'checked':''}>
           <span class="t">${o.name}${o.min?`<small>${o.min}分</small>`:''}</span><span class="p">+${yen(o.price*mult())}</span></label>`).join('')}</div>
-      ${m.kind==='pair' ? '<p class="note">オプション料金は2名分で表示しています。</p>' : ''}`;
+      ${m.kind==='pair' ? '<p class="note">オプション料金は2名分で表示しています。</p>' : ''}` : '';
     }
     return `
     <div class="dhead">
@@ -1036,7 +1041,7 @@ app.addEventListener('click', e => {
   const t = e.target.closest('[data-act]'); if(!t || t.disabled) return;
   const v = t.dataset.v;
   switch(t.dataset.act){
-    case 'start': S.cat = 'first'; go('menu'); break;
+    case 'start': S.cat = (visibleCats()[0] || CATS[0]).id; go('menu'); break;
     case 'cat':   S.cat = v; if(S.screen==='top') go('menu'); else render(); break;
     case 'pick':  S.menu = MENU.find(m => m.id===v); S.opts = []; S.date = null; S.time = null; go('detail'); break;
     case 'back':  history.back(); break;

@@ -12,7 +12,7 @@ test('有効な source / inquiry / menu が S.ref に入り、メニュー選択
   await sleep(50);
   assert.deepStrictEqual(ref(w), { source: 'instagram_dm', inquiry: 'IG-00125', menu: 'aroma60' });
   assert.strictEqual(w.eval('S.screen'), 'detail');
-  assert.match(text('#app'), /Relax/);
+  assert.match(text('#app'), /癒しのアロマボディ 60分/);
 });
 
 test('不正な値は無視され、通常のトップから始まる', async () => {

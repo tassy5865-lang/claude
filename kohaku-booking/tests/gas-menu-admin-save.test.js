@@ -43,7 +43,7 @@ const MENU_ROWS = [
   ['hidden1', '非表示', '40', '3000', '', 'steam', 'steam', '', 'OFF', '9'],
   ['pair1', 'ペア', '40', '6000', '', 'pair', 'pair', 'pair', 'ON', '1']
 ];
-const OPT_ROWS = [['head', '頭ほぐし', '10', '1500', 'ON', '1']];
+const OPT_ROWS = [['head', '頭ほぐし', '10', '1500', 'ON', '1', '']];
 function gasWithSheets() {
   const g = loadGas();
   const sheets = { 'メニュー': fakeSheet(g.MENU_HEADERS, MENU_ROWS), 'オプション': fakeSheet(g.OPTION_HEADERS, OPT_ROWS) };
@@ -113,9 +113,11 @@ test('adminMenuSave(新規): 重複IDと不正値は書き込まない', () => {
 test('adminOptionSave: 更新と新規(自動採番)', () => {
   const { g, sheets } = gasWithSheets();
   assert.deepStrictEqual(call(g, 'adminOptionSave', { create: false, item: { id: 'head', name: '頭ほぐし長め', min: 20, price: 2000, show: true, order: 1 } }), { ok: true, id: 'head' });
-  assert.deepStrictEqual(sheets['オプション'].data[1], ['head', '頭ほぐし長め', '20', '2000', 'ON', '1']);
+  assert.deepStrictEqual(sheets['オプション'].data[1], ['head', '頭ほぐし長め', '20', '2000', 'ON', '1', '']);
   assert.deepStrictEqual(call(g, 'adminOptionSave', { create: true, item: { id: '', name: 'フットバス', min: 0, price: 1000, show: false, order: 2 } }), { ok: true, id: 'opt-1' });
-  assert.deepStrictEqual(sheets['オプション'].data[2], ['opt-1', 'フットバス', '0', '1000', 'OFF', '2']);
+  assert.deepStrictEqual(sheets['オプション'].data[2], ['opt-1', 'フットバス', '0', '1000', 'OFF', '2', '']);
+  assert.deepStrictEqual(call(g, 'adminOptionSave', { create: false, item: { id: 'head', name: '頭ほぐし長め', min: 20, price: 2000, show: true, order: 1, menus: ['aroma60', 'pair1'] } }), { ok: true, id: 'head' });
+  assert.strictEqual(sheets['オプション'].data[1][6], 'aroma60,pair1');
   assert.deepStrictEqual(call(g, 'adminOptionSave', { create: true, item: { id: '', name: 'x', min: 0, price: null, show: true, order: 3 } }), { ok: false, error: 'bad_field', field: 'price' });
 });
 
@@ -124,4 +126,15 @@ test('メニュー管理のAPIはトークン無しだと auth で拒否され�
   for (const action of ['adminMenu', 'adminMenuSave', 'adminOptionSave']) {
     assert.deepStrictEqual(j(g.handleAction_({ action, create: true, item: {} })), { ok: false, error: 'auth' });
   }
+});
+
+test('syncSheetFromSeed_: 同じIDは上書き・無いIDは末尾に追加・SEEDに無い行は触らない', () => {
+  const g = loadGas();
+  const sh = fakeSheet(g.OPTION_HEADERS, [['mine', '自作', '5', '500', 'ON', '1', ''], ['head', '旧頭ほぐし', '10', '1500', 'ON', '1', '']]);
+  sh.getMaxColumns = () => 7;
+  const seed = [['head', '頭ほぐし', 10, 1500, 'OFF', 101, ''], ['kucha', '毛穴洗浄クチャパック', 0, 1000, 'ON', 3, 'total120']];
+  assert.deepStrictEqual(j(g.syncSheetFromSeed_(sh, g.OPTION_HEADERS, seed)), { updated: 1, added: 1 });
+  assert.deepStrictEqual(sh.data[1], ['mine', '自作', '5', '500', 'ON', '1', '']);
+  assert.deepStrictEqual(sh.data[2], ['head', '頭ほぐし', '10', '1500', 'OFF', '101', '']);
+  assert.deepStrictEqual(sh.data[3], ['kucha', '毛穴洗浄クチャパック', '0', '1000', 'ON', '3', 'total120']);
 });

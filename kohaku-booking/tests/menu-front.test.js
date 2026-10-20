@@ -52,16 +52,16 @@ test('menu API が失敗したら予備配列で動く', async () => {
   });
   await sleep(100);
   click('[data-act=cat][data-v=aroma]');
-  assert.match(text(), /Relax アロマボディトリートメント/);
+  assert.match(text(), /癒しのアロマボディ/);
   assert.doesNotMatch(text(), /メニューを読み込み中/);
 });
 
 // 予約を最後(送信)まで進めるヘルパー
 async function bookUntilSubmit({ click, type, d }, { opt = false } = {}) {
   await sleep(100);
-  click('[data-act=cat][data-v=aroma]');
-  click('[data-act=pick][data-v=aroma60]');
-  if (opt) click('input[data-f=opt][value=head]');
+  click('[data-act=cat][data-v=facial]');
+  click('[data-act=pick][data-v=f-rose50]');
+  if (opt) click('input[data-f=opt][value=kucha]');
   click('[data-act=next]'); await sleep(300);
   [...d.querySelectorAll('.day.ok')][0].click();
   [...d.querySelectorAll('.slot:not(:disabled)')][0].click();
@@ -84,8 +84,8 @@ test('送信ペイロードは menuId と optionIds を送り、total/menuName/o
   const t = load('index.html', { replace: withGas, beforeParse: stubFetch(b => { posted = b; return { ok: true, id: 'K1' }; }) });
   await bookUntilSubmit(t, { opt: true });
   assert.ok(posted, '送信された');
-  assert.strictEqual(posted.menuId, 'aroma60');
-  assert.deepStrictEqual(posted.optionIds, ['head']);
+  assert.strictEqual(posted.menuId, 'f-rose50');
+  assert.deepStrictEqual(posted.optionIds, ['kucha']);
   assert.ok(!('total' in posted) && !('menuName' in posted) && !('options' in posted) && !('minutes' in posted));
 });
 
@@ -179,4 +179,21 @@ test('最終レビュー: bad_menu のあとの再取得は fresh=1(キャッシ
   await bookUntilSubmit(t);
   await sleep(100);
   assert.ok(urls.some(u => u.includes('action=menu') && u.includes('fresh=1')));
+});
+
+test('オプションは対象メニューでだけ表示され、メニューが無いカテゴリは出ない', async () => {
+  const first = load('index.html');
+  await sleep(100);
+  const cats = [...first.d.querySelectorAll('[data-act=cat]')].map(b => b.dataset.v);
+  assert.deepStrictEqual(cats, ['rec', 'aroma', 'facial', 'steam', 'pair'], '空の はじめての方 / おまかせ は出ない');
+  const optsOf = async (cat, id) => {
+    const t = load('index.html');
+    await sleep(100);
+    t.click(`[data-act=cat][data-v=${cat}]`);
+    t.click(`[data-act=pick][data-v=${id}]`);
+    return [...t.d.querySelectorAll('input[data-f=opt]')].map(i => i.value);
+  };
+  assert.deepStrictEqual(await optsOf('rec', 'total120'), ['chg-makomo', 'chg-rose', 'kucha']);
+  assert.deepStrictEqual(await optsOf('facial', 'f-getto50'), ['kucha', 'fx-body60', 'fx-makomo30', 'fx-yomogi30', 'fx-foot30']);
+  assert.deepStrictEqual(await optsOf('aroma', 'aroma60'), [], '対象メニューの指定が無いコースにはオプション欄が出ない');
 });

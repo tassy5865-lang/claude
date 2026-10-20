@@ -6,10 +6,10 @@ test('お客様側: 予約フロー(メニュー選択 → 予約完了)とMy Ko
   const { click, type, text, d, errors } = load('index.html');
 
   // 予約フロー
-  click('[data-act=cat][data-v=aroma]');
-  click('[data-act=pick][data-v=aroma60]');
-  click('input[data-f=opt][value=head]');
-  assert.match(text('.bar'), /¥8,500/, 'オプション込みの合計金額');
+  click('[data-act=cat][data-v=facial]');
+  click('[data-act=pick][data-v=f-rose50]');
+  click('input[data-f=opt][value=kucha]');
+  assert.match(text('.bar'), /¥8,000/, 'オプション込みの合計金額');
   click('[data-act=next]'); await sleep(700);
   [...d.querySelectorAll('.day.ok')][0].click();
   [...d.querySelectorAll('.slot:not(:disabled)')][0].click();

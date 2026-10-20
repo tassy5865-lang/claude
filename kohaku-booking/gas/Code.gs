@@ -178,39 +178,82 @@ function doPost(e) {
  *  料金の空欄=当日ご案内。表示=OFF の行は予約サイトに出ない(削除の代わりに使う)。
  * ========================================================= */
 const MENU_HEADERS = ['メニューID','名前','所要分','料金','説明','カテゴリ(カンマ区切り)','グループ','種別(空/pair/omakase)','表示(ON/OFF)','並び順'];
-const OPTION_HEADERS = ['オプションID','名前','所要分','料金','表示(ON/OFF)','並び順'];
+const OPTION_HEADERS = ['オプションID','名前','所要分','料金','表示(ON/OFF)','並び順','対象メニュー(カンマ区切り・空=全メニュー)'];
 const OMAKASE_MINS = [60, 90, 120];
 
 // 初期データ(メニュー表が正)。index.html / admin.html の予備配列と同じ内容にすること(tests/menu-front.test.js が検査)
+// 2026-10-20 メニュー改訂: 新メニュー13件(表示ON)+ 改訂前のメニューは表示=OFF のまま残す(既存予約・「同じメニューで予約」が参照するため削除しない)
 const SEED_MENU = [
-  ['first100',  'アロマボディトリートメント × まこも蒸し(初回限定)', 100, 10000, '体質診断チェック付き / 通常 ¥12,000', 'first', 'steam', '', 'ON', 1],
-  ['aroma60',   'Relax アロマボディトリートメント', 60,  7000,  'やさしい香りと心地よいタッチで',   'aroma,first', 'aroma', '', 'ON', 2],
-  ['aroma80',   '満足 アロマボディトリートメント',  80,  9000,  'たっぷりの時間で全身をゆるめる', 'aroma',       'aroma', '', 'ON', 3],
-  ['aroma100',  '疲労回復 アロマボディトリートメント', 100, 11000, '溜まった疲れをほどき、巡りのよい体へ', 'aroma,rec', 'aroma', '', 'ON', 4],
-  ['f-light',   'ローズフェイシャル A', 40, 5600,  'フェイシャル30分(シートパック付き)+ 頭ほぐし10分', 'facial,first', 'facial', '', 'ON', 5],
-  ['f-relax',   'ローズフェイシャル B', 65, 8100,  'フェイシャル30分(シートパック付き)+ 頭ほぐし35分(上衣に着替えます)', 'facial,rec', 'facial', '', 'ON', 6],
-  ['f-onkatsu', 'ローズフェイシャル C', 70, 11600, 'フェイシャル30分(シートパック付き)+ 頭ほぐし10分 + よもぎ蒸し', 'facial', 'facial', '', 'ON', 7],
-  ['f-premium', 'ローズフェイシャル D', 95, 14100, 'フェイシャル30分(シートパック付き)+ 頭ほぐし35分 + よもぎ蒸し', 'facial,rec', 'facial', '', 'ON', 8],
-  ['set90',     'Relax アロマボディトリートメント + よもぎ蒸し', 90,  10000, 'アロマボディ + よもぎ蒸し', 'steam,rec', 'steam', '', 'ON', 9],
-  ['set110',    '満足 アロマボディトリートメント + よもぎ蒸し',  110, 12000, 'アロマボディ + よもぎ蒸し', 'steam',     'steam', '', 'ON', 10],
-  ['set130',    '疲労回復 アロマボディトリートメント + よもぎ蒸し', 130, 14000, 'アロマボディ + よもぎ蒸し', 'steam',  'steam', '', 'ON', 11],
-  ['course110', '全身満たされる110分コース', 110, 13000, 'ボディ50分 + ローズフェイシャル + よもぎ蒸し(おすすめ)', 'steam,rec', 'steam', '', 'ON', 12],
-  ['course140', '全身満たされる140分コース', 140, 18600, 'ボディ80分 + ローズフェイシャル + まこも蒸し',             'steam',     'steam', '', 'ON', 13],
-  ['p-yomogi',      'ペア よもぎ蒸し(2名分)',                  40, 6000,  '大切な人と一緒に',        'pair', 'pair', 'pair', 'ON', 14],
-  ['p-makomo',      'ペア まこも蒸し(2名分)',                  40, 12000, '大切な人と一緒に',        'pair', 'pair', 'pair', 'ON', 15],
-  ['p-yomogi-foot', 'ペア よもぎ蒸し + フットまたは頭ほぐし30分(2名分)', 70, 12000, '蒸しのあとに足と頭を癒す', 'pair', 'pair', 'pair', 'ON', 16],
-  ['p-makomo-foot', 'ペア まこも蒸し + フットまたは頭ほぐし30分(2名分)', 70, 18000, '蒸しのあとに足と頭を癒す', 'pair', 'pair', 'pair', 'ON', 17],
-  ['omakase',   'おまかせ相談予約', 60, '', 'セラピストに相談して、その日の内容を決めるコースです。', 'omakase', 'omakase', 'omakase', 'ON', 18],
-  ['yomogi',    'よもぎ蒸し', 40, 3000, 'じんわり芯から温まる', 'steam,first', 'steam', '', 'OFF', 19],
-  ['makomo',    'まこも蒸し', 40, 6000, '深い温まりと発汗',     'steam',       'steam', '', 'OFF', 20]
+  ['total120',       'トータルケアコース',                    120, 12800, '疲れも美容も叶える全身満たされるトータルケア / よもぎ蒸し + アロマフェイシャル(シートパック付き)+ アロマボディ60分', 'rec,steam', 'steam', '', 'ON', 1],
+  ['long-makomo',    'スペシャルロングコース(まこも蒸し)',    130, 16800, '足の重だるさから脳疲労まで全身の疲れをほどく / まこも蒸し + アロマボディ100分', 'steam', 'steam', '', 'ON', 2],
+  ['long-yomogi',    'スペシャルロングコース(よもぎ蒸し)',    130, 13800, '足の重だるさから脳疲労まで全身の疲れをほどく / よもぎ蒸し + アロマボディ100分', 'steam', 'steam', '', 'ON', 3],
+  ['onkatsu-makomo', '全身アロマ温活コース(まこも蒸し)',       90, 12800, 'これからの私を整える。温めてゆるめる / まこも蒸し + アロマボディ60分', 'steam', 'steam', '', 'ON', 4],
+  ['onkatsu-yomogi', '全身アロマ温活コース(よもぎ蒸し)',       90,  9800, 'これからの私を整える。温めてゆるめる / よもぎ蒸し + アロマボディ60分', 'steam', 'steam', '', 'ON', 5],
+  ['f-rose50',       '潤艶肌フェイシャルコース(ローズ)',       50,  7000, '乾燥が気になる大人肌に / ローズフェイシャル(シートパック付き)+ デコルテ + ヘッド', 'facial', 'facial', '', 'ON', 6],
+  ['f-getto50',      '潤艶肌フェイシャルコース(月桃)',         50,  7000, '乾燥が気になる大人肌に / 月桃フェイシャル(シートパック付き)+ デコルテ + ヘッド', 'facial', 'facial', '', 'ON', 7],
+  ['aroma100',       '癒しのアロマボディ 100分',               100, 11000, '全身ゆるめる癒しのアロマボディ', 'aroma', 'aroma', '', 'ON', 8],
+  ['aroma80',        '癒しのアロマボディ 80分',                 80,  9000, '全身ゆるめる癒しのアロマボディ', 'aroma', 'aroma', '', 'ON', 9],
+  ['aroma60',        '癒しのアロマボディ 60分',                 60,  7000, '全身ゆるめる癒しのアロマボディ', 'aroma', 'aroma', '', 'ON', 10],
+  ['f-light',        'フェイシャルトリートメント',              40,  4630, '美肌整うフェイシャル(シートパック、プチヘッド付き)', 'facial', 'facial', '', 'ON', 11],
+  ['p-makomo',       'ペア まこも蒸し(2名分)',                  40, 12000, '2人で温活ペア蒸し', 'pair', 'pair', 'pair', 'ON', 12],
+  ['p-yomogi',       'ペア よもぎ蒸し(2名分)',                  40,  6000, '2人で温活ペア蒸し', 'pair', 'pair', 'pair', 'ON', 13],
+  // ---- 改訂前のメニュー(表示=OFF)----
+  ['first100',  'アロマボディトリートメント × まこも蒸し(初回限定)', 100, 10000, '体質診断チェック付き / 通常 ¥12,000', 'first', 'steam', '', 'OFF', 101],
+  ['f-relax',   'ローズフェイシャル B', 65, 8100,  'フェイシャル30分(シートパック付き)+ 頭ほぐし35分(上衣に着替えます)', 'facial,rec', 'facial', '', 'OFF', 102],
+  ['f-onkatsu', 'ローズフェイシャル C', 70, 11600, 'フェイシャル30分(シートパック付き)+ 頭ほぐし10分 + よもぎ蒸し', 'facial', 'facial', '', 'OFF', 103],
+  ['f-premium', 'ローズフェイシャル D', 95, 14100, 'フェイシャル30分(シートパック付き)+ 頭ほぐし35分 + よもぎ蒸し', 'facial,rec', 'facial', '', 'OFF', 104],
+  ['set90',     'Relax アロマボディトリートメント + よもぎ蒸し', 90,  10000, 'アロマボディ + よもぎ蒸し', 'steam,rec', 'steam', '', 'OFF', 105],
+  ['set110',    '満足 アロマボディトリートメント + よもぎ蒸し',  110, 12000, 'アロマボディ + よもぎ蒸し', 'steam',     'steam', '', 'OFF', 106],
+  ['set130',    '疲労回復 アロマボディトリートメント + よもぎ蒸し', 130, 14000, 'アロマボディ + よもぎ蒸し', 'steam',  'steam', '', 'OFF', 107],
+  ['course110', '全身満たされる110分コース', 110, 13000, 'ボディ50分 + ローズフェイシャル + よもぎ蒸し(おすすめ)', 'steam,rec', 'steam', '', 'OFF', 108],
+  ['course140', '全身満たされる140分コース', 140, 18600, 'ボディ80分 + ローズフェイシャル + まこも蒸し',             'steam',     'steam', '', 'OFF', 109],
+  ['p-yomogi-foot', 'ペア よもぎ蒸し + フットまたは頭ほぐし30分(2名分)', 70, 12000, '蒸しのあとに足と頭を癒す', 'pair', 'pair', 'pair', 'OFF', 110],
+  ['p-makomo-foot', 'ペア まこも蒸し + フットまたは頭ほぐし30分(2名分)', 70, 18000, '蒸しのあとに足と頭を癒す', 'pair', 'pair', 'pair', 'OFF', 111],
+  ['omakase',   'おまかせ相談予約', 60, '', 'セラピストに相談して、その日の内容を決めるコースです。', 'omakase', 'omakase', 'omakase', 'OFF', 112],
+  ['yomogi',    'よもぎ蒸し', 40, 3000, 'じんわり芯から温まる', 'steam,first', 'steam', '', 'OFF', 113],
+  ['makomo',    'まこも蒸し', 40, 6000, '深い温まりと発汗',     'steam',       'steam', '', 'OFF', 114]
 ];
+// 対象メニュー(7列目)が空のオプションは全メニュー共通。入っていれば、そのメニューIDの予約でだけ選べる
 const SEED_OPTIONS = [
-  ['head',  '頭ほぐし',       10, 1500, 'ON', 1],
-  ['foot',  'フット',         10, 1500, 'ON', 2],
-  ['hand',  'ハンド',         10, 1500, 'ON', 3],
-  ['stone', 'ホットストーン', 0,  2000, 'ON', 4],
-  ['bath',  'フットバス',     0,  1000, 'ON', 5]
+  ['chg-makomo', 'まこも蒸しに変更',               0,  3000, 'ON', 1, 'total120'],
+  ['chg-rose',   'ローズフェイシャルに変更',       0,  1000, 'ON', 2, 'total120'],
+  ['kucha',      '毛穴洗浄クチャパック',           0,  1000, 'ON', 3, 'total120,f-rose50,f-getto50'],
+  ['fx-body60',  'アロマボディトリートメント60分(セット価格)', 60, 6500, 'ON', 4, 'f-rose50,f-getto50'],
+  ['fx-makomo30','まこも蒸し30分(セット価格)',     30, 6000, 'ON', 5, 'f-rose50,f-getto50'],
+  ['fx-yomogi30','よもぎ蒸し30分(セット価格)',     30, 3000, 'ON', 6, 'f-rose50,f-getto50'],
+  ['fx-foot30',  'フットトリートメント30分(セット価格)', 30, 2500, 'ON', 7, 'f-rose50,f-getto50'],
+  // ---- 改訂前のオプション(表示=OFF)----
+  ['head',  '頭ほぐし',       10, 1500, 'OFF', 101, ''],
+  ['foot',  'フット',         10, 1500, 'OFF', 102, ''],
+  ['hand',  'ハンド',         10, 1500, 'OFF', 103, ''],
+  ['stone', 'ホットストーン', 0,  2000, 'OFF', 104, ''],
+  ['bath',  'フットバス',     0,  1000, 'OFF', 105, '']
 ];
+
+/**
+ * 稼働中のシートを SEED_MENU / SEED_OPTIONS の内容に揃える(メニュー改訂の反映用。Apps Script のエディタから1回実行する)。
+ * 同じIDの行は上書き、無いIDは末尾に追加。SEEDに無い行は触らない。実行前に `setup` を済ませる(見出し・列の追加)。
+ * ※ 同じIDの行を管理画面やシートで手直ししていた場合、その手直しも SEED の内容に戻る。
+ */
+function syncMenuFromSeed() {
+  const r1 = syncSheetFromSeed_(getMenuSheet_(), MENU_HEADERS, SEED_MENU);
+  const r2 = syncSheetFromSeed_(getOptionSheet_(), OPTION_HEADERS, SEED_OPTIONS);
+  CacheService.getScriptCache().remove('menu:v1');
+  Logger.log('メニュー 更新' + r1.updated + '件 / 追加' + r1.added + '件、オプション 更新' + r2.updated + '件 / 追加' + r2.added + '件');
+}
+function syncSheetFromSeed_(sh, headers, seed) {
+  ensureColumns_(sh, headers.length);
+  const last = sh.getLastRow();
+  const ids = last < 2 ? [] : sh.getRange(2, 1, last - 1, 1).getValues().map(function (r) { return String(r[0]).trim(); });
+  let updated = 0, added = 0, next = last + 1;
+  seed.forEach(function (row) {
+    const at = ids.indexOf(String(row[0]));
+    const target = at >= 0 ? at + 2 : next++;
+    sh.getRange(target, 1, 1, headers.length).setNumberFormat('@').setValues([row.map(String)]);
+    if (at >= 0) updated++; else added++;
+  });
+  return { updated: updated, added: added };
+}
 
 function numOrNull_(v) {
   const s = String(v === undefined || v === null ? '' : v)
@@ -247,7 +290,8 @@ function parseOptionRows_(values) {
       console.error('option row skipped: ' + (i + 2) + '行目'); return;
     }
     out.push({ id: id, name: String(v[1]).trim(), min: min, price: price,
-               show: String(v[4] || '').trim().toUpperCase() === 'ON', order: order === null || isNaN(order) ? 9999 : order });
+               show: String(v[4] || '').trim().toUpperCase() === 'ON', order: order === null || isNaN(order) ? 9999 : order,
+               menus: String(v[6] || '').split(',').map(function (x) { return x.trim(); }).filter(String) });
   });
   return out;
 }
@@ -274,6 +318,7 @@ function calcBooking_(menu, options, d) {
   for (let i = 0; i < ids.length; i++) {
     const o = options.filter(function (x) { return x.id === ids[i] && x.show; })[0];
     if (!o) return { ok: false, error: 'bad_menu' };
+    if (o.menus && o.menus.length && o.menus.indexOf(m.id) < 0) return { ok: false, error: 'bad_menu' };   // このメニューでは選べないオプション
     if (!seen[o.id]) { seen[o.id] = true; chosen.push(o); }
   }
   const mult = m.kind === 'pair' ? 2 : 1;
@@ -389,6 +434,8 @@ function validateOptionItem_(item, create, ids) {
   if (min === null || isNaN(min) || min > 300) return fieldErr_('min');
   const price = intOrNull_(item.price);
   if (price === null || isNaN(price) || price > 1000000) return fieldErr_('price');
+  const menus = item.menus === undefined ? [] : item.menus;
+  if (!Array.isArray(menus) || menus.length > 60 || menus.some(function (id) { return !/^[A-Za-z0-9_-]{1,40}$/.test(strOf_(id)); })) return fieldErr_('menus');
   return '';
 }
 
@@ -401,7 +448,7 @@ function menuRowFromItem_(item) {
 /** 検証済みの item → オプションシートの1行(OPTION_HEADERS の並び、全て文字列) */
 function optionRowFromItem_(item) {
   return [strOf_(item.id), strOf_(item.name).trim(), String(intOrNull_(item.min)), String(intOrNull_(item.price)),
-          item.show ? 'ON' : 'OFF', String(intOrNull_(item.order))];
+          item.show ? 'ON' : 'OFF', String(intOrNull_(item.order)), (item.menus || []).map(strOf_).join(',')];
 }
 
 /** 既存IDの「<prefix>-数字」の最大+1 で新しいIDを作る */
@@ -1152,6 +1199,11 @@ function migrate_() {
   }
   // 2.4) クーポンシートの見出しを最新に(割引種別・割引値の列を足す)
   getCouponSheet_().getRange(1, 1, 1, COUPON_HEADERS.length).setValues([COUPON_HEADERS]).setFontWeight('bold').setBackground('#EADBC3');
+  // 2.45) メニュー/オプションシートの見出しを最新に(オプションに「対象メニュー」列を足す)
+  ensureColumns_(getMenuSheet_(), MENU_HEADERS.length);
+  getMenuSheet_().getRange(1, 1, 1, MENU_HEADERS.length).setValues([MENU_HEADERS]).setFontWeight('bold').setBackground('#EADBC3');
+  ensureColumns_(getOptionSheet_(), OPTION_HEADERS.length);
+  getOptionSheet_().getRange(1, 1, 1, OPTION_HEADERS.length).setValues([OPTION_HEADERS]).setFontWeight('bold').setBackground('#EADBC3');
   // 2.5) 顧客シートの見出しを最新に(列追加後の setup 再実行で、足りない見出しが入る)
   cs.getRange(1, 1, 1, CUSTOMER_HEADERS.length).setValues([CUSTOMER_HEADERS]).setFontWeight('bold').setBackground('#EADBC3');
   // 3) 既存の予約に 顧客ID / 予約日時(ISO) / 流入経路 を補完

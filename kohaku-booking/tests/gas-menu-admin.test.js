@@ -132,8 +132,32 @@ test('menuRowFromItem_: 全て文字列で、MENU_HEADERS の並びになる', (
 test('optionRowFromItem_: OPTION_HEADERS の並びになる', () => {
   const g = loadGas();
   const row = j(g.optionRowFromItem_({ id: 'head', name: ' 頭ほぐし ', min: 10, price: '1,500', show: true, order: 1 }));
-  assert.deepStrictEqual(row, ['head', '頭ほぐし', '10', '1500', 'ON', '1']);
+  assert.deepStrictEqual(row, ['head', '頭ほぐし', '10', '1500', 'ON', '1', '']);
   assert.strictEqual(row.length, g.OPTION_HEADERS.length);
+  const limited = j(g.optionRowFromItem_({ id: 'kucha', name: 'クチャパック', min: 0, price: 1000, show: true, order: 3, menus: ['total120', 'f-rose50'] }));
+  assert.strictEqual(limited[6], 'total120,f-rose50');
+});
+
+test('validateOptionItem_: 対象メニューは配列でID形式のものだけ', () => {
+  const g = loadGas();
+  const base = { id: 'x', name: 'x', min: 0, price: 100, show: true, order: 1 };
+  assert.strictEqual(g.validateOptionItem_(Object.assign({ menus: ['total120'] }, base), true, []), '');
+  assert.strictEqual(g.validateOptionItem_(base, true, []), '', 'menus 省略は全メニュー共通');
+  assert.strictEqual(g.validateOptionItem_(Object.assign({ menus: 'total120' }, base), true, []).field, 'menus');
+  assert.strictEqual(g.validateOptionItem_(Object.assign({ menus: ['<b>'] }, base), true, []).field, 'menus');
+});
+
+test('parseOptionRows_ / calcBooking_: 対象メニューのあるオプションは、そのメニューでだけ選べる', () => {
+  const g = loadGas();
+  const menu = g.parseMenuRows_([['m1', 'A', '60', '5000', '', 'aroma', 'aroma', '', 'ON', '1'], ['m2', 'B', '60', '5000', '', 'aroma', 'aroma', '', 'ON', '2']]);
+  const options = g.parseOptionRows_([['o-all', '共通', '0', '100', 'ON', '1', ''], ['o-m1', 'm1専用', '10', '1000', 'ON', '2', 'm1, m3']]);
+  assert.deepStrictEqual(j(options.map(o => o.menus)), [[], ['m1', 'm3']]);
+  const ok = j(g.calcBooking_(menu, options, { menuId: 'm1', optionIds: ['o-all', 'o-m1'] }));
+  assert.strictEqual(ok.ok, true);
+  assert.strictEqual(ok.total, 6100);
+  assert.strictEqual(ok.minutes, 70);
+  assert.strictEqual(j(g.calcBooking_(menu, options, { menuId: 'm2', optionIds: ['o-m1'] })).error, 'bad_menu');
+  assert.strictEqual(j(g.calcBooking_(menu, options, { menuId: 'm2', optionIds: ['o-all'] })).ok, true);
 });
 
 test('nextItemId_: 既存IDの数値部の最大+1(数字を含まないIDが混ざっても落ちない)', () => {

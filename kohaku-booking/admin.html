@@ -178,13 +178,19 @@ const CONFIG = { GAS_URL:'', SITE_URL:'' /* 予約サイト(index.html)のURL。
 
 // 予備: menu API が使えないとき(デモ・取得失敗)用。index.html の予備配列と同じ内容(おまかせを除く)
 let MENU = [
-  ['first100','アロマボディトリートメント × まこも蒸し(初回限定)',100,10000],
-  ['aroma60','Relax アロマボディトリートメント',60,7000],['aroma80','満足 アロマボディトリートメント',80,9000],['aroma100','疲労回復 アロマボディトリートメント',100,11000],
-  ['f-light','ローズフェイシャル A',40,5600],['f-relax','ローズフェイシャル B',65,8100],['f-onkatsu','ローズフェイシャル C',70,11600],['f-premium','ローズフェイシャル D',95,14100],
-  ['set90','Relax アロマボディトリートメント + よもぎ蒸し',90,10000],['set110','満足 アロマボディトリートメント + よもぎ蒸し',110,12000],['set130','疲労回復 アロマボディトリートメント + よもぎ蒸し',130,14000],
-  ['course110','全身満たされる110分コース',110,13000],['course140','全身満たされる140分コース',140,18600],
-  ['p-yomogi','ペア よもぎ蒸し(2名分)',40,6000],['p-makomo','ペア まこも蒸し(2名分)',40,12000],
-  ['p-yomogi-foot','ペア よもぎ蒸し + フットまたは頭ほぐし30分(2名分)',70,12000],['p-makomo-foot','ペア まこも蒸し + フットまたは頭ほぐし30分(2名分)',70,18000]
+  ["total120","トータルケアコース",120,12800],
+  ["long-makomo","スペシャルロングコース(まこも蒸し)",130,16800],
+  ["long-yomogi","スペシャルロングコース(よもぎ蒸し)",130,13800],
+  ["onkatsu-makomo","全身アロマ温活コース(まこも蒸し)",90,12800],
+  ["onkatsu-yomogi","全身アロマ温活コース(よもぎ蒸し)",90,9800],
+  ["f-rose50","潤艶肌フェイシャルコース(ローズ)",50,7000],
+  ["f-getto50","潤艶肌フェイシャルコース(月桃)",50,7000],
+  ["aroma100","癒しのアロマボディ 100分",100,11000],
+  ["aroma80","癒しのアロマボディ 80分",80,9000],
+  ["aroma60","癒しのアロマボディ 60分",60,7000],
+  ["f-light","フェイシャルトリートメント",40,4630],
+  ["p-makomo","ペア まこも蒸し(2名分)",40,12000],
+  ["p-yomogi","ペア よもぎ蒸し(2名分)",40,6000]
 ].map(([id,name,min,price]) => ({id,name,min,price,label:`${name} ${min}分`}));
 
 /* ---------- utilities ---------- */
@@ -306,7 +312,7 @@ function demoCouponSave(extra){
 const demoMenuAdm = (() => {
   const menu = MENU.map((m, i) => ({id:m.id, name:m.name, min:m.min, price:m.price, desc:'', cats:['aroma'], g:'aroma', kind:'', show:true, order:i+1}));
   menu.push({id:'omakase', name:'おまかせ相談予約', min:0, price:null, desc:'', cats:['omakase'], g:'omakase', kind:'omakase', show:true, order:menu.length+1});
-  const options = [{id:'head', name:'頭ほぐし', min:10, price:1500, show:true, order:1}, {id:'bath', name:'フットバス', min:0, price:1000, show:true, order:2}];
+  const options = [{id:'kucha', name:'毛穴洗浄クチャパック', min:0, price:1000, show:true, order:1, menus:['total120','f-rose50','f-getto50']}, {id:'bath', name:'フットバス', min:0, price:1000, show:true, order:2, menus:[]}];
   return {menu, options};
 })();
 /** GAS の saveItem_ と同じ規則の簡易版(デモ用) */
@@ -329,7 +335,7 @@ function demoMenuSave(kind, extra){
   if(isMenu && (!Array.isArray(it.cats) || !it.cats.length)) return bad('cats');
   const order = intOf(it.order);
   if(order === null || isNaN(order) || order > 9999) return bad('order');
-  const vals = {name, min, price, show:!!it.show, order, ...(isMenu ? {desc:String(it.desc || ''), cats:it.cats.slice(), g:it.g, kind:it.kind || ''} : {})};
+  const vals = {name, min, price, show:!!it.show, order, ...(isMenu ? {desc:String(it.desc || ''), cats:it.cats.slice(), g:it.g, kind:it.kind || ''} : {menus:Array.isArray(it.menus) ? it.menus.slice() : []})};
   if(extra.create){
     let id = String(it.id || '').trim();
     if(id && !/^[A-Za-z0-9_-]{1,40}$/.test(id)) return bad('id');
@@ -686,7 +692,7 @@ const FIELD_MSG = {
   min:'所要分は10〜300分の整数で入力してください(オプションは0〜300、おまかせは空欄可)',
   price:'料金は0〜1,000,000の整数で入力してください(メニューは空欄=当日案内、オプションは必須)',
   kind:'種別が正しくありません', cats:'カテゴリを1つ以上選んでください', g:'グループが正しくありません',
-  show:'表示の指定が正しくありません', order:'並び順は0〜9999の整数で入力してください'
+  show:'表示の指定が正しくありません', order:'並び順は0〜9999の整数で入力してください', menus:'対象メニューの指定が正しくありません'
 };
 function newMenuAdm(){ return {data:null, loading:false, failed:false, tab:'menu', sel:null, form:null, isNew:false, origKind:''}; }
 A.menuAdm = newMenuAdm();
@@ -709,7 +715,7 @@ function menuRowHTML(it){
   const isMenu = A.menuAdm.tab === 'menu';
   const time = isMenu && it.kind === 'omakase' && !it.min ? '時間は相談' : it.min + '分';
   return `<li><button class="item ${it.show ? '' : 'x'}" data-act="menuedit" data-v="${esc(it.id)}"><span class="b">
-    <span class="n">${esc(it.name)}${it.show ? '' : '<span class="tag x">非表示</span>'}${it.kind === 'pair' ? '<span class="tag">ペア</span>' : ''}${it.kind === 'omakase' ? '<span class="tag">おまかせ</span>' : ''}</span>
+    <span class="n">${esc(it.name)}${it.show ? '' : '<span class="tag x">非表示</span>'}${it.kind === 'pair' ? '<span class="tag">ペア</span>' : ''}${it.kind === 'omakase' ? '<span class="tag">おまかせ</span>' : ''}${!isMenu && it.menus && it.menus.length ? '<span class="tag">対象限定</span>' : ''}</span>
     <span class="m" style="display:block">${time} / ${it.price == null ? '当日案内' : yen(it.price)} / 並び順 ${it.order}</span></span></button></li>`;
 }
 function menuAdminView(){
@@ -732,6 +738,7 @@ function menuSheetHTML(){
   const fld = (k, label, type = 'text', extra = '') => `<div class="f"><label for="m-${k}">${label}</label><input id="m-${k}" type="${type}" data-f="mform" data-k="${k}" value="${esc(f[k])}" ${extra}></div>`;
   const cats = Object.keys(CAT_LABEL).map(c => `<label class="chkline"><input type="checkbox" data-f="mform" data-k="cats" data-v="${c}" ${f.cats.includes(c) ? 'checked' : ''}> ${CAT_LABEL[c]}</label>`).join('');
   const groups = Object.keys(GROUP_LABEL).map(g => `<option value="${g}" ${f.g === g ? 'selected' : ''}>${GROUP_LABEL[g]}</option>`).join('');
+  const targets = (M.data.menu || []).map(m => `<label class="chkline"><input type="checkbox" data-f="mform" data-k="menus" data-v="${esc(m.id)}" ${(f.menus || []).includes(m.id) ? 'checked' : ''}> ${esc(m.name)}${m.show ? '' : '(非表示)'}</label>`).join('');
   const kinds = Object.keys(KIND_LABEL).map(k => `<option value="${k}" ${f.kind === k ? 'selected' : ''}>${KIND_LABEL[k]}</option>`).join('');
   return `<div class="back" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="${isMenu ? 'メニュー' : 'オプション'}の編集" data-stop="1">
     <h2>${M.isNew ? (isMenu ? 'メニューを追加' : 'オプションを追加') : (isMenu ? 'メニューを編集' : 'オプションを編集')}</h2>
@@ -744,7 +751,8 @@ function menuSheetHTML(){
       <div class="f"><label>カテゴリ</label><div>${cats}</div></div>
       <div class="row2"><div class="f"><label for="m-g">グループ(サムネの色)</label><select id="m-g" data-f="mform" data-k="g">${groups}</select></div>
         <div class="f"><label for="m-kind">種別</label><select id="m-kind" data-f="mform" data-k="kind">${kinds}</select></div></div>
-      ${!M.isNew && f.kind !== M.origKind ? '<p class="sm" style="color:var(--danger);margin:0 0 10px">種別を変更すると、料金・所要分の計算方法が変わります。</p>' : ''}` : ''}
+      ${!M.isNew && f.kind !== M.origKind ? '<p class="sm" style="color:var(--danger);margin:0 0 10px">種別を変更すると、料金・所要分の計算方法が変わります。</p>' : ''}`
+    : `<div class="f"><label>対象メニュー<span class="sm">(何も選ばなければ全メニュー共通)</span></label><div style="display:grid;gap:2px">${targets}</div></div>`}
     <div class="row2">${fld('order', '並び順(小さいほど上)', 'text', 'inputmode="numeric"')}
       <div class="f"><label>表示</label><label class="chkline" style="margin-top:8px"><input id="m-show" type="checkbox" data-f="mform" data-k="show" ${f.show ? 'checked' : ''}> 予約サイトに表示する</label></div></div>
     ${A.msg ? `<div class="err" role="alert" style="margin:0 0 10px">${esc(A.msg)}</div>` : ''}
@@ -752,12 +760,12 @@ function menuSheetHTML(){
   </div></div>`;
 }
 const menuFormOf = it => ({id:it.id, name:it.name, price:it.price == null ? '' : String(it.price), min:it.min == null ? '' : String(it.min),
-  order:String(it.order), show:!!it.show, desc:it.desc || '', cats:(it.cats || []).slice(), g:it.g || 'aroma', kind:it.kind || ''});
+  order:String(it.order), show:!!it.show, desc:it.desc || '', cats:(it.cats || []).slice(), g:it.g || 'aroma', kind:it.kind || '', menus:(it.menus || []).slice()});
 async function menuSave(){
   const M = A.menuAdm, f = M.form, isMenu = M.tab === 'menu';
   const num = v => String(v).trim() === '' ? null : String(v).trim();
   const item = {id:f.id.trim(), name:f.name, min:num(f.min), price:num(f.price), show:!!f.show, order:num(f.order),
-    ...(isMenu ? {desc:f.desc, cats:f.cats.slice(), g:f.g, kind:f.kind} : {})};
+    ...(isMenu ? {desc:f.desc, cats:f.cats.slice(), g:f.g, kind:f.kind} : {menus:(f.menus || []).slice()})};
   A.busy = true; A.msg = ''; render();
   try{
     const j = await api(isMenu ? 'adminMenuSave' : 'adminOptionSave', {item, create:M.isNew});
@@ -1059,7 +1067,7 @@ app.addEventListener('click', e => {
       const M = A.menuAdm, list = M.tab === 'menu' ? M.data.menu : M.data.options;
       const next = list.reduce((m, x) => Math.max(m, x.order === 9999 ? 0 : x.order), 0) + 1;
       M.isNew = true; M.sel = '__new'; M.origKind = '';
-      M.form = {id:'', name:'', price:'', min:M.tab === 'menu' ? '60' : '0', order:String(next), show:true, desc:'', cats:[], g:'aroma', kind:''};
+      M.form = {id:'', name:'', price:'', min:M.tab === 'menu' ? '60' : '0', order:String(next), show:true, desc:'', cats:[], g:'aroma', kind:'', menus:[]};
       A.msg = ''; A.ok = ''; render(); break;
     }
     case 'menuedit': {
@@ -1110,6 +1118,7 @@ app.addEventListener('input', e => {
   else if(f === 'mform'){
     const F = A.menuAdm.form, k = t.dataset.k;
     if(k === 'cats'){ const c = t.dataset.v; F.cats = t.checked ? [...new Set([...F.cats, c])] : F.cats.filter(x => x !== c); }
+    else if(k === 'menus'){ const c = t.dataset.v; F.menus = t.checked ? [...new Set([...(F.menus || []), c])] : (F.menus || []).filter(x => x !== c); }
     else if(k === 'show') F.show = t.checked;
     else if(k === 'kind'){ F.kind = t.value; render(); }
     else F[k] = t.value;

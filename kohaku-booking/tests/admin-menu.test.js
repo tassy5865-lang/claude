@@ -63,7 +63,7 @@ test('管理画面: 表示を外すと一覧で「非表示」になる / おま
 test('管理画面: オプションの切替・編集と、名前のHTMLエスケープ', async () => {
   const { w, click, type, text, d, errors } = await loginMenu();
   click('[data-act=menutab][data-v=options]'); await sleep(50);
-  assert.ok(itemTexts(d).some(t => t.includes('頭ほぐし')));
+  assert.ok(itemTexts(d).some(t => t.includes('毛穴洗浄クチャパック')));
   click('#menu-list .item'); await sleep(50);
   assert.strictEqual(d.querySelector('[data-k=cats]'), null, 'オプションにカテゴリは無い');
   type('#m-name', '<img src=x onerror=window.__pwned=1>');
