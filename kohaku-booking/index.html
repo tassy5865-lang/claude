@@ -210,6 +210,54 @@ h3{font-size:13px;color:var(--muted);font-weight:500;margin:0 0 8px}
 .links{display:grid;gap:10px;margin:22px 20px 0}
 .sep{margin:26px 20px 0;padding-top:18px;border-top:1px solid var(--line)}
 
+/* PC幅: 画面を広く使う(スマホ表示はそのまま)。本文は読みやすい幅に絞り、メニューは2列、日付と時間は左右に並べる */
+@media (min-width:900px){
+  body{font-size:16px}
+  #app{max-width:1040px;box-shadow:0 0 0 1px var(--line),0 12px 40px rgba(110,82,56,.08)}
+  .hd-row{height:72px;padding:0 24px}
+  .hd.is-top .brand{padding-left:24px}
+  .brand b{font-size:26px}
+  .brand small{font-size:9px}
+  .stepper{padding:12px 40px 16px;max-width:720px;margin:0 auto;width:100%}
+  .stepper li{font-size:12.5px}
+  .hero{min-height:560px}
+  .hero .in{padding:64px 72px;max-width:760px}
+  .hero p{font-size:30px}
+  main{padding-bottom:48px}
+  /* 1列の画面は中央に寄せた読みやすい幅にそろえる */
+  main>:is(.dhead,.rows,.note,.chips,.f,.sum,.actions,.done,.msg,.links,.sep,.alert,.cpn,.mk-name,.mk-lead,.bk,.loading,h2,h3){max-width:640px;margin-left:auto;margin-right:auto}
+  main>:is(h2,.dhead,.rows,.note,.chips,.f,.sum,.actions,.msg,.links,.sep,.alert,.cpn,.mk-name,.mk-lead,.bk,.loading){width:calc(100% - 80px)}
+  main>.done{padding-top:72px}
+  h2{font-size:21px}
+  /* トップ・メニュー */
+  .cats{max-width:640px;margin:0 auto;padding:0 40px}
+  .cat{padding:20px 2px}
+  .tabs{padding:20px 40px 6px;justify-content:center}
+  .catdesc{max-width:640px;margin:14px auto 4px;padding:0 40px}
+  .mlist{grid-template-columns:1fr 1fr;gap:16px;margin:12px 40px 0}
+  .mcard{padding:12px;transition:border-color .15s,box-shadow .15s}
+  .mcard:hover{border-color:var(--caramel);box-shadow:0 4px 16px rgba(110,82,56,.12)}
+  .thumb{width:104px;min-height:104px}
+  /* 日付と時間: 左にカレンダー、右に時間 */
+  main:has(>.cal){display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:40px;align-content:start;padding:0 40px 48px}
+  main:has(>.cal)>*{grid-column:2;max-width:none;width:auto;margin-left:0;margin-right:0}
+  main:has(>.cal)>.alert{grid-column:1/-1;margin-top:20px}
+  main:has(>.cal)>.cal{grid-column:1;grid-row:2/span 20;margin-top:20px}
+  main:has(>.cal)>h2{margin:20px 0 12px}
+  main:has(>.cal)>.note,main:has(>.cal)>.loading{margin:12px 0 0}
+  main:has(>.cal)>.loading{text-align:left}
+  .slots{grid-template-columns:repeat(4,1fr)}
+  .day,.slot{transition:background .15s}
+  .day.ok:hover:not(.sel),.slot:not(:disabled):not(.sel):hover{background:var(--sand)}
+  /* 下部バー: 中身を本文幅にそろえ、ボタンは伸ばしすぎない */
+  .bar{padding:12px 40px;justify-content:flex-end}
+  .bar .s{margin-right:auto}
+  .bar .btn{flex:none;min-width:280px}
+}
+@media (min-width:1200px){
+  body{background:linear-gradient(var(--cream),var(--sand))}
+}
+
 </style>
 </head>
 <body>
