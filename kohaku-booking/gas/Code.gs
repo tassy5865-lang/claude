@@ -486,7 +486,7 @@ function saveItem_(kind, d) {
     target = at + 2;
   }
   const cells = (isMenu ? menuRowFromItem_ : optionRowFromItem_)(Object.assign({}, item, { id: id }));
-  sh.getRange(target, 1, 1, width).setNumberFormat('@').setValues([cells]);
+  putTexts_(sh.getRange(target, 1, 1, width), [cells]);
   CacheService.getScriptCache().remove('menu:v1');   // 予約サイトへ即反映
   return { ok: true, id: id };
 }
@@ -691,7 +691,7 @@ function adminCouponSave_(d) {
     target = at + 2;
   }
   const cells = couponRowFromItem_(Object.assign({}, item, { code: code }));
-  sh.getRange(target, 1, 1, COUPON_HEADERS.length).setNumberFormat('@').setValues([cells]);
+  putTexts_(sh.getRange(target, 1, 1, COUPON_HEADERS.length), [cells]);
   return { ok: true, code: code };
 }
 
@@ -1122,11 +1122,11 @@ function upsertCustomer_(email, name, kana, tel, ref) {
   const today = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd');
   const sh = getCustomerSheet_(), c = findCustomer_(email);
   if (c) {
-    sh.getRange(c.row, C.NAME + 1, 1, 3).setNumberFormat('@').setValues([[String(name), String(kana), String(tel)]]);
+    putTexts_(sh.getRange(c.row, C.NAME + 1, 1, 3), [[name, kana, tel]]);
     const plan = refFillPlan_(c, ref, today);
-    if (plan.refSource) sh.getRange(c.row, C.REF_SOURCE + 1).setNumberFormat('@').setValue(plan.refSource);
-    if (plan.inquiryDate) sh.getRange(c.row, C.INQUIRY_DATE + 1).setNumberFormat('@').setValue(plan.inquiryDate);
-    if (plan.inquiryId) sh.getRange(c.row, C.INQUIRY_ID + 1).setNumberFormat('@').setValue(plan.inquiryId);
+    if (plan.refSource) putTexts_(sh.getRange(c.row, C.REF_SOURCE + 1), [[plan.refSource]]);
+    if (plan.inquiryDate) putTexts_(sh.getRange(c.row, C.INQUIRY_DATE + 1), [[plan.inquiryDate]]);
+    if (plan.inquiryId) putTexts_(sh.getRange(c.row, C.INQUIRY_ID + 1), [[plan.inquiryId]]);
     sh.getRange(c.row, C.UPDATED + 1).setNumberFormat('@').setValue(nowStr_());
     return c.id;
   }
@@ -1134,7 +1134,7 @@ function upsertCustomer_(email, name, kana, tel, ref) {
   const id = nextCustomerId_();
   const row = [id, email, name, kana, tel, '', '', '許可', nowStr_(), nowStr_(), '',
                '', plan.refSource || '', plan.inquiryDate || '', plan.inquiryId || ''];
-  sh.getRange(sh.getLastRow() + 1, 1, 1, CUSTOMER_HEADERS.length).setNumberFormat('@').setValues([row.map(String)]);
+  putTexts_(sh.getRange(sh.getLastRow() + 1, 1, 1, CUSTOMER_HEADERS.length), [row]);
   return id;
 }
 
@@ -1171,7 +1171,7 @@ function appendReservation_(f) {
     f.refSource || '', f.inquiryId || '', f.couponCode || '', f.couponDiscount || ''
   ];
   const sh = getSheet_();
-  sh.getRange(sh.getLastRow() + 1, 1, 1, HEADERS.length).setNumberFormat('@').setValues([row.map(function (x) { return x == null ? '' : String(x); })]);  // 文字列として保存(数式化・先頭0落ち防止)
+  putTexts_(sh.getRange(sh.getLastRow() + 1, 1, 1, HEADERS.length), [row]);  // 文字列として保存(数式化・先頭0落ち防止)
 }
 function setStatusCell_(row, status) {
   const sh = getSheet_();
@@ -1402,6 +1402,21 @@ function adminCreate_(d) {
   return { ok: true, id: id };
 }
 
+/* ---------- 文字列としてシートに書く ----------
+ * setNumberFormat('@') + setValues だけだと、'=' で始まる値が数式として評価される(実機で確認: #ERROR! になった)。
+ * リッチテキスト値は常に文字列として保存されるので、利用できるときはそちらで書く。 */
+function putTexts_(range, rows) {
+  const texts = rows.map(function (r) { return r.map(function (x) { return x == null ? '' : String(x); }); });
+  range.setNumberFormat('@');
+  if (typeof range.setRichTextValues === 'function' && typeof SpreadsheetApp.newRichTextValue === 'function') {
+    range.setRichTextValues(texts.map(function (r) {
+      return r.map(function (x) { return SpreadsheetApp.newRichTextValue().setText(x).build(); });
+    }));
+  } else {
+    range.setValues(texts);
+  }
+}
+
 /* ---------- 顧客(管理画面) ---------- */
 function adminCustomers_() {
   const today = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd');
@@ -1415,8 +1430,8 @@ function adminCustomerUpdate_(d) {
   if (!c) return { ok: false, error: 'not_found' };
   const sh = getCustomerSheet_();
   // メモ〜問い合わせID は連続した5列。問い合わせIDは画面から変更しないので現在値を書き戻す
-  sh.getRange(c.row, C.MEMO + 1, 1, 5).setNumberFormat('@').setValues([[
-    String(d.memo || ''), String(d.instagram || ''), String(d.refSource || ''), String(d.inquiryDate || ''), c.inquiryId
+  putTexts_(sh.getRange(c.row, C.MEMO + 1, 1, 5), [[
+    d.memo || '', d.instagram || '', d.refSource || '', d.inquiryDate || '', c.inquiryId
   ]]);
   sh.getRange(c.row, C.UPDATED + 1).setNumberFormat('@').setValue(nowStr_());
   return { ok: true };
