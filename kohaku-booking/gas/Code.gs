@@ -1503,11 +1503,8 @@ function issueToken_(email) {
 }
 
 /* ----- 連携 ----- */
-var verifyError_ = '';   // 直近のIDトークン検証失敗の理由(診断用。line_auth の応答に detail として付く)
 function verifyIdToken_(idToken) {
-  verifyError_ = '';
   if (!idToken || !prop_('LINE_LOGIN_CHANNEL_ID')) {
-    verifyError_ = 'skipped idToken=' + (idToken ? 'yes' : 'no') + ' channel=' + (prop_('LINE_LOGIN_CHANNEL_ID') ? 'set' : 'unset');
     console.error('LINE verify skipped: idToken=' + (idToken ? 'あり' : 'なし') + ' LINE_LOGIN_CHANNEL_ID=' + (prop_('LINE_LOGIN_CHANNEL_ID') ? '設定済み' : '未設定'));
     return null;
   }
@@ -1516,7 +1513,6 @@ function verifyIdToken_(idToken) {
   });
   if (res.getResponseCode() !== 200) {
     // 拒否理由(期限切れ・チャネル不一致など)を実行ログで確認できるようにする。トークン自体は出さない
-    verifyError_ = 'verify ' + res.getResponseCode() + ' ' + res.getContentText().slice(0, 200);
     console.error('LINE verify failed ' + res.getResponseCode() + ' ' + res.getContentText());
     return null;
   }
@@ -1534,7 +1530,7 @@ function lineLinkCode_(email) {
 
 function lineLink_(d) {
   const userId = verifyIdToken_(d.idToken);
-  if (!userId) return { ok: false, error: 'line_auth', detail: verifyError_ };
+  if (!userId) return { ok: false, error: 'line_auth' };
   const cache = CacheService.getScriptCache(), code = String(d.code || '').toUpperCase();
   const customerId = code ? cache.get('link:' + code) : null;
   if (!customerId) return { ok: false, error: 'bad_link_code' };
@@ -1548,7 +1544,7 @@ function lineLink_(d) {
 
 function lineLogin_(d) {
   const userId = verifyIdToken_(d.idToken);
-  if (!userId) return { ok: false, error: 'line_auth', detail: verifyError_ };
+  if (!userId) return { ok: false, error: 'line_auth' };
   const c = findCustomerByLineUserId_(userId);
   if (!c) return { ok: false, error: 'not_linked' };
   return { ok: true, token: issueToken_(c.email), email: c.email };
