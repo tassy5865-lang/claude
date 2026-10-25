@@ -1060,7 +1060,12 @@ async function myLineUnlink(){
 const QS = new URLSearchParams(location.search);
 const loadScript = src => new Promise((res,rej) => { const el = document.createElement('script'); el.src = src; el.onload = res; el.onerror = rej; document.head.appendChild(el); });
 async function lineEntry(idToken, link){
-  const j = link ? await api('lineLink', {idToken, code:link}) : await api('lineLogin', {idToken});
+  let j = link ? await api('lineLink', {idToken, code:link}) : await api('lineLogin', {idToken});
+  // 連携コードが使用済み・期限切れでも、すでに連携済みのLINEなら通常のログインで入れる
+  if(link && !j.ok && j.error === 'bad_link_code'){ const j2 = await api('lineLogin', {idToken}); if(j2.ok){ j = j2; link = ''; } }
+  if(j.ok || j.error !== 'line_auth'){   // 使い切った連携コードがURLに残って再利用されないよう消す
+    try{ const u = new URL(location.href); if(u.searchParams.has('link')){ u.searchParams.delete('link'); history.replaceState(null, '', u.toString()); } }catch(_){}
+  }
   if(j.ok){
     MY.token = j.token; MY.email = j.email || MY.email; MY.data = null; MY.failed = false; MY.tab = link ? 'profile' : 'next'; MY.msg = '';
     MY.ok = link ? 'LINE連携が完了しました。ご予約の確認とリマインドをLINEでお届けします。' : '';
