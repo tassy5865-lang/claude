@@ -1576,6 +1576,23 @@ function lineUserUnreachable_(code, body) {
   return /block|not a friend|hasn't added|not follow|unfollow/i.test(String(body || ''));
 }
 
+/**
+ * 実機確認用: スクリプト プロパティ DEBUG_LINE_EMAIL の顧客へテスト送信し、LINEの応答(コードと本文)をログに出す。
+ * エディタでこの関数を実行 → 「実行ログ」に表示される。ブロック中のお客様への応答を調べるのに使う(本番運用では使わない)。
+ */
+function debugLinePush() {
+  const email = normEmail_(prop_('DEBUG_LINE_EMAIL'));
+  const c = email && findCustomer_(email);
+  if (!c || !c.lineUserId) { Logger.log('顧客またはLINE userIdが見つかりません: ' + email); return; }
+  const res = UrlFetchApp.fetch('https://api.line.me/v2/bot/message/push', {
+    method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+    headers: { Authorization: 'Bearer ' + prop_('LINE_CHANNEL_ACCESS_TOKEN') },
+    payload: JSON.stringify({ to: c.lineUserId, messages: [{ type: 'text', text: CONFIG.SALON_NAME + ' LINE送信テスト' }] })
+  });
+  const code = res.getResponseCode(), body = res.getContentText();
+  Logger.log('push: ' + code + ' ' + body + ' / 停止判定=' + lineUserUnreachable_(code, body));
+}
+
 function yenStr_(v) {
   return (v === '' || v == null || isNaN(Number(v))) ? '当日ご案内' : String(Number(v)).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '円';
 }
