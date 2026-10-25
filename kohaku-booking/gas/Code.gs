@@ -1563,9 +1563,17 @@ function linePush_(c, messages) {
   if (code === 200) return true;
   const body = res.getContentText();
   console.error('LINE push failed ' + code + ' ' + body);
-  // ブロック等で届かない場合は通知を停止(実運用で応答内容を確認して調整してください)
-  if (code === 403 || /block|not a friend/i.test(body)) getCustomerSheet_().getRange(c.row, C.LINE_NOTIFY + 1).setValue('停止');
+  // 送信先個別の理由(ブロック・友だちでない)のときだけ通知を停止する。
+  // 403 は権限/トークン不備、429 は月間上限、5xx は一時障害のことがあり、全員の通知を止めかねないので停止しない(メールに切り替わるだけ)。
+  // 実機でブロック時の応答を確認し、文言が違えば lineUserUnreachable_ を調整すること。
+  if (lineUserUnreachable_(code, body)) getCustomerSheet_().getRange(c.row, C.LINE_NOTIFY + 1).setValue('停止');
   return false;
+}
+
+/** LINEの送信失敗が「そのお客様に届かない」ことを示すか(推測。実機で要確認) */
+function lineUserUnreachable_(code, body) {
+  if (code === 429 || code >= 500) return false;
+  return /block|not a friend|hasn't added|not follow|unfollow/i.test(String(body || ''));
 }
 
 function yenStr_(v) {
