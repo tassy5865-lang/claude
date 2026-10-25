@@ -100,6 +100,7 @@ gas/Code.gs (Web App: 実行=自分 / アクセス=全員)
 - 末尾が `_` のGAS関数はApps Scriptの関数選択に出ない(検索で確認する)。
 - テスト環境: `kohaku-booking-test/`(テスト用GAS URL・テスト用LIFF ID入り。本番の `index.html` には入れない)。確認用 `debugLinePush`(スクリプト プロパティ `DEBUG_LINE_EMAIL`。本番では設定しない)。
 - 未確認(任意): LINE連携解除(`lineUnlink`)のあと通知がメールに戻ること。
+- 不具合修正(2026-10-25、`61fe352`): 外部ブラウザ(LINEアプリ内でサイトを直接開く場合)で、前回の失効した LIFF IDトークン(約1時間)を GAS へ送り「LINEの認証に失敗しました」になっていた。`bootstrap` で `getDecodedIDToken().exp` を見て、失効なら `liff.logout()`→`liff.login()` で取り直す(無限ループ防止に `sessionStorage` の `kohaku_liff_retry` で1回のみ)。テスト用ページで解消を実機確認済み。本番 `index.html` にも同じ修正が入っている。
 
 **次の作業(本番=店主の公式LINEへの切り替え)**: `docs/deploy-checklist.md` の第4章に沿う。
 1. 店主と決める: 公式LINEの管理権限 / あいさつ・応答メッセージをオフにするか / プランのメッセージ数上限(1予約あたり最大3通)
