@@ -1504,11 +1504,18 @@ function issueToken_(email) {
 
 /* ----- 連携 ----- */
 function verifyIdToken_(idToken) {
-  if (!idToken || !prop_('LINE_LOGIN_CHANNEL_ID')) return null;
+  if (!idToken || !prop_('LINE_LOGIN_CHANNEL_ID')) {
+    console.error('LINE verify skipped: idToken=' + (idToken ? 'あり' : 'なし') + ' LINE_LOGIN_CHANNEL_ID=' + (prop_('LINE_LOGIN_CHANNEL_ID') ? '設定済み' : '未設定'));
+    return null;
+  }
   const res = UrlFetchApp.fetch('https://api.line.me/oauth2/v2.1/verify', {
     method: 'post', payload: { id_token: idToken, client_id: prop_('LINE_LOGIN_CHANNEL_ID') }, muteHttpExceptions: true
   });
-  if (res.getResponseCode() !== 200) return null;
+  if (res.getResponseCode() !== 200) {
+    // 拒否理由(期限切れ・チャネル不一致など)を実行ログで確認できるようにする。トークン自体は出さない
+    console.error('LINE verify failed ' + res.getResponseCode() + ' ' + res.getContentText());
+    return null;
+  }
   return JSON.parse(res.getContentText()).sub || null;   // sub = LINE userId
 }
 
