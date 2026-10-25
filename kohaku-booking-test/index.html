@@ -1072,7 +1072,7 @@ async function lineEntry(idToken, link){
     saveSess(); go('my');
   } else {
     if(j.error === 'line_auth' && liffRetry()) return;   // サーバーが失効トークンと判断したら、一度だけ入り直す
-    MY.msg = errMsg(j.error) + (j.detail ? '(診断: ' + j.detail + ')' : ''); go('login');
+    MY.msg = errMsg(j.error); go('login');
   }
 }
 /** LIFFのログインをやり直す。2分以内に試していたら何もしない(無限ループ防止)。やり直しを始めたら true */
