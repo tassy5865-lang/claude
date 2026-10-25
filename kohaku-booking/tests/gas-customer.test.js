@@ -138,3 +138,9 @@ test('lineUserUnreachable_: 個別の届かない理由だけ停止。403単独�
   assert.strictEqual(g.lineUserUnreachable_(500, 'blocked upstream'), false);
   assert.strictEqual(g.lineUserUnreachable_(400, ''), false);
 });
+
+test('lineProfileGone_: プロフィール404(ブロック・友だち解除)だけ届かない扱い', () => {
+  const g = loadGas();
+  assert.strictEqual(g.lineProfileGone_(404), true);
+  [200, 400, 401, 403, 429, 500, 0].forEach(c => assert.strictEqual(g.lineProfileGone_(c), false));
+});
