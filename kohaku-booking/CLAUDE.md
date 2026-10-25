@@ -88,7 +88,7 @@ gas/Code.gs (Web App: 実行=自分 / アクセス=全員)
 **未実装(優先度の目安)**
 1. 管理画面の残り: **スタッフ管理**。ナビ(`admin.html` の `NAV` / `VIEWS`)に足す
 2. ~~管理画面でキャンセルした際のお客様への通知~~ → 実装済み(`adminSetStatus` の `notify`、詳細画面のチェックで ON/OFF。GAS実機は未確認)
-3. LINEブロック判定の実機調整(`lineUserUnreachable_` の文言は推測。ブロック中のお客様への実際の応答を見て調整。403単独・429・5xxは停止しない=メールに切替のみ)
+3. ~~LINEブロック判定~~ → 実機確認済み(2026-10-25): ブロック中のpushは200で成功扱いになるが、プロフィール取得 `GET /v2/bot/profile/{userId}` は404。`notifyCustomer_` が送信前に `lineFriendGone_` で確認し、404なら `LINE通知` を `停止` にしてメールへ切替。再連携(`lineLink`)で `許可` に戻る。`linePush_` の失敗時停止(`lineUserUnreachable_`)は予備
 4. 週表示(時間軸)カレンダー、メニュー変更を伴う予約変更
 5. Version 3: AIおすすめ診断、リピート促進の自動LINE配信
 6. データ増加時の移行(予約が数千件を超えたらFirebase/Supabase等を検討)

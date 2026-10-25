@@ -1151,7 +1151,7 @@ function linkLineUser_(customerId, lineUserId) {
   const c = allCustomers_().filter(function (x) { return x.id === customerId; })[0];
   if (!c) return { ok: false, error: 'not_found' };
   const sh = getCustomerSheet_();
-  sh.getRange(c.row, C.LINE_ID + 1, 1, 3).setNumberFormat('@').setValues([[lineUserId, nowStr_(), c.lineNotify || '許可']]);
+  sh.getRange(c.row, C.LINE_ID + 1, 1, 3).setNumberFormat('@').setValues([[lineUserId, nowStr_(), '許可']]);
   sh.getRange(c.row, C.UPDATED + 1).setNumberFormat('@').setValue(nowStr_());
   return { ok: true };
 }
@@ -1570,6 +1570,20 @@ function linePush_(c, messages) {
   return false;
 }
 
+/**
+ * ブロック・友だち解除中のお客様へのpushは、エラーにならず200で返る(2026-10-25 実機確認)。
+ * 一方プロフィール取得は404になるので、送信前に友だちかを確かめる。404以外(429/5xx/通信エラー等)は判定できないので届く扱い。
+ */
+function lineFriendGone_(c) {
+  try {
+    const res = UrlFetchApp.fetch('https://api.line.me/v2/bot/profile/' + encodeURIComponent(c.lineUserId), {
+      muteHttpExceptions: true, headers: { Authorization: 'Bearer ' + prop_('LINE_CHANNEL_ACCESS_TOKEN') }
+    });
+    return lineProfileGone_(res.getResponseCode());
+  } catch (err) { console.error('LINE profile check failed: ' + err); return false; }
+}
+function lineProfileGone_(code) { return code === 404; }
+
 /** LINEの送信失敗が「そのお客様に届かない」ことを示すか(推測。実機で要確認) */
 function lineUserUnreachable_(code, body) {
   if (code === 429 || code >= 500) return false;
@@ -1671,6 +1685,10 @@ function notifyCustomer_(email, kind, r) {
   email = normEmail_(email);
   if (!email) return false;
   const m = buildMessage_(kind, r), c = findCustomer_(email);
+  if (c && c.lineUserId && c.lineNotify !== '停止' && lineConfigured_() && lineFriendGone_(c)) {
+    getCustomerSheet_().getRange(c.row, C.LINE_NOTIFY + 1).setValue('停止');   // ブロック/友だち解除 → メールに切り替える。再連携で許可に戻る
+    c.lineNotify = '停止';
+  }
   if (c && c.lineUserId && c.lineNotify !== '停止' && lineConfigured_()) {
     try { if (linePush_(c, [buildFlex_(m)])) return true; } catch (err) { console.error('line failed: ' + err); }
   }
