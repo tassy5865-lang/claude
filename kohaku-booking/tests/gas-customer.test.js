@@ -129,3 +129,12 @@ test('handleAction_: 顧客系アクションはトークン無しだと auth �
   assert.deepStrictEqual(j(g.handleAction_({ action: 'adminCustomers' })), { ok: false, error: 'auth' });
   assert.deepStrictEqual(j(g.handleAction_({ action: 'adminCustomerUpdate', id: 'C000001' })), { ok: false, error: 'auth' });
 });
+
+test('lineUserUnreachable_: 個別の届かない理由だけ停止。403単独・429・5xxは停止しない', () => {
+  const g = loadGas();
+  assert.strictEqual(g.lineUserUnreachable_(400, '{"message":"The user hasn\'t added the LINE Official Account as a friend or has blocked"}'), true);
+  assert.strictEqual(g.lineUserUnreachable_(403, '{"message":"Access to this API is not available for your account"}'), false);
+  assert.strictEqual(g.lineUserUnreachable_(429, '{"message":"You have reached your monthly limit."}'), false);
+  assert.strictEqual(g.lineUserUnreachable_(500, 'blocked upstream'), false);
+  assert.strictEqual(g.lineUserUnreachable_(400, ''), false);
+});
