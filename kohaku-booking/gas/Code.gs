@@ -1591,6 +1591,11 @@ function debugLinePush() {
   });
   const code = res.getResponseCode(), body = res.getContentText();
   Logger.log('push: ' + code + ' ' + body + ' / 停止判定=' + lineUserUnreachable_(code, body));
+  // 友だちかどうか(ブロック・友だち解除なら404のはず)。個人情報を避けるため応答の中身は出さずコードだけ見る
+  const prof = UrlFetchApp.fetch('https://api.line.me/v2/bot/profile/' + encodeURIComponent(c.lineUserId), {
+    muteHttpExceptions: true, headers: { Authorization: 'Bearer ' + prop_('LINE_CHANNEL_ACCESS_TOKEN') }
+  });
+  Logger.log('profile: ' + prof.getResponseCode());
 }
 
 function yenStr_(v) {
