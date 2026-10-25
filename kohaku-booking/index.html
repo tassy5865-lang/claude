@@ -1078,6 +1078,10 @@ async function bootstrap(){
       await loadScript('https://static.line-scdn.net/liff/edge/2/sdk.js');
       await liff.init({liffId: CONFIG.LIFF_ID});
       if(!liff.isLoggedIn()){ liff.login({redirectUri: location.href}); return; }
+      // 外部ブラウザでは前回のIDトークンが残り、1時間で失効する。失効していたら入り直して取り直す(無限ループ防止に1回だけ)
+      const dec = liff.getDecodedIDToken && liff.getDecodedIDToken();
+      let stale = !dec || dec.exp * 1000 < Date.now() + 60000;
+      try{ if(stale && sessionStorage.getItem('kohaku_liff_retry') !== '1'){ sessionStorage.setItem('kohaku_liff_retry','1'); liff.logout(); liff.login({redirectUri: location.href}); return; } sessionStorage.removeItem('kohaku_liff_retry'); }catch(_){}
       await lineEntry(liff.getIDToken(), link);
     } catch(e){ MY.msg = 'LINEとの接続に失敗しました。時間をおいてもう一度お試しください。'; go('login'); }
   } else if(page === 'my'){
