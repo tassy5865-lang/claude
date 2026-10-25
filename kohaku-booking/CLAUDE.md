@@ -101,6 +101,9 @@ gas/Code.gs (Web App: 実行=自分 / アクセス=全員)
 - テスト環境: `kohaku-booking-test/`(テスト用GAS URL・テスト用LIFF ID入り。本番の `index.html` には入れない)。確認用 `debugLinePush`(スクリプト プロパティ `DEBUG_LINE_EMAIL`。本番では設定しない)。
 - 未確認(任意): LINE連携解除(`lineUnlink`)のあと通知がメールに戻ること。
 - 不具合修正(2026-10-25、`61fe352`): 外部ブラウザ(LINEアプリ内でサイトを直接開く場合)で、前回の失効した LIFF IDトークン(約1時間)を GAS へ送り「LINEの認証に失敗しました」になっていた。`bootstrap` で `getDecodedIDToken().exp` を見て、失効なら `liff.logout()`→`liff.login()` で取り直す(無限ループ防止に `sessionStorage` の `kohaku_liff_retry` で1回のみ)。テスト用ページで解消を実機確認済み。本番 `index.html` にも同じ修正が入っている。
+- **続報(2026-10-26)**: メッセージカードのボタン(LIFFブラウザ)からも同じ認証エラーが出ていた。`liffRetry()`(2分以内は再試行しない時間制限付き。`sessionStorage` の目印だと失敗後に二度と試さなくなるため変更)を入れ、`getDecodedIDToken().exp` の失効時と、GASが `line_auth` を返したときに一度だけ `liff.logout()`→`liff.login()` で入り直す。
+- 続いて「連携コードの有効期限が切れました」が出た。使い切った `?link=` コードがURLに残って再利用されていたのが原因(経路は未特定)。`lineEntry` は `bad_link_code` のとき `lineLogin` にフォールバックし、処理後に `history.replaceState` で `link` を消す。実機でカードからマイページに入れることを確認済み。
+- 切り分けのコツ: 実行ログに出ないときは、応答に診断情報(`detail`)を一時的に載せて画面や `curl` で見ると早い(偽トークンで `lineLogin` を叩けば応答が分かる。`curl -L -d` で POST、`-X POST` だと411)。診断用の `detail` は外し済み(LINEの拒否理由を本番の画面に出さないため)。`verifyIdToken_` の失敗は `console.error('LINE verify failed …')` で実行ログに残る。
 
 **次の作業(本番=店主の公式LINEへの切り替え)**: `docs/deploy-checklist.md` の第4章に沿う。
 1. 店主と決める: 公式LINEの管理権限 / あいさつ・応答メッセージをオフにするか / プランのメッセージ数上限(1予約あたり最大3通)
