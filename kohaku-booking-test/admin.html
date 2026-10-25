@@ -553,7 +553,7 @@ function formHTML(){
   const times = []; for(let t = toMin(CONFIG.OPEN); t < toMin(CONFIG.CLOSE); t += CONFIG.STEP_MIN) times.push(fromMin(t));
   const fld = (k,label,type='text',extra='') => `<div class="f ${e[k]?'bad':''}"><label for="a-${k}">${label}</label><input id="a-${k}" type="${type}" data-f="form" data-k="${k}" value="${esc(f[k])}" ${extra}>${e[k]?`<div class="er" role="alert">${e[k]}</div>`:''}</div>`;
   return `<div class="back" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="予約を追加" data-stop="1">
-    <h2>予約を追加</h2><div class="sm">お電話などで受けたご予約を登録します。</div><div style="height:12px"></div>
+    <h2>予約を追加</h2><div class="sm">LINEなどで受けたご予約を登録します。</div><div style="height:12px"></div>
     <div class="row2">${fld('date','日付','date')}
       <div class="f"><label for="a-time">開始</label><select id="a-time" data-f="form" data-k="time">${times.map(t => `<option ${t===f.time?'selected':''}>${t}</option>`).join('')}</select></div></div>
     <div class="f ${e.menu?'bad':''}"><label for="a-menu">メニュー</label><select id="a-menu" data-f="menu">
@@ -858,7 +858,7 @@ async function couponSave(){
 VIEWS.coupon = couponAdminView;
 NAV.push(['coupon','クーポン']);
 /* ---------- 売上・来店分析 ---------- */
-const ANA_SRC = {...SRC_LABEL, admin:'管理画面から登録(電話など)', none:'流入元の記録なし'};
+const ANA_SRC = {...SRC_LABEL, admin:'管理画面から登録', none:'流入元の記録なし'};
 const ANA_PERIODS = [['month','今月'], ['last','先月'], ['q','直近3か月'], ['year','今年']];
 function newAna(){ return {period:'month', from:'', to:'', cfrom:'', cto:'', data:null, loading:false, failed:false, err:''}; }
 A.ana = newAna();
