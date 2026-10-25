@@ -940,7 +940,7 @@ async function submit(){
 }
 
 /* ---------- My Kohaku 操作 ---------- */
-const errMsg = c => ({bad_minutes:'ご希望の時間をもう一度お選びください', bad_menu:'選んだメニューは現在ご予約いただけません。メニューを選び直してください', bad_email:'メールアドレスを正しく入力してください', bad_code:'コードが違います。もう一度ご確認ください', locked:'入力の失敗が続いたため、しばらくしてからやり直してください', too_late:'ご来店が近いため、マイページからはキャンセルできません。LINEでご連絡ください', not_found:'予約が見つかりませんでした', not_active:'この予約はすでに取り消されています', bad_tel:'電話番号を正しく入力してください', missing_field:'未入力の項目があります', conflict:'選んだ時間が先ほど埋まってしまいました。別の時間をお選びください', too_soon:'直近の日時は選べません', closed_day:'定休日は選べません', out_of_hours:'営業時間外です', bad_date:'日時を選び直してください', bad_link_code:'連携コードの有効期限が切れました。もう一度「LINEで連携する」からお試しください', line_auth:'LINEの認証に失敗しました。もう一度お試しください', line_already_linked:'このLINEアカウントは、すでに別のお客様情報に連携されています', not_linked:'LINE連携がまだ完了していません。メールアドレスでログインし、「登録情報」から連携してください', no_customer:'お客様情報が見つかりませんでした', bad_coupon:'このクーポンコードはご利用いただけません', coupon_used:'このクーポンは既にご利用済みです', coupon_not_applicable:'このクーポンは今回のメニューにはご利用いただけません'}[c] || '処理できませんでした。時間をおいてもう一度お試しください');
+const errMsg = c => ({bad_minutes:'ご希望の時間をもう一度お選びください', bad_menu:'選んだメニューは現在ご予約いただけません。メニューを選び直してください', bad_email:'メールアドレスを正しく入力してください', bad_code:'コードが違います。もう一度ご確認ください', locked:'入力の失敗が続いたため、しばらくしてからやり直してください', too_late:'ご来店が近いため、マイページからはキャンセルできません。LINEでご連絡ください', not_found:'予約が見つかりませんでした', not_active:'この予約はすでに取り消されています', bad_tel:'電話番号を正しく入力してください', missing_field:'未入力の項目があります', conflict:'選んだ時間が先ほど埋まってしまいました。別の時間をお選びください', too_soon:'直近の日時は選べません', closed_day:'定休日は選べません', out_of_hours:'営業時間外です', bad_date:'日時を選び直してください', bad_link_code:'連携コードの有効期限が切れました。もう一度「LINEで連携する」からお試しください', line_auth:'LINEの認証に失敗しました。LINEアプリを開き直して、もう一度お試しください', line_already_linked:'このLINEアカウントは、すでに別のお客様情報に連携されています', not_linked:'LINE連携がまだ完了していません。メールアドレスでログインし、「登録情報」から連携してください', no_customer:'お客様情報が見つかりませんでした', bad_coupon:'このクーポンコードはご利用いただけません', coupon_used:'このクーポンは既にご利用済みです', coupon_not_applicable:'このクーポンは今回のメニューにはご利用いただけません'}[c] || '処理できませんでした。時間をおいてもう一度お試しください');
 async function mySend(){
   MY.email = (MY.email || '').trim().toLowerCase(); MY.msg = ''; MY.ok = '';
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(MY.email)){ MY.msg = errMsg('bad_email'); render(); return; }
@@ -1066,8 +1066,19 @@ async function lineEntry(idToken, link){
     MY.ok = link ? 'LINE連携が完了しました。ご予約の確認とリマインドをLINEでお届けします。' : '';
     saveSess(); go('my');
   } else {
+    if(j.error === 'line_auth' && liffRetry()) return;   // サーバーが失効トークンと判断したら、一度だけ入り直す
     MY.msg = errMsg(j.error); go('login');
   }
+}
+/** LIFFのログインをやり直す。2分以内に試していたら何もしない(無限ループ防止)。やり直しを始めたら true */
+function liffRetry(){
+  try{
+    const k = 'kohaku_liff_retry';
+    if(Date.now() - Number(sessionStorage.getItem(k) || 0) < 120000) return false;
+    sessionStorage.setItem(k, String(Date.now()));
+    liff.logout(); liff.login({redirectUri: location.href});
+    return true;
+  }catch(_){ return false; }
 }
 async function bootstrap(){
   loadMenu();
@@ -1079,10 +1090,9 @@ async function bootstrap(){
       await loadScript('https://static.line-scdn.net/liff/edge/2/sdk.js');
       await liff.init({liffId: CONFIG.LIFF_ID});
       if(!liff.isLoggedIn()){ liff.login({redirectUri: location.href}); return; }
-      // 外部ブラウザでは前回のIDトークンが残り、1時間で失効する。失効していたら入り直して取り直す(無限ループ防止に1回だけ)
+      // 前回のIDトークンは1時間で失効する。失効していたら入り直して取り直す
       const dec = liff.getDecodedIDToken && liff.getDecodedIDToken();
-      let stale = !dec || dec.exp * 1000 < Date.now() + 60000;
-      try{ if(stale && sessionStorage.getItem('kohaku_liff_retry') !== '1'){ sessionStorage.setItem('kohaku_liff_retry','1'); liff.logout(); liff.login({redirectUri: location.href}); return; } sessionStorage.removeItem('kohaku_liff_retry'); }catch(_){}
+      if((!dec || dec.exp * 1000 < Date.now() + 60000) && liffRetry()) return;
       await lineEntry(liff.getIDToken(), link);
     } catch(e){ MY.msg = 'LINEとの接続に失敗しました。時間をおいてもう一度お試しください。'; go('login'); }
   } else if(page === 'my'){
