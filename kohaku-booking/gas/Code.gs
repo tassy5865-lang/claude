@@ -1440,7 +1440,7 @@ function adminCustomerUpdate_(d) {
 
 /* =========================================================
  * 予約の日時変更(マイページ / LINEから)
- *  メニュー・所要時間はそのまま、日時だけ変更できます(メニュー変更はお電話などで)。
+ *  メニュー・所要時間はそのまま、日時だけ変更できます(メニュー変更はLINEなどで)。
  * ========================================================= */
 function rulesError_(date, time, minutes) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '') || !/^\d{2}:\d{2}$/.test(time || '')) return 'bad_date';
@@ -1674,7 +1674,7 @@ function sendMail_(email, m) {
     const url = m.hasLink ? appUrl_({ page: 'my', id: m.id }, false) : '';
     const lines = [m.name + ' 様', '', m.lead, ''].concat(m.rows.map(function (kv) { return kv[0] + ': ' + kv[1]; }));
     if (url) lines.push('', '予約内容の確認・日時変更・キャンセル:', url);
-    lines.push('', m.canChange || !m.hasLink ? '' : 'ご来店が近いため、変更・キャンセルはお電話またはLINEにてご連絡ください。', '', CONFIG.SALON_NAME);
+    lines.push('', m.canChange || !m.hasLink ? '' : 'ご来店が近いため、変更・キャンセルはLINEにてご連絡ください。', '', CONFIG.SALON_NAME);
     MailApp.sendEmail({ to: email, name: CONFIG.SALON_NAME, subject: m.subject, body: lines.join('\n') });
     return true;
   } catch (err) { console.error('mail failed: ' + err); return false; }

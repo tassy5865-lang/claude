@@ -281,7 +281,7 @@ const CONFIG = {
   MIN_ADVANCE_HOURS: 3,            // 何時間先から予約可能か
   MAX_DAYS_AHEAD: 60,              // 何日先まで予約可能か
   LOCATION: '',                    // カレンダー追加時の場所(住所)
-  NOTICE: 'ご変更・キャンセルはお電話またはLINEにてご連絡ください。'
+  NOTICE: 'ご変更・キャンセルはLINEにてご連絡ください。'
 };
 
 /* ---------- データ(後でスプレッドシート管理に移行できます) ---------- */
@@ -738,7 +738,7 @@ const screens = {
           <div class="s">オプション: ${esc(b.options || 'なし')}<br>予約番号 ${esc(b.id)}</div>
           <div class="f2"><span>${money(b)}</span>
             ${b.canCancel ? `<div style="display:flex;gap:8px"><button class="btn ghost sm" data-act="change" data-v="${esc(b.id)}">日時を変更</button><button class="btn ghost sm" data-act="cancelbk" data-v="${esc(b.id)}">キャンセル</button></div>` : ''}</div>
-          ${b.canCancel ? '' : `<p class="s" style="margin:8px 0 0">変更・キャンセルは、お電話またはLINEにてご連絡ください。</p>`}
+          ${b.canCancel ? '' : `<p class="s" style="margin:8px 0 0">変更・キャンセルは、LINEにてご連絡ください。</p>`}
         </div>`).join('') + `<div class="links"><button class="btn ghost" data-act="newbook">新しく予約する</button></div>`
       : `<p class="empty">次回のご予約はありません。</p><div class="links" style="margin-top:0"><button class="btn" data-act="newbook">予約する</button></div>`;
       if(d.upcoming.length) body += `<p class="note">マイページからのキャンセルは、ご来店の${d.cancelDeadlineHours}時間前までです。</p>`;
@@ -940,7 +940,7 @@ async function submit(){
 }
 
 /* ---------- My Kohaku 操作 ---------- */
-const errMsg = c => ({bad_minutes:'ご希望の時間をもう一度お選びください', bad_menu:'選んだメニューは現在ご予約いただけません。メニューを選び直してください', bad_email:'メールアドレスを正しく入力してください', bad_code:'コードが違います。もう一度ご確認ください', locked:'入力の失敗が続いたため、しばらくしてからやり直してください', too_late:'ご来店が近いため、マイページからはキャンセルできません。お電話またはLINEでご連絡ください', not_found:'予約が見つかりませんでした', not_active:'この予約はすでに取り消されています', bad_tel:'電話番号を正しく入力してください', missing_field:'未入力の項目があります', conflict:'選んだ時間が先ほど埋まってしまいました。別の時間をお選びください', too_soon:'直近の日時は選べません', closed_day:'定休日は選べません', out_of_hours:'営業時間外です', bad_date:'日時を選び直してください', bad_link_code:'連携コードの有効期限が切れました。もう一度「LINEで連携する」からお試しください', line_auth:'LINEの認証に失敗しました。もう一度お試しください', line_already_linked:'このLINEアカウントは、すでに別のお客様情報に連携されています', not_linked:'LINE連携がまだ完了していません。メールアドレスでログインし、「登録情報」から連携してください', no_customer:'お客様情報が見つかりませんでした', bad_coupon:'このクーポンコードはご利用いただけません', coupon_used:'このクーポンは既にご利用済みです', coupon_not_applicable:'このクーポンは今回のメニューにはご利用いただけません'}[c] || '処理できませんでした。時間をおいてもう一度お試しください');
+const errMsg = c => ({bad_minutes:'ご希望の時間をもう一度お選びください', bad_menu:'選んだメニューは現在ご予約いただけません。メニューを選び直してください', bad_email:'メールアドレスを正しく入力してください', bad_code:'コードが違います。もう一度ご確認ください', locked:'入力の失敗が続いたため、しばらくしてからやり直してください', too_late:'ご来店が近いため、マイページからはキャンセルできません。LINEでご連絡ください', not_found:'予約が見つかりませんでした', not_active:'この予約はすでに取り消されています', bad_tel:'電話番号を正しく入力してください', missing_field:'未入力の項目があります', conflict:'選んだ時間が先ほど埋まってしまいました。別の時間をお選びください', too_soon:'直近の日時は選べません', closed_day:'定休日は選べません', out_of_hours:'営業時間外です', bad_date:'日時を選び直してください', bad_link_code:'連携コードの有効期限が切れました。もう一度「LINEで連携する」からお試しください', line_auth:'LINEの認証に失敗しました。もう一度お試しください', line_already_linked:'このLINEアカウントは、すでに別のお客様情報に連携されています', not_linked:'LINE連携がまだ完了していません。メールアドレスでログインし、「登録情報」から連携してください', no_customer:'お客様情報が見つかりませんでした', bad_coupon:'このクーポンコードはご利用いただけません', coupon_used:'このクーポンは既にご利用済みです', coupon_not_applicable:'このクーポンは今回のメニューにはご利用いただけません'}[c] || '処理できませんでした。時間をおいてもう一度お試しください');
 async function mySend(){
   MY.email = (MY.email || '').trim().toLowerCase(); MY.msg = ''; MY.ok = '';
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(MY.email)){ MY.msg = errMsg('bad_email'); render(); return; }
