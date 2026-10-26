@@ -1576,7 +1576,19 @@ function dateStamp() {
   return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`;
 }
 
-function downloadFile(content, filename, mime) {
+async function downloadFile(content, filename, mime) {
+  // アーティファクトとして開かれている場合は downloads 機能で保存（確認ダイアログが出る）
+  try {
+    const dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null;
+    if (dl) {
+      try {
+        await dl.save({ filename, data: content });
+      } catch (err) {
+        if (!err || err.code !== 'declined') showToast('ダウンロードに失敗しました', 'error');
+      }
+      return;
+    }
+  } catch (e) { /* 通常のブラウザ動作にフォールバック */ }
   const blob = new Blob([content], { type: mime });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
