@@ -1528,15 +1528,39 @@ function lineLinkCode_(email) {
   return { ok: true, code: code };
 }
 
+/** 確認メール用の連携トークン(7日有効)。メールを受け取れた人だけが連携できる。署名付きで状態を持たない */
+const LINK_TOKEN_DAYS = 7;
+function linkSecret_() {
+  let s = prop_('LINK_SECRET');
+  if (!s) { s = Utilities.getUuid() + Utilities.getUuid(); PropertiesService.getScriptProperties().setProperty('LINK_SECRET', s); }
+  return s;
+}
+function linkSign_(payload) {
+  return Utilities.base64EncodeWebSafe(Utilities.computeHmacSha256Signature(payload, linkSecret_())).replace(/=+$/, '');
+}
+function mailLinkToken_(customerId) {
+  const payload = customerId + '.' + (Date.now() + LINK_TOKEN_DAYS * 86400000);
+  return payload + '.' + linkSign_(payload);
+}
+/** 有効なら顧客IDを返す。LINE未連携の顧客にだけ有効(連携すると使えなくなる=実質1回限り) */
+function verifyMailLinkToken_(token) {
+  const p = String(token || '').split('.');
+  if (p.length !== 3 || !/^C\d+$/.test(p[0]) || !/^\d+$/.test(p[1])) return null;
+  if (linkSign_(p[0] + '.' + p[1]) !== p[2] || Number(p[1]) < Date.now()) return null;
+  const c = allCustomers_().filter(function (x) { return x.id === p[0]; })[0];
+  return c && !c.lineUserId ? c.id : null;
+}
+
 function lineLink_(d) {
   const userId = verifyIdToken_(d.idToken);
   if (!userId) return { ok: false, error: 'line_auth' };
-  const cache = CacheService.getScriptCache(), code = String(d.code || '').toUpperCase();
-  const customerId = code ? cache.get('link:' + code) : null;
+  const cache = CacheService.getScriptCache(), raw = String(d.code || ''), code = raw.toUpperCase();
+  const fromMail = raw.indexOf('.') > 0;
+  const customerId = fromMail ? verifyMailLinkToken_(raw) : (code ? cache.get('link:' + code) : null);
   if (!customerId) return { ok: false, error: 'bad_link_code' };
   const r = linkLineUser_(customerId, userId);
   if (!r.ok) return r;
-  cache.remove('link:' + code);
+  if (!fromMail) cache.remove('link:' + code);
   const c = allCustomers_().filter(function (x) { return x.id === customerId; })[0];
   linePush_(c, [{ type: 'text', text: CONFIG.SALON_NAME + ' のLINE連携が完了しました。\nご予約の確認とリマインドを、こちらのLINEへお送りします。' }]);
   return { ok: true, token: issueToken_(c.email), email: c.email };
@@ -1676,11 +1700,20 @@ function buildFlex_(m) {
   return { type: 'flex', altText: '【' + CONFIG.SALON_NAME + '】' + m.title, contents: bubble };
 }
 
+/** LINE未連携の顧客に渡す、LINE連携用リンク(LIFF)。LINE未設定・連携済みなら空 */
+function lineLinkMailUrl_(email) {
+  if (!lineConfigured_() || !prop_('LIFF_ID')) return '';
+  const c = findCustomer_(email);
+  return c && !c.lineUserId ? appUrl_({ link: mailLinkToken_(c.id) }, true) : '';
+}
+
 function sendMail_(email, m) {
   try {
     const url = m.hasLink ? appUrl_({ page: 'my', id: m.id }, false) : '';
     const lines = [m.name + ' 様', '', m.lead, ''].concat(m.rows.map(function (kv) { return kv[0] + ': ' + kv[1]; }));
     if (url) lines.push('', '予約内容の確認・日時変更・キャンセル:', url);
+    const linkUrl = m.kind === 'confirm' ? lineLinkMailUrl_(email) : '';
+    if (linkUrl) lines.push('', 'LINEで予約の確認やリマインドを受け取る(' + LINK_TOKEN_DAYS + '日間有効・LINEが開きます):', linkUrl);
     lines.push('', m.canChange || !m.hasLink ? '' : 'ご来店が近いため、変更・キャンセルはLINEにてご連絡ください。', '', CONFIG.SALON_NAME);
     MailApp.sendEmail({ to: email, name: CONFIG.SALON_NAME, subject: m.subject, body: lines.join('\n') });
     return true;

@@ -806,6 +806,7 @@ const screens = {
       <p class="when">${fmtDate(S.date)}<br>${S.time} にお待ちしております。</p>
       <p class="id">予約番号 ${esc(S.result.id)}</p>
       <p class="note" style="text-align:center">${CONFIG.GAS_URL ? '確認メールをお送りしました。届かない場合はお知らせください。' : 'デモ表示のため、予約は保存されず、メールも送信されません。'}</p>
+      ${CONFIG.GAS_URL && CONFIG.LIFF_ID ? '<p class="note" style="text-align:center">LINEで通知を受け取るには、確認メール内の「LINEで予約の確認やリマインドを受け取る」のリンクを開いてください。</p>' : ''}
     </div>
     <div class="actions">
       <a class="btn ghost" href="${gc}" target="_blank" rel="noopener">Googleカレンダーに追加</a>
