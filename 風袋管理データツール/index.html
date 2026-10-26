@@ -711,6 +711,11 @@ function escapeHtml(str) {
   }[c]));
 }
 
+// 画像は data:image/...;base64 形式のみ許可（インポートJSON等からの属性注入対策）
+function safeImageSrc(v) {
+  return /^data:image\/[a-z0-9.+-]+;base64,[A-Za-z0-9+\/=]*$/i.test(String(v)) ? String(v) : '';
+}
+
 function fieldsKey(dbId) { return `taretool_fields_${dbId}`; }
 function itemsKey(dbId) { return `taretool_items_${dbId}`; }
 function settingsKey(dbId) { return `taretool_settings_${dbId}`; }
@@ -1315,7 +1320,7 @@ function createItemCard(item) {
     }
     if (f.type === 'image') {
       const imgVal = item.values[f.id];
-      return `<div class="item-row"><span class="item-label">${escapeHtml(f.name)}</span><span class="item-value">${imgVal ? `<img class="item-thumb" src="${imgVal}" alt="">` : ''}</span></div>`;
+      return `<div class="item-row"><span class="item-label">${escapeHtml(f.name)}</span><span class="item-value">${imgVal ? `<img class="item-thumb" src="${safeImageSrc(imgVal)}" alt="">` : ''}</span></div>`;
     }
     if (f.type === 'formula') {
       return `<div class="item-row"><span class="item-label">${escapeHtml(f.name)}</span><span class="item-value">${escapeHtml(String(evaluateFormula(f, item)))}</span></div>`;
@@ -1453,7 +1458,7 @@ function renderFormView() {
     row.className = 'item-row';
     if (f.type === 'image') {
       const imgVal = item.values[f.id];
-      row.innerHTML = `<span class="item-label">${escapeHtml(f.name)}</span><span class="item-value">${imgVal ? `<img class="item-thumb" src="${imgVal}" alt="">` : ''}</span>`;
+      row.innerHTML = `<span class="item-label">${escapeHtml(f.name)}</span><span class="item-value">${imgVal ? `<img class="item-thumb" src="${safeImageSrc(imgVal)}" alt="">` : ''}</span>`;
       card.appendChild(row);
       return;
     }
@@ -1702,7 +1707,7 @@ function renderHistoryList() {
       const newText = escapeHtml(c.newValue) || '(空欄)';
       return `<div class="history-diff">${escapeHtml(c.fieldName)}: ${oldText} → ${newText}</div>`;
     }).join('');
-    row.innerHTML = `<div class="history-entry-head"><strong>[${historyActionLabels[entry.action] || entry.action}]</strong> ${escapeHtml(entry.label)} <span class="field-hint">${formatTimestamp(entry.timestamp)}</span></div>${diffHtml}`;
+    row.innerHTML = `<div class="history-entry-head"><strong>[${escapeHtml(historyActionLabels[entry.action] || entry.action)}]</strong> ${escapeHtml(entry.label)} <span class="field-hint">${formatTimestamp(entry.timestamp)}</span></div>${diffHtml}`;
     historyListEl.appendChild(row);
   });
 }
@@ -1720,7 +1725,7 @@ function renderSnapshotList() {
     row.innerHTML = `
       <div class="snapshot-info">
         <div>${formatTimestamp(snap.timestamp)}</div>
-        <div class="field-hint">${snap.items.length}件のデータ・${snap.fields.length}個のフィールド</div>
+        <div class="field-hint">${Number(snap.items.length)}件のデータ・${Number(snap.fields.length)}個のフィールド</div>
       </div>
       <button class="btn danger" data-action="restore">復元</button>
     `;
@@ -1989,7 +1994,7 @@ function renderFieldList() {
     row.innerHTML = `
       <div class="field-info">
         <div class="field-name">${escapeHtml(f.type === 'divider' ? (f.name || '（区切り線）') : f.name)}</div>
-        <div class="field-type">${fieldTypeLabels[f.type] || f.type}</div>
+        <div class="field-type">${escapeHtml(fieldTypeLabels[f.type] || f.type)}</div>
       </div>
       <div class="field-btns">
         <button class="icon-btn" data-action="up" title="上へ" ${idx === 0 ? 'disabled' : ''}>↑</button>
