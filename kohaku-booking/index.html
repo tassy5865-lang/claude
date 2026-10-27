@@ -404,7 +404,7 @@ const fresh = () => ({
   info:{name:'', kana:'', tel:'', email:'', visit:'first', note:'', website:''},
   errors:{}, banner:'', submitting:false, result:null,
   ref:{source:'', inquiry:'', menu:''}, refMenuDone:false,
-  coupon:null, couponInput:'', couponMsg:'', couponBusy:false
+  coupon:null, couponInput:'', couponMsg:'', couponBusy:false, quick:false
 });
 let S = fresh();
 S.ref = loadRef();   // 予約リンクから来たときだけ値が入る。予約完了後の fresh() では引き継がない
@@ -664,6 +664,7 @@ const screens = {
       ${e[k] ? `<div class="er" role="alert">${e[k]}</div>` : ''}</div>`;
     return `
     <h2>お客様情報</h2>
+    ${!MY.token && CONFIG.GAS_URL ? '<div class="note" style="margin:0 0 16px">以前ご予約いただいた方は、<button class="lnk" data-act="booklogin">メールで確認して入力を省く</button></div>' : ''}
     ${fld('name','お名前','text','山田 花子','name')}
     ${fld('kana','フリガナ','text','ヤマダ ハナコ','off')}
     ${fld('tel','電話番号','tel','090-1234-5678','tel')}
@@ -687,10 +688,11 @@ const screens = {
       <div class="r"><dt>メニュー</dt><dd>${esc(m.name)}<br>${m.kind==='omakase' ? S.omakase.mins+'分程度' : m.min+'分'}${m.price==null ? '' : ' / '+yen(m.price)}<br><button class="lnk" data-act="edit" data-v="menu">変更</button></dd></div>
       <div class="r"><dt>オプション</dt><dd>${m.kind==='omakase' ? (S.omakase.concerns.join('、') || 'お悩み: 未選択') : esc(opts)}<br><button class="lnk" data-act="edit" data-v="detail">変更</button></dd></div>
       <div class="r"><dt>日時</dt><dd>${fmtDate(S.date)}<br>${S.time}〜${endTime()}(${duration()}分)<br><button class="lnk" data-act="edit" data-v="date">変更</button></dd></div>
-      <div class="r"><dt>お名前</dt><dd>${esc(i.name)} 様<br>${esc(i.kana)}</dd></div>
+      <div class="r"><dt>お名前</dt><dd>${esc(i.name)} 様<br>${esc(i.kana)}${S.quick ? '<br><button class="lnk" data-act="edit" data-v="info">お客様情報を変更</button>' : ''}</dd></div>
       <div class="r"><dt>連絡先</dt><dd>${esc(i.tel)}<br>${esc(i.email)}</dd></div>
       <div class="r"><dt>来店</dt><dd>${i.visit==='first'?'初回':'再来'}</dd></div>
-      ${i.note ? `<div class="r"><dt>ご要望</dt><dd>${esc(i.note).replace(/\n/g,'<br>')}</dd></div>` : ''}
+      ${S.quick ? `<div class="r"><dt>ご要望</dt><dd><textarea id="f-note" data-f="info" data-k="note" aria-label="気になること・ご要望" placeholder="肩こり、冷えなど(任意)">${esc(i.note)}</textarea></dd></div>` : ''}
+      ${!S.quick && i.note ? `<div class="r"><dt>ご要望</dt><dd>${esc(i.note).replace(/\n/g,'<br>')}</dd></div>` : ''}
     </dl>
     ${couponBoxHTML()}
     <div class="tot"><span>お会計(目安)</span><b>${t==null ? '当日ご案内' : yen(payTotalOf(t))}</b></div></div>
@@ -886,14 +888,38 @@ function go(screen){
 }
 
 /* ---------- 入力検証 ---------- */
-function validate(){
-  const i = S.info, e = {};
+function infoErrors(i){
+  const e = {};
   if(!i.name.trim()) e.name = 'お名前を入力してください';
   if(!i.kana.trim()) e.kana = 'フリガナを入力してください';
   else if(!/^[ァ-ヶー\u3041-\u3096\s\u3000・]+$/.test(i.kana.trim())) e.kana = 'ひらがな・カタカナで入力してください';
   if(!/^0\d{9,10}$/.test(i.tel.replace(/[-\s\u3000]/g,''))) e.tel = '電話番号を正しく入力してください(例: 090-1234-5678)';
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(i.email.trim())) e.email = 'メールアドレスを正しく入力してください';
-  S.errors = e; return Object.keys(e).length === 0;
+  return e;
+}
+function validate(){
+  S.errors = infoErrors(S.info); return Object.keys(S.errors).length === 0;
+}
+/** ログイン済みなら登録情報を予約者情報に入れる。全項目がそろっていれば true(入力画面を省ける) */
+async function fillInfoFromProfile(){
+  if(!MY.token) return false;
+  try{
+    if(!MY.data){
+      const j = await api('me');
+      if(!j.ok){ if(j.error === 'auth'){ MY.token = ''; saveSess(); } return false; }
+      MY.data = j; MY.prof = {...j.profile};
+    }
+    const p = MY.data.profile || {};
+    const info = {...S.info, name:p.name || '', kana:p.kana || '', tel:p.tel || '', email:p.email || MY.email || '', visit:'repeat'};
+    S.info = info;
+    return Object.keys(infoErrors(info)).length === 0;
+  } catch(e){ return false; }
+}
+/** 日時が決まったあとの次の画面。ログイン済みで登録情報がそろっていれば入力を省いて確認へ */
+async function afterDate(){
+  S.banner = '';
+  if(await fillInfoFromProfile()){ S.quick = true; S.errors = {}; go('confirm'); }
+  else { S.quick = false; S.errors = {}; go('info'); }
 }
 
 /* ---------- 送信 ---------- */
@@ -955,6 +981,8 @@ async function myVerify(){
     const j = await api('verifyCode', {email:MY.email, code:MY.code});
     if(!j.ok) throw new Error(j.error);
     MY.token = j.token; MY.data = null; MY.failed = false; MY.tab = 'next'; saveSess(); MY.busy = false;
+    if(MY.bookReturn && S.menu && S.date && S.time){ MY.bookReturn = false; await afterDate(); return; }
+    MY.bookReturn = false;
     S.screen = 'my'; history.replaceState({screen:'my'}, ''); render(); window.scrollTo(0,0); return;
   } catch(e){ MY.msg = errMsg(e.message); }
   MY.busy = false; render();
@@ -1059,7 +1087,7 @@ async function myLineUnlink(){
 /* ---------- LIFF(LINEアプリ内で開いたとき) ---------- */
 const QS = new URLSearchParams(location.search);
 const loadScript = src => new Promise((res,rej) => { const el = document.createElement('script'); el.src = src; el.onload = res; el.onerror = rej; document.head.appendChild(el); });
-async function lineEntry(idToken, link){
+async function lineEntry(idToken, link, stay){
   let j = link ? await api('lineLink', {idToken, code:link}) : await api('lineLogin', {idToken});
   // 連携コードが使用済み・期限切れでも、すでに連携済みのLINEなら通常のログインで入れる
   if(link && !j.ok && j.error === 'bad_link_code'){ const j2 = await api('lineLogin', {idToken}); if(j2.ok){ j = j2; link = ''; } }
@@ -1069,9 +1097,12 @@ async function lineEntry(idToken, link){
   if(j.ok){
     MY.token = j.token; MY.email = j.email || MY.email; MY.data = null; MY.failed = false; MY.tab = link ? 'profile' : 'next'; MY.msg = '';
     MY.ok = link ? 'LINE連携が完了しました。ご予約の確認とリマインドをLINEでお届けします。' : '';
-    saveSess(); go('my');
+    saveSess();
+    if(stay){ render(); return; }   // 予約サイトを開いただけならトップのまま(ログイン状態だけ保つ)
+    go('my');
   } else {
     if(j.error === 'line_auth' && liffRetry()) return;   // サーバーが失効トークンと判断したら、一度だけ入り直す
+    if(stay) return;   // 未連携のLINEなどは黙ってトップのまま(ログイン不要)
     MY.msg = errMsg(j.error); go('login');
   }
 }
@@ -1088,7 +1119,11 @@ function liffRetry(){
 async function bootstrap(){
   loadMenu();
   const link = QS.get('link'), page = QS.get('page');
-  if(QS.get('id')) MY.pending = {act: QS.get('act') || 'view', id: QS.get('id')};
+  // LIFF経由では、元のクエリが liff.state に入ることがある
+  const ls = QS.get('liff.state') || '', lq = new URLSearchParams(ls.includes('?') ? ls.slice(ls.indexOf('?')+1) : '');
+  const q = k => QS.get(k) || lq.get(k);
+  const wantsMy = !!link || q('page') === 'my' || !!q('id');   // カードのボタン・連携リンクのときだけMy Kohakuへ入る
+  if(q('id')) MY.pending = {act: q('act') || 'view', id: q('id')};
   const useLiff = CONFIG.LIFF_ID && (link || QS.has('liff.state') || /Line\//i.test(navigator.userAgent));
   if(useLiff){
     try{
@@ -1098,8 +1133,8 @@ async function bootstrap(){
       // 前回のIDトークンは1時間で失効する。失効していたら入り直して取り直す
       const dec = liff.getDecodedIDToken && liff.getDecodedIDToken();
       if((!dec || dec.exp * 1000 < Date.now() + 60000) && liffRetry()) return;
-      await lineEntry(liff.getIDToken(), link);
-    } catch(e){ MY.msg = 'LINEとの接続に失敗しました。時間をおいてもう一度お試しください。'; go('login'); }
+      await lineEntry(liff.getIDToken(), link, !wantsMy);
+    } catch(e){ if(wantsMy){ MY.msg = 'LINEとの接続に失敗しました。時間をおいてもう一度お試しください。'; go('login'); } }
   } else if(page === 'my'){
     go(MY.token ? 'my' : 'login');
   }
@@ -1114,13 +1149,14 @@ app.addEventListener('click', e => {
     case 'cat':   S.cat = v; if(S.screen==='top') go('menu'); else render(); break;
     case 'pick':  S.menu = MENU.find(m => m.id===v); S.opts = []; S.date = null; S.time = null; go('detail'); break;
     case 'back':  history.back(); break;
-    case 'edit':  go(v); break;
+    case 'edit':  if(v==='info') S.quick = false; go(v); break;
+    case 'booklogin': MY.msg = ''; MY.ok = ''; MY.bookReturn = true; go('login'); break;
     case 'month': { let y=S.y, m=S.m+Number(v); if(m<0){m=11;y--} if(m>11){m=0;y++} S.y=y; S.m=m; S.date=null; S.time=null; S.busy=null; S.loading=false; S.availErr=false; render(); break; }
     case 'date':  S.date = v; S.time = null; render(); break;
     case 'time':  S.time = v; render(); break;
     case 'next': {
       if(S.screen==='detail'){ S.busy = null; S.loading = false; S.availErr = false; S.date = null; S.time = null; S.y = TY; S.m = TM-1; go('date'); }
-      else if(S.screen==='date'){ S.banner=''; go('info'); }
+      else if(S.screen==='date'){ afterDate(); }
       else if(S.screen==='info'){ if(validate()) go('confirm'); else { render(); document.querySelector('.bad')?.focus(); } }
       break;
     }
