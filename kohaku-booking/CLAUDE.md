@@ -134,3 +134,10 @@ npm run check:gas   # gas/Code.gs の構文チェック
 - デザイントークン(CSS変数): cream `#F6EFE3` / paper `#FFFCF7` / sand `#EADBC3` / caramel `#B58553` / brown `#6E5238` / ink `#33261C` / moss `#44593F` / danger `#A5473A`。見出しは Shippori Mincho、本文は Zen Kaku Gothic New。落ち着いた琥珀色のトーンを崩さない。
 - 新しいAPIは `handleAction_` に case を足し、**認証(トークン)必須か**を明示。エラーは `{ok:false,error:'snake_case'}` で返し、フロントの `errMsg` に日本語を追加。
 - テストはデモモードで通る形で `tests/` に追加する。
+
+## 作業記録: 2回目以降の入力省略・LINEからの自動遷移なし(2026-10-27)
+- **メールリンク連携**(確認メールの署名付きリンク)をテスト環境で実機確認済み: 連携完了、同じリンクの再訪は通常ログインで入れる。
+- **2回目以降は「お客様情報」画面を省く**(`index.html`): ログイン済み(LINE自動ログイン or メール確認コード)で、登録情報(名前・フリガナ・電話・メール)が `infoErrors` を通る場合、日時選択後(`afterDate`/`fillInfoFromProfile`)に確認画面へ直行。`visit` は「再来」、ご要望は確認画面で任意入力(`S.quick`)、「お客様情報を変更」で従来の入力画面へ。登録内容に不足があれば入力画面に進む(値は埋めてある)。未ログイン時は入力画面に「メールで確認して入力を省く」(`booklogin`、`GAS_URL` があるときのみ)。コード認証後は My Kohaku でなく予約の続きに戻る(`MY.bookReturn`)。
+- **LINE内で予約サイトを開いても My Kohaku へ自動遷移しない**: `bootstrap` は LINEログインを裏で行いトップのまま(`lineEntry(..., stay)`)。My Kohaku に入るのは `link` / `page=my` / `id`(`liff.state` 内も解釈)のとき=カードのボタンと連携リンクだけ。未連携LINEは黙ってトップのまま。
+- テスト: `tests/returning-customer.test.js` を追加。デモの `api('me')` は400ms待つので、日時→次へのあとは `await sleep(50)` 以上(既存テストにも追加)。`npm test` 164件通過。GASの変更なし(デプロイ・`setup` 不要)。
+- 公開: `d191bae` を push。確認用に `kohaku-booking-test/index.html`(`efa56ab`)で先にLINE実機確認してから本番へ。GitHub Pages の `efa56ab` ビルドが一度 errored(原因未調査、直後の `d191bae` は built)。反映確認は `pages/builds` 一覧でコミット別に見る(`latest` は完了済みの最新を返す)。本番ページのCDN反映は最大10分。
