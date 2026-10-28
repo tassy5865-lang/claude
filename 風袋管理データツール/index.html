@@ -1964,8 +1964,17 @@ function setupAutoKana() {
     pending = '';
     apply(reading);
   });
-  nameInput.addEventListener('input', () => {
-    if (nameInput.value === '') { reading = ''; pending = ''; apply(''); }
+  // compositionupdate を発行しない環境（iOS Safari など）向けに input イベントからも読みを拾う
+  nameInput.addEventListener('input', e => {
+    const v = nameInput.value;
+    if (v === '') { reading = ''; pending = ''; apply(''); return; }
+    if (e.isComposing || e.inputType === 'insertCompositionText') {
+      if (e.data && kanaOnly.test(e.data)) { pending = toHira(e.data); apply(reading + pending); }
+    } else {
+      const plain = v.replace(/[\s　]/g, '');
+      if (kanaOnly.test(plain)) { reading = toHira(plain); pending = ''; apply(reading); }
+      else if (pending) { reading += pending; pending = ''; apply(reading); }  // 変換が確定した
+    }
   });
 }
 
