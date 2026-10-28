@@ -65,7 +65,7 @@ async function bookUntilSubmit({ click, type, d }, { opt = false } = {}) {
   click('[data-act=next]'); await sleep(300);
   [...d.querySelectorAll('.day.ok')][0].click();
   [...d.querySelectorAll('.slot:not(:disabled)')][0].click();
-  click('[data-act=next]');
+  click('[data-act=next]'); await sleep(50);
   type('[data-k=name]', '山田 花子'); type('[data-k=kana]', 'ヤマダ ハナコ');
   type('[data-k=tel]', '090-1234-5678'); type('[data-k=email]', 'hanako@example.com');
   click('[data-act=next]');
