@@ -1353,9 +1353,17 @@ function buildGroupTree(itemsArr, groupFieldIds) {
     if (!map.has(val)) map.set(val, []);
     map.get(val).push(item);
   });
+  // 時間帯は 午前 → 午後 → 夜間 の順に固定（それ以外は五十音順、未設定は末尾）
+  const fixedOrder = ['午前', '午後', '夜間'];
   const keys = Array.from(map.keys()).sort((a, b) => {
     if (a === '(未設定)') return 1;
     if (b === '(未設定)') return -1;
+    const ia = fixedOrder.indexOf(a), ib = fixedOrder.indexOf(b);
+    if (ia !== -1 || ib !== -1) {
+      if (ia === -1) return 1;
+      if (ib === -1) return -1;
+      return ia - ib;
+    }
     return String(a).localeCompare(String(b), 'ja');
   });
   const rest = groupFieldIds.slice(1);
