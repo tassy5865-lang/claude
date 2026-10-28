@@ -581,6 +581,10 @@
       <select id="subtitleFieldSelect"></select>
     </div>
     <div class="form-field">
+      <label>一覧に表示する項目（すべて未選択なら全項目を表示。フォームビューは全項目を表示）</label>
+      <div class="multiselect-group" id="listFieldsGroup"></div>
+    </div>
+    <div class="form-field">
       <label>並び替え項目</label>
       <select id="sortFieldSelect"></select>
     </div>
@@ -1321,7 +1325,10 @@ function deleteItem(itemId) {
 function createItemCard(item) {
   const card = document.createElement('div');
   card.className = 'item-card';
-  const rows = fields.map(f => {
+  // 一覧に表示する項目の指定があれば、それだけを表示（区切り線は非表示）
+  const listIds = (settings.listFields || []).filter(id => fields.some(f => f.id === id));
+  const listFields = listIds.length ? fields.filter(f => listIds.includes(f.id)) : fields;
+  const rows = listFields.map(f => {
     if (f.type === 'divider') {
       return `<div class="item-divider">${f.name ? `<span>${escapeHtml(f.name)}</span>` : ''}</div>`;
     }
@@ -1571,6 +1578,19 @@ document.getElementById('viewSettingsBtn').addEventListener('click', () => {
   populateFieldSelect(subtitleFieldSelect, settings.subtitleFieldId);
   populateFieldSelect(sortFieldSelect, settings.sortFieldId);
   sortDirectionSelect.value = settings.sortDirection === 'desc' ? 'desc' : 'asc';
+  const listFieldsGroup = document.getElementById('listFieldsGroup');
+  listFieldsGroup.innerHTML = '';
+  fields.filter(f => f.type !== 'divider').forEach(f => {
+    const label = document.createElement('label');
+    label.className = 'multiselect-option';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.value = f.id;
+    cb.checked = (settings.listFields || []).includes(f.id);
+    label.appendChild(cb);
+    label.appendChild(document.createTextNode(f.name));
+    listFieldsGroup.appendChild(label);
+  });
   openModal(viewSettingsModal);
 });
 
@@ -1583,6 +1603,7 @@ document.getElementById('saveViewSettingsBtn').addEventListener('click', () => {
   settings.subtitleFieldId = subtitleFieldSelect.value || '';
   settings.sortFieldId = sortFieldSelect.value || '';
   settings.sortDirection = sortDirectionSelect.value === 'desc' ? 'desc' : 'asc';
+  settings.listFields = Array.from(document.querySelectorAll('#listFieldsGroup input:checked')).map(cb => cb.value);
   saveSettings();
   renderList();
   closeModal(viewSettingsModal);
