@@ -77,7 +77,12 @@ test('管理画面: 臨時休業の登録と解除(デモ表示)', async () => {
 });
 
 test('管理画面: ログイン → 今日の予約 → 詳細/状態変更 → カレンダー → 予約追加(デモ表示)', async () => {
-  const { click, type, text, d, errors } = load('admin.html');
+  // デモは定休日(水曜)に予約を作らないので、実行日が水曜でも通るよう「今」を木曜の正午(JST)に固定する
+  const FIXED = Date.parse('2026-10-29T12:00:00+09:00');
+  const { click, type, text, d, errors } = load('admin.html', { beforeParse(w) {
+    const Real = w.Date;
+    w.Date = class extends Real { constructor(...a) { a.length ? super(...a) : super(FIXED); } static now() { return FIXED; } };
+  } });
   type('#pw', 'wrong'); click('[data-act=login]'); await sleep(500);
   assert.match(text('#app'), /パスワードが違います/);
   type('#pw', 'demo'); click('[data-act=login]'); await sleep(1000);

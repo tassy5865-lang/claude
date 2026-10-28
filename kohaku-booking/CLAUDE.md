@@ -141,3 +141,6 @@ npm run check:gas   # gas/Code.gs の構文チェック
 - **LINE内で予約サイトを開いても My Kohaku へ自動遷移しない**: `bootstrap` は LINEログインを裏で行いトップのまま(`lineEntry(..., stay)`)。My Kohaku に入るのは `link` / `page=my` / `id`(`liff.state` 内も解釈)のとき=カードのボタンと連携リンクだけ。未連携LINEは黙ってトップのまま。
 - テスト: `tests/returning-customer.test.js` を追加。デモの `api('me')` は400ms待つので、日時→次へのあとは `await sleep(50)` 以上(既存テストにも追加)。`npm test` 164件通過。GASの変更なし(デプロイ・`setup` 不要)。
 - 公開: `d191bae` を push。確認用に `kohaku-booking-test/index.html`(`efa56ab`)で先にLINE実機確認してから本番へ。GitHub Pages の `efa56ab` ビルドが一度 errored(原因未調査、直後の `d191bae` は built)。反映確認は `pages/builds` 一覧でコミット別に見る(`latest` は完了済みの最新を返す)。本番ページのCDN反映は最大10分。
+
+## 作業記録: 曜日依存テストの修正(2026-10-28)
+- 定休日(水曜)に `npm test` を回すと管理画面のテストが落ちた(デモは定休日に予約を作らないので「今日の予約」が空になる)。該当テストだけ `beforeParse` で「今」を木曜の正午(JST)に固定した。アプリ側の変更なし。日付に依存するテストを足すときは同様に固定する。
