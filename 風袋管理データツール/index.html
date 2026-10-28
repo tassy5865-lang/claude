@@ -1279,8 +1279,15 @@ function compareValues(f, itemA, itemB) {
   return va.localeCompare(vb, 'ja');
 }
 
+// 並び替え項目が未設定のときは、患者氏名（ふりがな項目があればそちらを優先）をあいうえお順で自動ソート
+function getAutoSortField() {
+  const textFields = fields.filter(f => f.type === 'text');
+  return textFields.find(f => /ふりがな|フリガナ|よみ|ヨミ|読み|カナ/.test(f.name))
+    || textFields.find(f => /患者氏名|患者名|氏名|名前/.test(f.name));
+}
+
 function sortItems(arr) {
-  const f = fields.find(x => x.id === settings.sortFieldId);
+  const f = fields.find(x => x.id === settings.sortFieldId) || getAutoSortField();
   if (!f) return arr;
   const dir = settings.sortDirection === 'desc' ? -1 : 1;
   return arr.slice().sort((a, b) => compareValues(f, a, b) * dir);
