@@ -1933,6 +1933,40 @@ function buildItemForm(prefill) {
     wrap.appendChild(input);
     itemForm.appendChild(wrap);
   });
+  setupAutoKana();
+}
+
+// 氏名を日本語入力する際、変換前のひらがなを拾って「ふりがな」項目へ自動入力する（並び替え用）
+function setupAutoKana() {
+  const textFields = fields.filter(f => f.type === 'text');
+  const kanaField = textFields.find(f => /ふりがな|フリガナ|よみ|ヨミ|読み|カナ/.test(f.name));
+  const nameField = textFields.find(f => f !== kanaField && /患者氏名|患者名|氏名|名前/.test(f.name));
+  if (!kanaField || !nameField) return;
+  const nameInput = document.getElementById('f_' + nameField.id);
+  const kanaInput = document.getElementById('f_' + kanaField.id);
+  if (!nameInput || !kanaInput) return;
+
+  const toHira = s => s.replace(/[ァ-ヶ]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60));
+  const kanaOnly = /^[ぁ-ゖァ-ヶー]+$/;
+  let reading = '';      // 確定済みの読み
+  let pending = '';      // 入力中（変換前）の読み
+  let autoValue = null;  // 自動入力した値。手で書き換えられていたら以後は上書きしない
+  const canWrite = () => autoValue === null ? kanaInput.value === '' : kanaInput.value === autoValue;
+  const apply = text => { if (canWrite()) { kanaInput.value = text; autoValue = text; } };
+
+  nameInput.addEventListener('compositionstart', () => { pending = ''; });
+  nameInput.addEventListener('compositionupdate', e => {
+    if (kanaOnly.test(e.data)) pending = toHira(e.data);
+    apply(reading + pending);
+  });
+  nameInput.addEventListener('compositionend', () => {
+    reading += pending;
+    pending = '';
+    apply(reading);
+  });
+  nameInput.addEventListener('input', () => {
+    if (nameInput.value === '') { reading = ''; pending = ''; apply(''); }
+  });
 }
 
 function openItemModal(itemId) {
