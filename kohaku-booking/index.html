@@ -324,6 +324,8 @@ let OPTIONS = [
 ];
 const OMAKASE_MINS = [60,90,120];
 /** メニューが1件も無いカテゴリは出さない(メニュー改訂で空になったカテゴリ対策) */
+// 初回限定メニューの紹介記事(メニューID → URL)。詳細画面から新しいタブで開く
+const MENU_LINKS = {first80:'https://note.com/kohaku5339/n/nc3c2f3a6e31f', first100:'https://note.com/kohaku5339/n/nc3c2f3a6e31f'};
 const visibleCats = () => CATS.filter(c => MENU.some(m => m.cats.includes(c.id)));
 /** そのメニューで選べるオプション(menus が空なら全メニュー共通)。料金の高い順、同額はシートの並び順 */
 const optsFor = m => OPTIONS.filter(o => !o.menus || !o.menus.length || o.menus.includes(m.id)).sort((x, y) => (+y.price || 0) - (+x.price || 0));
@@ -626,6 +628,7 @@ const screens = {
     <div class="dhead">
       <div class="thumb ${m.g}">${om ? '相談' : m.min+'分'}</div>
       <h1>${esc(m.name)}</h1><p>${esc(m.desc)}</p>
+      ${MENU_LINKS[m.id] ? `<p class="note"><a class="lnk" href="${MENU_LINKS[m.id]}" target="_blank" rel="noopener noreferrer">このメニューの詳しい内容はこちら(note)</a></p>` : ''}
       <p class="dprice">${m.price==null ? '料金は当日ご案内' : yen(m.price)}<small>${om ? S.omakase.mins+'分程度' : m.min+'分'}</small></p>
     </div>
     ${body}`;
