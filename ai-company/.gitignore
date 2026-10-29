@@ -25,6 +25,7 @@ temp/
 Thumbs.db
 
 # 検証・ビルド出力
+__pycache__/
 .review/
 validation-report.json
 

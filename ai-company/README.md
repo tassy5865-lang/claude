@@ -27,6 +27,9 @@
 | `/build 案件名` | developer 実装 → qa-tester 検証 → 納品書作成 |
 | `/find-deals 条件` | deal-scout が案件リサーチ → leads.md |
 | `/propose 案件名` | sales-writer + account-exec で提案一式 |
+| `/sales-pipeline 条件` | 調査→適格判定→分類→営業文2案→保存まで一括（送信はしない） |
+| `/record-sales-outcome ID` | 採用した文と営業結果を記録 |
+| `/refresh-sales-template 分類` | 採用済みの結果だけからテンプレート差分案を作る（承認制） |
 
 コマンドは現行推奨形式の `.claude/skills/<コマンド名>/SKILL.md` で管理しています。
 

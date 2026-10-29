@@ -72,7 +72,7 @@ for path in agent_files:
 
 legacy = list((ROOT / ".claude/commands").glob("*.md")) if (ROOT / ".claude/commands").exists() else []
 check(not legacy, "legacy-commands-removed", ", ".join(p.name for p in legacy))
-for name in ("new-project", "build", "find-deals", "propose"):
+for name in ("new-project", "build", "find-deals", "propose", "sales-pipeline", "record-sales-outcome", "refresh-sales-template"):
     path = ROOT / ".claude/skills" / name / "SKILL.md"
     check(path.exists(), f"skill:{name}")
     if path.exists():
@@ -151,6 +151,26 @@ for name in ("01_requirements.md", "02_design.md", "src/index.html", "03_test.md
 if (demo / "03_test.md").exists():
     check("**合格**" in (demo / "03_test.md").read_text(encoding="utf-8"), "demo:qa-pass")
 check((ROOT / "scripts/test_demo_csv_summary.mjs").exists(), "demo:test-script")
+
+# 営業パイプライン: 種類別テンプレートが揃い、固有情報が混入していないこと。
+sys.path.insert(0, str(ROOT / "scripts"))
+import sales_pipeline  # noqa: E402
+
+check((ROOT / "templates/sales-pipeline/search-profile.md").exists(), "sales-pipeline:search-profile-template")
+for category in sales_pipeline.CATEGORIES:
+    template = ROOT / f"templates/sales-pipeline/application_{category}.md"
+    check(template.exists(), f"sales-pipeline:template:{category}")
+    if template.exists():
+        problems = sales_pipeline.lint_text(template.read_text(encoding="utf-8"))
+        check(not problems, f"sales-pipeline:template-clean:{category}", ", ".join(problems))
+for name in ("sales-pipeline", "record-sales-outcome", "refresh-sales-template"):
+    skill_text = read(f".claude/skills/{name}/SKILL.md")
+    check("disable-model-invocation: true" in skill_text, f"sales-pipeline:manual-only:{name}")
+check(
+    "承認を得るまで既存テンプレートを書き換えない" in read(".claude/skills/refresh-sales-template/SKILL.md"),
+    "sales-pipeline:template-needs-approval",
+)
+check((ROOT / "scripts/test_sales_pipeline.py").exists(), "sales-pipeline:test-script")
 
 docx_path = ROOT / "sales/private/営業文.docx"
 if docx_path.exists():
