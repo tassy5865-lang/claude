@@ -675,7 +675,7 @@ const screens = {
         <label class="chip"><input type="radio" name="visit" data-f="visit" value="repeat" ${i.visit==='repeat'?'checked':''}><span>再来</span></label>
       </div></fieldset>
     <div class="f"><label for="f-note">気になること・ご要望</label>
-      <textarea id="f-note" data-f="info" data-k="note" placeholder="肩こり、冷えなど">${esc(i.note)}</textarea></div>
+      <textarea id="f-note" maxlength="1000" data-f="info" data-k="note" placeholder="肩こり、冷えなど">${esc(i.note)}</textarea></div>
     <div class="hp" aria-hidden="true"><label>Web <input type="text" tabindex="-1" autocomplete="off" data-f="info" data-k="website" value=""></label></div>`;
   },
   confirm(){
@@ -691,7 +691,7 @@ const screens = {
       <div class="r"><dt>お名前</dt><dd>${esc(i.name)} 様<br>${esc(i.kana)}${S.quick ? '<br><button class="lnk" data-act="edit" data-v="info">お客様情報を変更</button>' : ''}</dd></div>
       <div class="r"><dt>連絡先</dt><dd>${esc(i.tel)}<br>${esc(i.email)}</dd></div>
       <div class="r"><dt>来店</dt><dd>${i.visit==='first'?'初回':'再来'}</dd></div>
-      ${S.quick ? `<div class="r"><dt>ご要望</dt><dd><textarea id="f-note" data-f="info" data-k="note" aria-label="気になること・ご要望" placeholder="肩こり、冷えなど(任意)">${esc(i.note)}</textarea></dd></div>` : ''}
+      ${S.quick ? `<div class="r"><dt>ご要望</dt><dd><textarea id="f-note" maxlength="1000" data-f="info" data-k="note" aria-label="気になること・ご要望" placeholder="肩こり、冷えなど(任意)">${esc(i.note)}</textarea></dd></div>` : ''}
       ${!S.quick && i.note ? `<div class="r"><dt>ご要望</dt><dd>${esc(i.note).replace(/\n/g,'<br>')}</dd></div>` : ''}
     </dl>
     ${couponBoxHTML()}
@@ -891,8 +891,10 @@ function go(screen){
 function infoErrors(i){
   const e = {};
   if(!i.name.trim()) e.name = 'お名前を入力してください';
+  else if(i.name.length > 40) e.name = 'お名前は40文字以内で入力してください';
   if(!i.kana.trim()) e.kana = 'フリガナを入力してください';
   else if(!/^[ァ-ヶー\u3041-\u3096\s\u3000・]+$/.test(i.kana.trim())) e.kana = 'ひらがな・カタカナで入力してください';
+  else if(i.kana.length > 60) e.kana = 'フリガナは60文字以内で入力してください';
   if(!/^0\d{9,10}$/.test(i.tel.replace(/[-\s\u3000]/g,''))) e.tel = '電話番号を正しく入力してください(例: 090-1234-5678)';
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(i.email.trim())) e.email = 'メールアドレスを正しく入力してください';
   return e;
@@ -966,7 +968,7 @@ async function submit(){
 }
 
 /* ---------- My Kohaku 操作 ---------- */
-const errMsg = c => ({bad_minutes:'ご希望の時間をもう一度お選びください', bad_menu:'選んだメニューは現在ご予約いただけません。メニューを選び直してください', bad_email:'メールアドレスを正しく入力してください', bad_code:'コードが違います。もう一度ご確認ください', locked:'入力の失敗が続いたため、しばらくしてからやり直してください', too_late:'ご来店が近いため、マイページからはキャンセルできません。LINEでご連絡ください', not_found:'予約が見つかりませんでした', not_active:'この予約はすでに取り消されています', bad_tel:'電話番号を正しく入力してください', missing_field:'未入力の項目があります', conflict:'選んだ時間が先ほど埋まってしまいました。別の時間をお選びください', too_soon:'直近の日時は選べません', closed_day:'定休日は選べません', out_of_hours:'営業時間外です', bad_date:'日時を選び直してください', bad_link_code:'連携コードの有効期限が切れました。もう一度「LINEで連携する」からお試しください', line_auth:'LINEの認証に失敗しました。LINEアプリを開き直して、もう一度お試しください', line_already_linked:'このLINEアカウントは、すでに別のお客様情報に連携されています', not_linked:'LINE連携がまだ完了していません。メールアドレスでログインし、「登録情報」から連携してください', no_customer:'お客様情報が見つかりませんでした', bad_coupon:'このクーポンコードはご利用いただけません', coupon_used:'このクーポンは既にご利用済みです', coupon_not_applicable:'このクーポンは今回のメニューにはご利用いただけません'}[c] || '処理できませんでした。時間をおいてもう一度お試しください');
+const errMsg = c => ({bad_minutes:'ご希望の時間をもう一度お選びください', bad_menu:'選んだメニューは現在ご予約いただけません。メニューを選び直してください', bad_email:'メールアドレスを正しく入力してください', bad_code:'コードが違います。もう一度ご確認ください', locked:'入力の失敗が続いたため、しばらくしてからやり直してください', too_late:'ご来店が近いため、マイページからはキャンセルできません。LINEでご連絡ください', not_found:'予約が見つかりませんでした', not_active:'この予約はすでに取り消されています', bad_tel:'電話番号を正しく入力してください', missing_field:'未入力の項目があります', conflict:'選んだ時間が先ほど埋まってしまいました。別の時間をお選びください', too_soon:'直近の日時は選べません', too_long:'入力が長すぎる項目があります。短くしてお試しください', closed_day:'定休日は選べません', out_of_hours:'営業時間外です', bad_date:'日時を選び直してください', bad_link_code:'連携コードの有効期限が切れました。もう一度「LINEで連携する」からお試しください', line_auth:'LINEの認証に失敗しました。LINEアプリを開き直して、もう一度お試しください', line_already_linked:'このLINEアカウントは、すでに別のお客様情報に連携されています', not_linked:'LINE連携がまだ完了していません。メールアドレスでログインし、「登録情報」から連携してください', no_customer:'お客様情報が見つかりませんでした', bad_coupon:'このクーポンコードはご利用いただけません', coupon_used:'このクーポンは既にご利用済みです', coupon_not_applicable:'このクーポンは今回のメニューにはご利用いただけません'}[c] || '処理できませんでした。時間をおいてもう一度お試しください');
 async function mySend(){
   MY.email = (MY.email || '').trim().toLowerCase(); MY.msg = ''; MY.ok = '';
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(MY.email)){ MY.msg = errMsg('bad_email'); render(); return; }

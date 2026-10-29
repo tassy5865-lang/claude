@@ -441,6 +441,10 @@ const A = {
 };
 try{ A.token = sessionStorage.getItem('kohaku_admin') || ''; }catch(e){}
 const saveTok = () => { try{ sessionStorage.setItem('kohaku_admin', A.token); }catch(e){} };
+// 前にログインに成功した端末の印。ロックが外部の人の失敗に巻き込まれないよう、サーバーが端末ごとに数える
+const DEV_KEY = 'kohaku_admin_device';
+const getDevice = () => { try{ return localStorage.getItem(DEV_KEY) || ''; }catch(e){ return ''; } };
+const saveDevice = d => { try{ if(d) localStorage.setItem(DEV_KEY, d); }catch(e){} };
 const errMsg = c => ({bad_password:'パスワードが違います', locked:'失敗が続いたため、10分ほど待ってからやり直してください', not_configured:'パスワードが未設定です。スクリプト プロパティに ADMIN_PASSWORD を追加してください', conflict:'他の予約と時間が重なっています', already_cancelled:'キャンセル済みの予約は変更できません', not_found:'予約が見つかりません', bad_source:'流入元が正しくありません', too_long:'入力が長すぎます(Instagram名は100文字、メモは1000文字まで)', closed_day:'定休日は設定できません', bad_date:'過去の日付は設定できません', multi_day_event:'複数日にまたがる休業予定は、Googleカレンダーから解除してください', bad_tel:'電話番号を正しく入力してください', bad_email:'メールアドレスを正しく入力してください'}[c] || '処理できませんでした。時間をおいてもう一度お試しください');
 
 /* ---------- data ---------- */
@@ -959,9 +963,9 @@ function render(){
 async function login(){
   A.busy = true; A.pwMsg = ''; render();
   try{
-    const j = await api('adminLogin', {password:A.pw});
+    const j = await api('adminLogin', {password:A.pw, device:getDevice()});
     if(!j.ok) throw new Error(j.error);
-    A.token = j.token; A.pw = ''; saveTok();
+    A.token = j.token; A.pw = ''; saveTok(); saveDevice(j.device);
   } catch(e){ A.pwMsg = errMsg(e.message); }
   A.busy = false; render();
 }

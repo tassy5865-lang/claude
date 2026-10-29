@@ -809,11 +809,18 @@ function adminAnalytics_(d) {
 }
 
 /* ---------- 検証 ---------- */
+/** 公開された受け口なので、入力の長さに上限を設ける(シート・メール・カレンダーを荒らされないため) */
+const INPUT_MAX = { name: 40, kana: 60, tel: 20, email: 200, note: 1000, visit: 20 };
+function tooLong_(d) {
+  return Object.keys(INPUT_MAX).some(function (k) { return String(d[k] == null ? '' : d[k]).length > INPUT_MAX[k]; });
+}
+
 function validate_(d) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(d.date || '')) return 'bad_date';
   if (!/^\d{2}:\d{2}$/.test(d.time || '')) return 'bad_time';
   if (!(d.minutes >= 10 && d.minutes <= 300)) return 'bad_minutes';
   if (!d.menuName || !d.name || !d.kana) return 'missing_field';
+  if (tooLong_(d)) return 'too_long';
   if (!/^0\d{9,10}$/.test(String(d.tel || '').replace(/[-\s\u3000]/g, ''))) return 'bad_tel';
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email || '')) return 'bad_email';
 
@@ -1225,6 +1232,7 @@ function migrate_() {
 function updateProfile_(email, d) {
   const name = String(d.name || '').trim(), kana = String(d.kana || '').trim(), tel = String(d.tel || '').trim();
   if (!name || !kana) return { ok: false, error: 'missing_field' };
+  if (tooLong_({ name: name, kana: kana, tel: tel })) return { ok: false, error: 'too_long' };
   if (!/^0\d{9,10}$/.test(tel.replace(/[-\s\u3000]/g, ''))) return { ok: false, error: 'bad_tel' };
   const id = upsertCustomer_(email, name, kana, tel);
   const c = findCustomer_(email);
@@ -1261,20 +1269,39 @@ function coupons_(email) {
  * 管理画面(admin.html)
  *  パスワードは コード内ではなく「スクリプト プロパティ ADMIN_PASSWORD」に保存します。
  * ========================================================= */
+/** 長さが違っても同じ時間で比べる(パスワードを時間差から推測されないため) */
+function safeEqual_(a, b) {
+  a = String(a); b = String(b);
+  let diff = a.length ^ b.length;
+  for (let i = 0; i < Math.max(a.length, b.length); i++) diff |= (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0);
+  return diff === 0;
+}
+/** ログインに成功した端末に渡す「見覚えのある端末」の印(署名つき・状態を持たない)。有効なら端末IDを返す */
+function adminDeviceId_(device) {
+  const m = /^([0-9a-f]{32})\.([\w-]+)$/.exec(String(device || ''));
+  return m && safeEqual_(linkSign_('adm-device.' + m[1]), m[2]) ? m[1] : '';
+}
+/**
+ * ログイン失敗は5回で10分ロック。ただし、全員共通のロックだと誰かにわざと失敗を重ねられて店主が締め出されるため、
+ * 「前にログインに成功した端末」は端末ごとに数える(外部の人のロックに巻き込まれない)。
+ */
 function adminLogin_(d) {
   const pw = PropertiesService.getScriptProperties().getProperty('ADMIN_PASSWORD');
   if (!pw) return { ok: false, error: 'not_configured' };
   const cache = CacheService.getScriptCache();
-  const tries = Number(cache.get('adm_try') || 0);
+  const dev = adminDeviceId_(d.device);
+  const tryKey = dev ? 'adm_try_d:' + dev : 'adm_try';
+  const tries = Number(cache.get(tryKey) || 0);
   if (tries >= 5) return { ok: false, error: 'locked' };
-  if (String(d.password || '') !== pw) {
-    cache.put('adm_try', String(tries + 1), 600);
+  if (!safeEqual_(d.password || '', pw)) {
+    cache.put(tryKey, String(tries + 1), 600);
     return { ok: false, error: 'bad_password' };
   }
-  cache.remove('adm_try');
+  cache.remove(tryKey);
   const token = Utilities.getUuid();
   cache.put('adm:' + token, '1', 21600);   // 6時間
-  return { ok: true, token: token };
+  const id = dev || Utilities.getUuid().replace(/-/g, '');
+  return { ok: true, token: token, device: id + '.' + linkSign_('adm-device.' + id) };
 }
 function adminAuth_(d) {
   return d.token && CacheService.getScriptCache().get('adm:' + d.token) === '1';
