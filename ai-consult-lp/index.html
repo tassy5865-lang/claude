@@ -227,16 +227,17 @@
             <h3>フォームで相談する</h3>
             <label>
               お名前
-              <input type="text" name="name" required>
+              <input type="text" name="name" required maxlength="40" autocomplete="name">
             </label>
             <label>
               メールアドレス
-              <input type="email" name="email" required>
+              <input type="email" name="email" required maxlength="200" autocomplete="email">
             </label>
             <label>
               相談内容
-              <textarea name="message" rows="4" required></textarea>
+              <textarea name="message" rows="4" required maxlength="2000"></textarea>
             </label>
+            <div class="hp-field" aria-hidden="true"><label>ウェブサイト(入力しないでください)<input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
             <button type="submit" class="btn-primary">送信する</button>
             <p id="form-status" role="status"></p>
           </form>

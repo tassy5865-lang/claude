@@ -316,3 +316,6 @@ section { padding-block: calc(var(--space-section) / 2); }
 .footer-links { display: flex; gap: 16px; }
 .footer-links a { color: var(--text-muted); text-decoration: none; }
 .footer-links a:hover { color: var(--text); }
+
+/* ボット対策の見えない入力欄(画面の外に置く。display:none だと見抜かれるため) */
+.hp-field { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }

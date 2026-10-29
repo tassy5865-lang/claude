@@ -82,23 +82,76 @@ function notify_(data, sheetUrl) {
   MailApp.sendEmail(to, "【AIコンサルLP】お問い合わせ: " + (name || "(名前なし)"), body, options);
 }
 
-function doPost(e) {
-  const data = JSON.parse(e.postData.contents);
-  const sheet = getSheet_();
-  sheet.appendRow([
-    new Date(),
-    data.name || "",
-    data.email || "",
-    data.message || "",
-  ]);
+// ---- 受け口の防御(公開URLなので、誰でも何度でも送れる前提で守る) ----
+const LIMITS = { name: 40, email: 200, message: 2000 };
+const RATE = { perEmailPerHour: 3, perHour: 20, perDay: 60 }; // メール上限(約100通/日)を使い切られないため
 
-  // 通知に失敗しても、シートへの記録と送信者への応答は成功のままにする
+// 前後の空白・制御文字を除き、長さを制限する
+function clean_(value, max) {
+  return String(value == null ? "" : value).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, "").trim().slice(0, max);
+}
+
+// スプレッドシートで式として実行されないよう、先頭が = + - @ のときは ' を付けて文字にする
+function safeCell_(s) {
+  return /^[=+\-@\t\r]/.test(s) ? "'" + s : s;
+}
+
+// CacheService のカウンタで回数を数え、上限を超えたら true
+function overLimit_(key, limit, ttlSec) {
+  const cache = CacheService.getScriptCache();
+  const n = Number(cache.get(key) || 0) + 1;
+  cache.put(key, String(n), ttlSec);
+  return n > limit;
+}
+
+function reply_(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function doPost(e) {
+  let data;
   try {
-    notify_(data, sheet.getParent().getUrl());
+    data = JSON.parse(e.postData.contents);
   } catch (err) {
-    console.error("通知メールの送信に失敗: " + err);
+    return reply_({ ok: false, error: "bad_request" });
+  }
+  if (!data || typeof data !== "object") return reply_({ ok: false, error: "bad_request" });
+
+  // ハニーポット: 人には見えない欄に入力があれば、ボットとみなして何も保存・通知しない
+  if (data.website) return reply_({ ok: true });
+
+  const name = clean_(data.name, LIMITS.name);
+  const email = clean_(data.email, LIMITS.email);
+  const message = clean_(data.message, LIMITS.message);
+  if (!name || !message) return reply_({ ok: false, error: "missing_field" });
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return reply_({ ok: false, error: "bad_email" });
+
+  // 回数制限(同じメールの連投・全体の大量送信)。カウンタの更新を競合させないようロックする
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const hour = Utilities.formatDate(new Date(), "Asia/Tokyo", "yyyyMMddHH");
+    const day = hour.slice(0, 8);
+    if (
+      overLimit_("mail:" + hour + ":" + email.toLowerCase(), RATE.perEmailPerHour, 3600) ||
+      overLimit_("all:" + hour, RATE.perHour, 3600) ||
+      overLimit_("all:" + day, RATE.perDay, 86400)
+    ) {
+      return reply_({ ok: false, error: "busy" });
+    }
+
+    const sheet = getSheet_();
+    sheet.appendRow([new Date(), safeCell_(name), safeCell_(email), safeCell_(message)]);
+
+    // 通知に失敗しても、シートへの記録と送信者への応答は成功のままにする
+    try {
+      notify_({ name: name, email: email, message: message }, sheet.getParent().getUrl());
+    } catch (err) {
+      console.error("通知メールの送信に失敗: " + err);
+    }
+  } finally {
+    lock.releaseLock();
   }
 
-  return ContentService.createTextOutput(JSON.stringify({ ok: true }))
-    .setMimeType(ContentService.MimeType.JSON);
+  return reply_({ ok: true });
 }

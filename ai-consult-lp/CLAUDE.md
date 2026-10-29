@@ -14,6 +14,7 @@
 - `main.js` — スムーススクロール・フォーム送信（GAS_ENDPOINT未設定時はLINE誘導メッセージを表示）
 - `assets/profile-qr.png` — LINE公式QR（自己紹介HPから流用）
 - `assets/social-card.png` — OGP画像(1200x630)。`assets/build-og-card.py` で再生成（`python build-og-card.py social-card.png`、Pillow+Windows日本語フォント使用）
+- `tests/contact-form.test.mjs` — GAS受け口のテスト(`node --test tests/contact-form.test.mjs`)。受け口の防御: ハニーポット欄 `website`・入力長の上限・先頭が `=+-@` の無害化・回数制限(同一メール3件/時、全体20件/時・60件/日。メール上限を守るため)。**GASを修正したら貼り直し→新バージョンで更新が必要(2026-10-29の防御強化は未デプロイ)**
 - `gas/contact-form.gs` — 問い合わせフォーム受信用GAS Web Appソース（スプレッドシートに追記＋通知メール。宛先は既定でデプロイした本人、`NOTIFY_TO` で変更可。修正したらGAS側へ貼り直し、エディタで `testNotify` を1回実行して権限承認→「デプロイを管理」で新バージョンに更新）
 
 ## 状態

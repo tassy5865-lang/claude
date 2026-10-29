@@ -32,6 +32,7 @@ document.addEventListener("DOMContentLoaded", () => {
       name: formData.get("name"),
       email: formData.get("email"),
       message: formData.get("message"),
+      website: formData.get("website"), // ボット対策の見えない欄(人は入力しない)
     };
 
     try {
