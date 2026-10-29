@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>CSVかんたん集計 - Nexsist.cs Demo</title>
+  <style>
+    :root { color-scheme: light; font-family: system-ui, sans-serif; background: #f4f7fa; color: #102a43; }
+    body { margin: 0; padding: 32px 16px; }
+    main { max-width: 720px; margin: auto; background: white; padding: 28px; border-radius: 16px; box-shadow: 0 8px 28px #102a4318; }
+    h1 { margin-top: 0; font-size: 1.7rem; }
+    textarea { box-sizing: border-box; width: 100%; min-height: 180px; padding: 12px; border: 1px solid #9fb3c8; border-radius: 8px; font: inherit; }
+    button { margin-top: 12px; padding: 10px 20px; border: 0; border-radius: 8px; background: #087e8b; color: white; font-weight: 700; cursor: pointer; }
+    button:focus-visible, textarea:focus-visible { outline: 3px solid #4fd1c5; outline-offset: 2px; }
+    #result { margin-top: 18px; padding: 14px; border-radius: 8px; background: #e6fffa; }
+    #result.error { background: #fff1f0; color: #9b2c2c; }
+    .note { color: #486581; font-size: .92rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>CSVかんたん集計</h1>
+    <p>ヘッダー付きCSVを貼り付けると、2列目の件数と合計を計算します。</p>
+    <label for="csvInput">CSVデータ</label>
+    <textarea id="csvInput" spellcheck="false">項目,金額
+A,100
+B,250</textarea>
+    <button id="calculate" type="button">集計する</button>
+    <div id="result" role="status" aria-live="polite">ここに結果が表示されます。</div>
+    <p class="note">入力内容はブラウザ内だけで処理し、保存・外部送信しません。</p>
+  </main>
+  <script>
+    function summarizeCsv(text) {
+      // Keep each non-empty line paired with its ORIGINAL 1-based line number so
+      // error messages point at the real row even when blank lines were skipped.
+      const rows = [];
+      text.split(/\r?\n/).forEach((line, i) => {
+        const trimmed = line.trim();
+        if (trimmed !== '') rows.push({ lineNo: i + 1, text: trimmed });
+      });
+      if (rows.length < 2) throw new Error('ヘッダーと1行以上のデータを入力してください。');
+      let total = 0;
+      for (let i = 1; i < rows.length; i += 1) {
+        const cells = rows[i].text.split(',').map(cell => cell.trim());
+        const value = Number(cells[1]);
+        if (cells.length < 2 || cells[1] === '' || !Number.isFinite(value)) {
+          throw new Error(`${rows[i].lineNo}行目の金額を確認してください。`);
+        }
+        total += value;
+      }
+      // Each cell is finite, but the running sum can still overflow to Infinity.
+      if (!Number.isFinite(total)) {
+        throw new Error('合計が計算可能な範囲を超えました。金額の桁数を確認してください。');
+      }
+      return { count: rows.length - 1, total };
+    }
+
+    document.getElementById('calculate').addEventListener('click', () => {
+      const result = document.getElementById('result');
+      try {
+        const summary = summarizeCsv(document.getElementById('csvInput').value);
+        result.className = '';
+        result.textContent = `件数: ${summary.count}件 / 合計: ${summary.total.toLocaleString('ja-JP')}`;
+      } catch (error) {
+        result.className = 'error';
+        result.textContent = error.message;
+      }
+    });
+  </script>
+</body>
+</html>

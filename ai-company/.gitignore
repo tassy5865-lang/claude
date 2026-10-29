@@ -1,0 +1,37 @@
+# 秘密情報・ローカル設定
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*credentials*.json
+*service-account*.json
+secrets/
+
+# 顧客実データ・一時出力（ダミーは fixtures/ に置く）
+private/
+customer-data/
+sales/private/
+**/*.local.md
+**/*.local.json
+tmp/
+temp/
+*.log
+
+# OS / エディタ
+.DS_Store
+Thumbs.db
+
+# 検証・ビルド出力
+.review/
+validation-report.json
+
+
+# トークン入りファイルの取りこぼし防止（line.local.json.json 等）
+*.local.json*
+*.local.md*
+WORK_LOG.md
+logs/
+.claude/settings.local.json

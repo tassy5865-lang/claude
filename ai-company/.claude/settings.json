@@ -1,0 +1,41 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./secrets/**)",
+      "Read(./customer-data/**)",
+      "Read(./projects/**/private/**)",
+      "Read(./sales/private/*.local.md)",
+      "Read(./sales/private/*.local.json)",
+      "Read(./sales/private/**/*.local.md)",
+      "Read(./sales/private/**/*.local.json)",
+      "Read(./scripts/line.local.json)"
+    ],
+    "allow": [
+      "Read(./sales/private/proposals/**)",
+      "Read(./sales/private/evidence.md)",
+      "Read(./sales/private/leads.md)",
+      "Edit(./sales/private/proposals/**)",
+      "Edit(./sales/private/leads.md)",
+      "Read(./WORK_LOG.md)",
+      "Edit(./WORK_LOG.md)",
+      "Read(./scripts/daily-state.local.json)",
+      "Edit(./scripts/daily-state.local.json)",
+      "WebSearch",
+      "WebFetch",
+      "mcp__claude-in-chrome",
+      "Bash(powershell -NoProfile -ExecutionPolicy Bypass -File scripts/notify-line.ps1:*)",
+      "Bash(python scripts/validate_scaffold.py)",
+      "Bash(python:*)",
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(date)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(~/bin/codex.cmd:*)",
+      "Bash(codex:*)"
+    ]
+  }
+}
