@@ -4,21 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI-OCR文字起こしツール</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tailwind CSS (3.4.17 を vendor/ に置いている。配信元CDNがCORS非対応でSRIを付けられないため、自前で配信) -->
+    <script src="vendor/tailwindcss-play-3.4.17.js"></script>
     <!-- React & ReactDOM -->
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" integrity="sha384-DGyLxAyjq0f9SPpVevD6IgztCFlnMF6oW/XQGmfe+IsZ8TqEiDrcHkMLKI6fiB/Z" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" integrity="sha384-gTGxhz21lVGYNMcdJOyq01Edg0jhn/c22nsx0kyqP0TxaV5WVdsSH1fSDUf5YJj1" crossorigin="anonymous"></script>
     <!-- Babel for JSX -->
-    <script src="https://unpkg.com/@babel/standalone@7.23.9/babel.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone@7.23.9/babel.min.js" integrity="sha384-ku9eM40vVDsFUiERorrdlHlF0LIhdfn716M7TntM72Uo98T7LWiogD3hNenPx8Q0" crossorigin="anonymous"></script>
     <!-- PDF.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <!-- SheetJS (Excel読み書き) -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" integrity="sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e" crossorigin="anonymous"></script>
+    <!-- SheetJS (Excel読み書き。0.18.5 には既知の脆弱性があり、修正版は npm ではなく cdn.sheetjs.com で配布) -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" integrity="sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT" crossorigin="anonymous"></script>
     <!-- PapaParse (CSV解析) -->
-    <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
+    <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js" integrity="sha384-D/t0ZMqQW31H3az8ktEiNb39wyKnS82iFY52QPACM+IjKW3jDUhyIgh2PApRqJZs" crossorigin="anonymous"></script>
     <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/lucide@1.64.0/dist/umd/lucide.min.js" integrity="sha384-9MiiLUrW0MIaAfzHscFHD5g9ze4bGp/Y/NfrdqbIBuf2WgPmLvyqLCqvfdqsXwYd" crossorigin="anonymous"></script>
 
     <style>
         body { font-family: 'Inter', 'Noto Sans JP', sans-serif; background-color: #05070c; margin: 0; }
@@ -71,7 +71,7 @@
                 throw new Error("Gemini APIキーが設定されていません。画面右上の設定アイコンから入力してください。");
             }
             const model = modelName || 'gemini-flash-latest';
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
             const delays = [1000, 2000, 4000, 8000, 16000];
 
             const images = Array.isArray(imageBase64s) ? imageBase64s : [imageBase64s];
@@ -98,7 +98,7 @@
                 try {
                     const response = await fetch(url, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey }, // キーはURLに載せない(履歴・ログに残るため)
                         body: JSON.stringify(payload)
                     });
 
@@ -152,7 +152,7 @@
                 throw new Error("Gemini APIキーが設定されていません。画面右上の設定アイコンから入力してください。");
             }
             const model = modelName || 'gemini-flash-latest';
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
             const delays = [1000, 2000, 4000, 8000, 16000];
 
             const payload = {
@@ -169,7 +169,7 @@
                 try {
                     const response = await fetch(url, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey }, // キーはURLに載せない(履歴・ログに残るため)
                         body: JSON.stringify(payload)
                     });
 

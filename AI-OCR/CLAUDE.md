@@ -39,3 +39,9 @@ Gemini APIキーはユーザーがブラウザ内で入力し、localStorageに�
 ## 進め方の注意
 
 機能は一気に全部作らず、ユーザーが指定した1カテゴリずつ進める。
+
+## セキュリティ(2026-10-29)
+- 外部ライブラリはバージョン固定+SRI(`integrity`)付き。更新するときは新しいファイルのsha384を計算して差し替える(`openssl dgst -sha384 -binary FILE | openssl base64 -A`)。`@latest`・`@18` のような範囲指定は使わない
+- Tailwind(play CDN)は配信元がCORS非対応でSRIを付けられないため `vendor/tailwindcss-play-3.4.17.js` を自前配信。SheetJS は 0.18.5(既知の脆弱性あり)から 0.20.3(cdn.sheetjs.com)に更新
+- Gemini APIキーはURLではなくヘッダー `x-goog-api-key` で送る(履歴・ログに残さない)。キーは引き続き利用者のブラウザの localStorage に保存される(Google側でキーにAPI/リファラ制限を付けること)
+- PDF.js のワーカー(`pdf.worker.min.js`)はWorker生成のためSRIを付けられない(cdnjs固定バージョンのまま)
