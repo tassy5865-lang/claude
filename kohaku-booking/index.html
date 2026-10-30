@@ -325,7 +325,7 @@ let OPTIONS = [
 const OMAKASE_MINS = [60,90,120];
 /** メニューが1件も無いカテゴリは出さない(メニュー改訂で空になったカテゴリ対策) */
 // 初回限定メニューの紹介記事(メニューID → URL)。詳細画面から新しいタブで開く
-const MENU_LINKS = {first80:'https://note.com/kohaku5339/n/nc3c2f3a6e31f', first100:'https://note.com/kohaku5339/n/nc3c2f3a6e31f'};
+const MENU_LINKS = {first80:'https://note.com/kohaku5339/n/ned04214a94f3', first100:'https://note.com/kohaku5339/n/ned04214a94f3'};
 const visibleCats = () => CATS.filter(c => MENU.some(m => m.cats.includes(c.id)));
 /** そのメニューで選べるオプション(menus が空なら全メニュー共通)。料金の高い順、同額はシートの並び順 */
 const optsFor = m => OPTIONS.filter(o => !o.menus || !o.menus.length || o.menus.includes(m.id)).sort((x, y) => (+y.price || 0) - (+x.price || 0));
