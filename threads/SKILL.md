@@ -1,5 +1,5 @@
 ---
-name: threads-growth
+name: threads
 description: Threads投稿の作成・リライト・分析・比較・攻略情報確認・仮説検証を一問一答で支援する対話型Skill。
 ---
 
