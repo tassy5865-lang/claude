@@ -58,3 +58,18 @@ test('giant display words are decorative', () => {
   assert.ok(giants.length >= 3);
   assert.ok(giants.every((t) => t.includes('aria-hidden="true"')));
 });
+
+test('skip link moves focus to main content', () => {
+  assert.match(html, /<a class="skip-link" href="#main">/);
+  assert.match(html, /id="main"[^>]*tabindex="-1"|tabindex="-1"[^>]*id="main"/);
+  const js = readFileSync(new URL('../main.js', import.meta.url), 'utf8');
+  assert.match(js, /target\.focus\(\{\s*preventScroll:\s*true\s*\}\)/);
+});
+
+test('copy only states verified facts (review 2026-11-14)', () => {
+  const text = html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<[^>]+>/g, ' ');
+  assert.doesNotMatch(text, /お客様のご希望/);                 // 匿名は本人判断
+  assert.doesNotMatch(text, /実際に作って公開しているもの/);     // Lステップ・予約デモは公開物ではない
+  assert.match(text, /予約システムとのLINE連携（開発・テスト済み）/);
+  assert.doesNotMatch(html, /alt="[^"]*ご予約ボタン/);           // 画像に予約ボタンは写っていない
+});

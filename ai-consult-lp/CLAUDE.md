@@ -11,7 +11,7 @@
 ## 構成
 - `index.html` — ヘッダー/ヒーロー/悩み/サービス(4)/実績/流れ/相談/フッター
 - `styles.css` — 全スタイル（`:root` のトークン）
-- `main.js` — スムーススクロール・フォーム送信（変更しない）
+- `main.js` — スムーススクロール（tabindex付きの移動先にはフォーカスも移す）・フォーム送信（送信部分と `GAS_ENDPOINT` は変更しない）
 - `assets/work-kohaku.png` — 琥珀サイトのトップ画面（2026-11-14 撮影、1200×504）
 - `assets/profile-qr.png` — LINE公式QR
 - `assets/social-card.png` — OGP画像(1200×630)。`assets/build-og-card.py` で再生成（`python build-og-card.py social-card.png`、Pillow＋Windowsの Yu Gothic／Arial Black）

@@ -9,6 +9,8 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!target) return;
       event.preventDefault();
       target.scrollIntoView({ behavior: "smooth" });
+      // 「本文へ移動」などでキーボードのフォーカスも移す(tabindex="-1" の要素)
+      if (target.hasAttribute("tabindex")) target.focus({ preventScroll: true });
     });
   });
 
