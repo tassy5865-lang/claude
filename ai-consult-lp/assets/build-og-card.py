@@ -84,7 +84,7 @@ gradient_text(img, (x0, 282), "まるごと仕組みに。", GOTH_B(64), VIOLET_
 d = ImageDraw.Draw(img, "RGBA")
 
 # sub + signature
-d.text((x0, 420), "HP制作・予約システム・LINE／Lステップ・AIツール", font=GOTH_B(24), fill=TEXT + (220,))
+d.text((x0, 420), "HP・予約・LINE／Lステップ・Threads・AIツール", font=GOTH_B(24), fill=TEXT + (220,))
 d.text((x0, 470), "設計から運用まで、ひとりの担当者がつなげて作ります", font=GOTH_M(22), fill=(190, 190, 220, 255))
 
 for i in range(132):

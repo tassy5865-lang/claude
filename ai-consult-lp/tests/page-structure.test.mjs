@@ -35,12 +35,12 @@ test('brand and meta are Nexsist', () => {
   const ld = JSON.parse(html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1]);
   const svc = ld['@graph'].find((n) => n['@type'] === 'ProfessionalService');
   assert.equal(svc.name, 'Nexsist');
-  assert.equal(svc.hasOfferCatalog.itemListElement.length, 4);
+  assert.equal(svc.hasOfferCatalog.itemListElement.length, 5);
   assert.ok(ld['@graph'].some((n) => n['@type'] === 'Person' && n.name === '田代 裕貴'));
 });
 
 test('four services and works are present', () => {
-  for (const s of ['ホームページ制作', '予約システム', 'LINE公式・Lステップ構築', 'AIツール開発・業務自動化']) assert.ok(html.includes(s), s);
+  for (const s of ['ホームページ制作', '予約システム', 'LINE公式・Lステップ構築', 'Threads自動運用', 'AIツール開発・業務自動化']) assert.ok(html.includes(s), s);
   assert.ok(html.includes('https://tassy5865-lang.github.io/kohaku-site/'));
   assert.ok(html.includes('https://tassy5865-lang.github.io/claude/kohaku-booking/index.html'));
   assert.ok(html.includes('本番'));
@@ -80,4 +80,11 @@ test('in-page scroll respects prefers-reduced-motion', () => {
   const js = readFileSync(new URL('../main.js', import.meta.url), 'utf8');
   assert.match(js, /matchMedia\(\s*["']\(prefers-reduced-motion: reduce\)["']\s*\)/);
   assert.doesNotMatch(js, /scrollIntoView\(\{\s*behavior:\s*"smooth"\s*\}\)/); // 常に smooth にしない
+});
+
+test('threads service keeps a human approval step', () => {
+  const card = html.match(/<article class="glass service-card">(?:(?!<\/article>)[\s\S])*?Threads自動運用[\s\S]*?<\/article>/);
+  assert.ok(card, 'Threads card');
+  assert.match(card[0], /承認/);
+  assert.equal([...html.matchAll(/class="glass service-card"/g)].length, 5);
 });
