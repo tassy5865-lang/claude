@@ -44,7 +44,9 @@ test('four services and works are present', () => {
   assert.ok(html.includes('https://tassy5865-lang.github.io/kohaku-site/'));
   assert.ok(html.includes('https://tassy5865-lang.github.io/claude/kohaku-booking/index.html'));
   assert.ok(html.includes('本番'));
-  for (const u of ['AI-OCR/index.html', '%E5%96%B6%E6%A5%ADAI%E7%A4%BE%E5%93%A1', '%E9%A2%A8%E8%A2%8B']) assert.ok(html.includes(u), u);
+  for (const u of ['AI-OCR/index.html', '%E9%A2%A8%E8%A2%8B']) assert.ok(html.includes(u), u);
+  // 営業AI社員のカードは掲載しない(2026-11-14 本人指示)
+  assert.ok(!html.includes('営業AI社員') && !html.includes('%E5%96%B6%E6%A5%ADAI%E7%A4%BE%E5%93%A1'));
 });
 
 test('no outcome numbers or prices', () => {
