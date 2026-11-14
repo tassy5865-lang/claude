@@ -25,18 +25,37 @@ function describeResult(result) {
     }
   }
   if (result && result.type === "timeout") {
-    return { ok: false, clear: false, text: "送信に時間がかかり、受付を確認できませんでした。受け付けられている可能性もあります。もう一度「送信する」を押しても二重には登録されません。心配な場合はLINEからお知らせください。" };
+    return { ok: false, clear: false, text: "送信に時間がかかり、受付を確認できませんでした。受け付けられている可能性もあります。もう一度「送信する」を押すと、同じ送信として照合するので重複しにくくなっています。心配な場合はLINEからお知らせください。" };
   }
   if (result && result.type === "unreadable") {
     return { ok: false, clear: false, text: "受付の完了を確認できませんでした。重複を避けるため、LINEから「フォームを送った」とお知らせください。" };
   }
-  return { ok: false, clear: false, text: "通信が途切れ、受付を確認できませんでした。受け付けられている可能性もあります。入力内容は残しているので、接続を確かめてもう一度「送信する」を押してください（二重には登録されません）。心配な場合はLINEからお知らせください。" };
+  return { ok: false, clear: false, text: "通信が途切れ、受付を確認できませんでした。受け付けられている可能性もあります。入力内容は残しているので、接続を確かめてもう一度「送信する」を押してください（同じ送信として照合するので、重複しにくくなっています）。心配な場合はLINEからお知らせください。" };
 }
 
 // 送信ごとの受付ID。受け口は同じIDの再送を1件として扱う
 function newRequestId() {
   if (window.crypto && typeof window.crypto.randomUUID === "function") return window.crypto.randomUUID();
   return "r" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 12);
+}
+
+// 受付を確認できなかった送信のIDを、ページを開き直しても同じ内容なら使えるように一時保存する
+const PENDING_KEY = "nexsist-form-pending";
+function loadPending() {
+  try {
+    const v = JSON.parse(window.sessionStorage.getItem(PENDING_KEY) || "null");
+    return v && typeof v.key === "string" && typeof v.id === "string" ? v : null;
+  } catch (e) {
+    return null;
+  }
+}
+function savePending(v) {
+  try {
+    if (v) window.sessionStorage.setItem(PENDING_KEY, JSON.stringify(v));
+    else window.sessionStorage.removeItem(PENDING_KEY);
+  } catch (e) {
+    /* 保存できない環境では、このページを開いている間だけIDを使い回す */
+  }
 }
 
 window.NexsistForm = { describeResult };
@@ -65,7 +84,10 @@ document.addEventListener("DOMContentLoaded", () => {
   // (JavaScriptが動かないときに、入力内容がURLに付いて送られるのを防ぐ)
   button.disabled = false;
   // 受付を確認できなかった送信の内容とID。同じ内容の再送には同じIDを使う
-  let pending = null;
+  let pending = loadPending();
+  const fields = ["name", "email", "message"].map((k) => form.elements[k]).filter(Boolean);
+  // 送信中は入力欄を書き換えられないようにする(送った内容と画面の内容を食い違わせない)
+  const lockFields = (on) => fields.forEach((el) => { el.readOnly = on; });
 
   const show = (message, state) => {
     status.textContent = message;
@@ -91,8 +113,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const contentKey = JSON.stringify([payload.name, payload.email, payload.message]);
     if (!pending || pending.key !== contentKey) pending = { key: contentKey, id: newRequestId() };
     payload.requestId = pending.id;
+    savePending(pending);
 
     button.disabled = true;
+    lockFields(true);
     form.setAttribute("aria-busy", "true");
     show("送信中です…", "pending");
 
@@ -123,8 +147,10 @@ document.addEventListener("DOMContentLoaded", () => {
     if (view.clear) {
       form.reset();
       pending = null;
+      savePending(null);
     }
     if (view.field && form.elements[view.field]) form.elements[view.field].focus();
+    lockFields(false);
     button.disabled = false;
     form.removeAttribute("aria-busy");
   });

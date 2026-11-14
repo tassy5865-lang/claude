@@ -324,3 +324,25 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 @media (max-width: 640px) {
   .about-points strong { display: block; min-width: 0; }
 }
+
+/* ---------- codex 3回目の指摘を受けた追加 ---------- */
+.note-link { margin-left: 10px; color: var(--muted); font-size: 12px; text-decoration: underline; text-underline-offset: 3px; }
+.pain-to { margin-top: 10px; font-size: 13px; font-weight: 700; color: var(--cyan-soft) !important; }
+.pain .section-lead { margin-top: 8px; }
+.case-story { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 16px 0 4px; font-size: 13px; }
+.case-story dt { color: var(--cyan-soft); font-weight: 700; white-space: nowrap; }
+.case-story dd { margin: 0; color: var(--muted); }
+.case-shot a { display: block; border-radius: 10px; }
+.case-shot a:hover img { border-color: rgba(126, 231, 255, 0.5); }
+.scope { margin-top: 16px; padding: 24px; }
+.scope h3 { font-size: 17px; margin-bottom: 12px; }
+.scope-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.scope-grid p { font-size: 14px; color: var(--muted); }
+.scope-grid .scope-label { color: var(--text); font-weight: 700; font-size: 13px; margin-bottom: 4px; }
+.line-privacy { margin-top: 14px; font-size: 12px; color: var(--muted); }
+.line-privacy a, .form-privacy a { color: var(--cyan-soft); }
+@media (max-width: 640px) {
+  .scope-grid { grid-template-columns: 1fr; }
+  .case-story { grid-template-columns: 1fr; gap: 2px; }
+  .case-story dd { margin-bottom: 8px; }
+}

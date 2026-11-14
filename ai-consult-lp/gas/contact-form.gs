@@ -12,13 +12,18 @@
  *      実行するユーザー: 自分 / アクセスできるユーザー: 全員
  * 6. 発行された「ウェブアプリのURL」を ai-consult-lp/main.js の GAS_ENDPOINT に設定する
  *
+ * 7. (任意・推奨) 「トリガー」→ 関数 resendFailedNotifications を「時間主導型・1時間おき」で追加すると、
+ *    通知メールに失敗した問い合わせ(「通知」列が「失敗」)を自動で送り直す
+ *
  * コードを修正したら「デプロイを管理」→ 編集 → 新バージョンで更新する
  * （新規デプロイするとURLが変わるので注意）。
  * 新しい権限（メール送信）を追加した場合は、更新の前にエディタで関数を1回実行して承認しておく。
  */
 
 const SHEET_NAME = "お問い合わせ";
-const HEADERS = ["受信日時", "お名前", "メールアドレス", "相談内容"];
+const HEADERS = ["受信日時", "お名前", "メールアドレス", "相談内容", "受付ID", "通知"];
+const COL = { name: 2, email: 3, message: 4, requestId: 5, notified: 6 };
+const DUP_SCAN_ROWS = 500; // 受付IDの重複確認で見る直近の行数
 
 // 通知メールの宛先。空のままなら、このスクリプトを実行するアカウント（デプロイした本人）に送る。
 // 別のアドレスに送りたいときだけ設定する（例: "you@example.com"）。
@@ -32,7 +37,40 @@ function getSheet_() {
     sheet = ss.insertSheet(SHEET_NAME);
     sheet.appendRow(HEADERS);
   }
+  // 以前の4列のシートにも「受付ID」「通知」の見出しを足す
+  const head = sheet.getRange(1, 1, 1, HEADERS.length).getValues()[0];
+  if (head[COL.requestId - 1] !== HEADERS[COL.requestId - 1] || head[COL.notified - 1] !== HEADERS[COL.notified - 1]) {
+    sheet.getRange(1, COL.requestId, 1, 2).setValues([[HEADERS[COL.requestId - 1], HEADERS[COL.notified - 1]]]);
+  }
   return sheet;
+}
+
+// 直近の行に同じ受付IDがあるか(キャッシュが消えていても重複を見つけるため、シートに残したIDで確かめる)
+function hasRequestId_(sheet, requestId) {
+  const last = sheet.getLastRow();
+  if (last < 2) return false;
+  const from = Math.max(2, last - DUP_SCAN_ROWS + 1);
+  const ids = sheet.getRange(from, COL.requestId, last - from + 1, 1).getValues();
+  return ids.some(function (r) { return r[0] === requestId; });
+}
+
+// 通知メールに失敗した行(「通知」列が「失敗」)を送り直す。
+// 時間主導トリガー(例: 1時間ごと)に登録するか、エディタから手動で実行する
+function resendFailedNotifications() {
+  const sheet = getSheet_();
+  const last = sheet.getLastRow();
+  if (last < 2) return;
+  const values = sheet.getRange(2, 1, last - 1, HEADERS.length).getValues();
+  const url = sheet.getParent().getUrl();
+  values.forEach(function (row, i) {
+    if (row[COL.notified - 1] !== "失敗") return;
+    try {
+      notify_({ name: row[COL.name - 1], email: row[COL.email - 1], message: row[COL.message - 1] }, url);
+      sheet.getRange(i + 2, COL.notified).setValue("送信済");
+    } catch (err) {
+      console.error("通知の再送に失敗: " + err);
+    }
+  });
 }
 
 // 初回に1回だけ手動実行して、権限承認と見出し行の作成を済ませる
@@ -146,15 +184,22 @@ function doPost(e) {
   if (!name || !message) return reply_({ ok: false, error: "missing_field" });
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return reply_({ ok: false, error: "bad_email" });
 
-  // 回数制限(同じメールの連投・全体の大量送信)。カウンタの更新を競合させないようロックする
+  // 回数制限・重複確認・保存はロックの中で行う(カウンタとシートの更新を競合させない)。
+  // ロックが取れないときは「混雑」としてJSONで返す
   const lock = LockService.getScriptLock();
-  lock.waitLock(10000);
+  try {
+    lock.waitLock(10000);
+  } catch (err) {
+    return reply_({ ok: false, error: "busy" });
+  }
+  const requestId = validRequestId_(data.requestId);
+  let sheet, row;
   try {
     const hour = Utilities.formatDate(new Date(), "Asia/Tokyo", "yyyyMMddHH");
     const day = hour.slice(0, 8);
-    const requestId = validRequestId_(data.requestId);
     const cache = CacheService.getScriptCache();
-    if (requestId && cache.get("req:" + requestId)) {
+    sheet = getSheet_();
+    if (requestId && (cache.get("req:" + requestId) || hasRequestId_(sheet, requestId))) {
       return reply_({ ok: true, duplicate: true });
     }
     if (
@@ -165,18 +210,22 @@ function doPost(e) {
       return reply_({ ok: false, error: "busy" });
     }
 
-    const sheet = getSheet_();
-    sheet.appendRow([new Date(), safeCell_(name), safeCell_(email), safeCell_(message)]);
+    sheet.appendRow([new Date(), safeCell_(name), safeCell_(email), safeCell_(message), requestId, "未送信"]);
+    row = sheet.getLastRow();
+    SpreadsheetApp.flush(); // 保存を確定させてからロックを外す
     if (requestId) cache.put("req:" + requestId, "1", REQUEST_ID_TTL);
-
-    // 通知に失敗しても、シートへの記録と送信者への応答は成功のままにする
-    try {
-      notify_({ name: name, email: email, message: message }, sheet.getParent().getUrl());
-    } catch (err) {
-      console.error("通知メールの送信に失敗: " + err);
-    }
   } finally {
     lock.releaseLock();
+  }
+
+  // 通知はロックの外で送る(メールが遅くても、ほかの問い合わせを待たせない)。
+  // 失敗しても受付は成功のまま。「通知」列に結果を残し、resendFailedNotifications で送り直せる
+  try {
+    notify_({ name: name, email: email, message: message }, sheet.getParent().getUrl());
+    sheet.getRange(row, COL.notified).setValue("送信済");
+  } catch (err) {
+    console.error("通知メールの送信に失敗: " + err);
+    sheet.getRange(row, COL.notified).setValue("失敗");
   }
 
   return reply_({ ok: true });

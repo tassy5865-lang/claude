@@ -4,17 +4,32 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
-function load() {
-  const rows = [];
+function load(opts = {}) {
+  const header = ['受信日時', 'お名前', 'メールアドレス', '相談内容']; // 既存シート(旧4列)を再現
+  const rows = []; // 2行目以降(データ行)。シートの n 行目 = rows[n - 2]
   const mails = [];
+  const events = [];
   const store = new Map();
   const props = new Map();
   const clock = { hour: '2026102912' };
+  const mailer = { fail: !!opts.mailFails };
+  const rowAt = (n) => (n === 1 ? header : rows[n - 2]);
+  const sheet = {
+    appendRow: (r) => { events.push('append'); rows.push([...r]); },
+    getLastRow: () => rows.length + 1,
+    getRange: (r, c, nr = 1, nc = 1) => ({
+      getValues: () => Array.from({ length: nr }, (_, i) => Array.from({ length: nc }, (_, j) => rowAt(r + i)?.[c - 1 + j] ?? '')),
+      setValue: (v) => { rowAt(r)[c - 1] = v; },
+      setValues: (vals) => vals.forEach((vr, i) => vr.forEach((v, j) => { rowAt(r + i)[c - 1 + j] = v; })),
+    }),
+    getParent: () => ({ getUrl: () => 'https://sheet' }),
+  };
   const sandbox = {
-    console,
-    SpreadsheetApp: { getActiveSpreadsheet: () => ({
-      getSheetByName: () => ({ appendRow: (r) => rows.push(r), getParent: () => ({ getUrl: () => 'https://sheet' }) }),
-      getUrl: () => 'https://sheet' }) },
+    console: { log() {}, error() {}, warn() {} },
+    SpreadsheetApp: {
+      getActiveSpreadsheet: () => ({ getSheetByName: () => sheet, getUrl: () => 'https://sheet' }),
+      flush: () => events.push('flush'),
+    },
     CacheService: { getScriptCache: () => ({
       get: (k) => store.get(k) ?? null,
       put: (k, v, ttl) => { if (ttl > 21600) throw new Error('Exception: Invalid argument: expirationInSeconds'); store.set(k, v); },
@@ -25,16 +40,19 @@ function load() {
       getKeys: () => [...props.keys()],
       deleteProperty: (k) => { props.delete(k); },
     }) },
-    LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) },
+    LockService: { getScriptLock: () => ({
+      waitLock() { if (opts.lockFails) throw new Error('Lock timeout'); events.push('lock'); },
+      releaseLock() { events.push('release'); },
+    }) },
     ContentService: { MimeType: { JSON: 'json' }, createTextOutput: (t) => ({ t, setMimeType() { return this; } }) },
     Utilities: { formatDate: () => clock.hour },
-    MailApp: { sendEmail: (...a) => mails.push(a) },
+    MailApp: { sendEmail: (...a) => { if (mailer.fail) throw new Error('mail quota'); events.push('mail'); mails.push(a); } },
     Session: { getEffectiveUser: () => ({ getEmail: () => 'owner@example.com' }) },
   };
   vm.createContext(sandbox);
   vm.runInContext(readFileSync(new URL('../gas/contact-form.gs', import.meta.url), 'utf8') + '\nthis.doPost = doPost;', sandbox);
   const post = (body) => JSON.parse(sandbox.doPost({ postData: { contents: typeof body === 'string' ? body : JSON.stringify(body) } }).t);
-  return { post, rows, mails, props, clock };
+  return { post, rows, mails, props, clock, store, events, header, mailer, sandbox };
 }
 const ok = { name: '山田', email: 'a@example.com', message: 'こんにちは' };
 
@@ -116,4 +134,50 @@ test('malformed request ids are ignored, not trusted', () => {
   post({ ...ok, requestId: '<script>' });
   post({ ...ok, requestId: '<script>' });
   assert.equal(rows.length, 2);
+});
+
+// 2026-11-14 codex 3回目の指摘: 重複防止をキャッシュ頼みにしない・通知失敗を拾う・ロックの持ち方
+test('a resent request id is still detected after the cache is cleared', () => {
+  const { post, rows, store } = load();
+  assert.equal(post({ ...ok, requestId: 'req-keep-0001' }).ok, true);
+  store.clear(); // キャッシュは期限前にも消えることがある
+  const again = post({ ...ok, requestId: 'req-keep-0001' });
+  assert.equal(again.ok, true);
+  assert.equal(again.duplicate, true);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0][4], 'req-keep-0001');
+});
+
+test('old sheets get the request id and notification columns', () => {
+  const { post, header } = load();
+  post(ok);
+  assert.equal(header[4], '受付ID');
+  assert.equal(header[5], '通知');
+});
+
+test('lock is released before the notification mail is sent', () => {
+  const { post, events } = load();
+  post(ok);
+  const i = (e) => events.indexOf(e);
+  assert.ok(i('append') > i('lock'));
+  assert.ok(i('release') > i('append'));
+  assert.ok(i('mail') > i('release'), events.join(','));
+});
+
+test('lock timeout returns a JSON busy reply and stores nothing', () => {
+  const { post, rows } = load({ lockFails: true });
+  assert.deepEqual(post(ok), { ok: false, error: 'busy' });
+  assert.equal(rows.length, 0);
+});
+
+test('a failed notification is marked and can be resent later', () => {
+  const { post, rows, mails, mailer, sandbox } = load({ mailFails: true });
+  assert.equal(post(ok).ok, true); // 保存できていれば受付は成功
+  assert.equal(rows[0][5], '失敗');
+  mailer.fail = false;
+  sandbox.resendFailedNotifications();
+  assert.equal(mails.length, 1);
+  assert.equal(rows[0][5], '送信済');
+  sandbox.resendFailedNotifications(); // 送信済みは再送しない
+  assert.equal(mails.length, 1);
 });

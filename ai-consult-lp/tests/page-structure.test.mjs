@@ -131,3 +131,35 @@ test('privacy notice covers both LINE and the form', () => {
   assert.match(block[0], /フォーム/);
   assert.match(block[0], /削除/);
 });
+
+// ---- codex 3回目の指摘 + 運営者の決定(2026-11-14: 公開と操作説明までが標準、差し替え・機能追加は別見積もり) ----
+test('after-delivery scope is stated plainly', () => {
+  const text = html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<[^>]+>/g, ' ');
+  assert.match(text, /公開と操作説明まで/);
+  assert.match(text, /文章や画像の差し替え/);
+  assert.match(text, /機能の追加/);
+  assert.match(text, /別途お見積もり/);
+  assert.doesNotMatch(text, /運用まで伴走|設計から運用まで/);
+});
+
+test('privacy notice is linked from the hero, LINE and the form', () => {
+  assert.ok((html.match(/href="#privacy"/g) || []).length >= 3);
+  assert.match(html.match(/<section id="hero"[\s\S]*?<\/section>/)[0], /href="#privacy"/);
+  assert.match(html.match(/<div class="glass contact-line">[\s\S]*?<\/div>/)[0], /href="#privacy"/);
+  assert.match(html.match(/<form id="contact-form"[\s\S]*?<\/form>/)[0], /href="#privacy"/);
+});
+
+test('each pain points to a matching service', () => {
+  const pains = [...html.matchAll(/<li class="glass pain-item">[\s\S]*?<\/li>/g)].map((m) => m[0]);
+  assert.equal(pains.length, 4);
+  assert.ok(pains.every((p) => /class="pain-to"/.test(p)));
+});
+
+test('kohaku case explains the problem, scope and design choice', () => {
+  const kohaku = html.match(/<article class="case-feature">[\s\S]*?<\/article>/)[0];
+  for (const w of ['相談時の課題', '担当範囲', '設計の工夫', '現在']) assert.ok(kohaku.includes(w), w);
+});
+
+test('tool screenshots open at full size', () => {
+  for (const f of ['assets/work-ocr.png', 'assets/work-filedata.png']) assert.match(html, new RegExp(`<a href="${f}"[^>]*><img src="${f}"`));
+});
