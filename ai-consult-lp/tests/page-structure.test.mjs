@@ -40,7 +40,7 @@ test('brand and meta are Nexsist', () => {
 });
 
 test('four services and works are present', () => {
-  for (const s of ['ホームページ制作', '予約システム', 'LINE公式・Lステップ構築', 'Threads自動運用', 'AIツール開発・業務自動化']) assert.ok(html.includes(s), s);
+  for (const s of ['ホームページ制作', '予約システム', 'LINE公式・Lステップ構築', 'Threads投稿の自動化構築', 'AIツール開発・業務自動化']) assert.ok(html.includes(s), s);
   assert.ok(html.includes('https://tassy5865-lang.github.io/kohaku-site/'));
   assert.ok(html.includes('https://tassy5865-lang.github.io/claude/kohaku-booking/index.html'));
   assert.ok(html.includes('本番'));
@@ -83,7 +83,7 @@ test('in-page scroll respects prefers-reduced-motion', () => {
 });
 
 test('threads service keeps a human approval step', () => {
-  const card = html.match(/<article class="glass service-card">(?:(?!<\/article>)[\s\S])*?Threads自動運用[\s\S]*?<\/article>/);
+  const card = html.match(/<article class="glass service-card">(?:(?!<\/article>)[\s\S])*?Threads投稿の自動化構築[\s\S]*?<\/article>/);
   assert.ok(card, 'Threads card');
   assert.match(card[0], /承認/);
   assert.equal([...html.matchAll(/class="glass service-card"/g)].length, 5);
@@ -162,4 +162,17 @@ test('kohaku case explains the problem, scope and design choice', () => {
 
 test('tool screenshots open at full size', () => {
   for (const f of ['assets/work-ocr.png', 'assets/work-filedata.png']) assert.match(html, new RegExp(`<a href="${f}"[^>]*><img src="${f}"`));
+});
+
+// codex 4回目の指摘: Threads は「構築」と分かる名前に、納品後に誰が操作するかも明記。琥珀の画像は切り抜かない
+test('threads is named as a build service and says who operates it', () => {
+  assert.doesNotMatch(html, /Threads自動運用/);
+  const card = html.match(/<article class="glass service-card">(?:(?!<\/article>)[\s\S])*?Threads投稿の自動化構築[\s\S]*?<\/article>/)[0];
+  assert.match(card, /納品後/);
+});
+
+test('kohaku screenshot is not cropped to the text height', () => {
+  const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+  const rule = css.match(/\.case-media img \{[^}]*\}/)[0];
+  assert.doesNotMatch(rule, /object-fit:\s*cover/);
 });

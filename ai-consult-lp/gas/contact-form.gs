@@ -12,8 +12,9 @@
  *      実行するユーザー: 自分 / アクセスできるユーザー: 全員
  * 6. 発行された「ウェブアプリのURL」を ai-consult-lp/main.js の GAS_ENDPOINT に設定する
  *
- * 7. (任意・推奨) 「トリガー」→ 関数 resendFailedNotifications を「時間主導型・1時間おき」で追加すると、
- *    通知メールに失敗した問い合わせ(「通知」列が「失敗」)を自動で送り直す
+ * 7. 関数「installResendTrigger」を1回実行する(推奨)。1時間ごとに resendFailedNotifications が動き、
+ *    通知メールが届いていない問い合わせ(「通知」列が「失敗」や、止まったままの「未送信」)を送り直す。
+ *    何度実行してもトリガーは1つだけ。手動で送り直したいときは resendFailedNotifications を実行する
  *
  * コードを修正したら「デプロイを管理」→ 編集 → 新バージョンで更新する
  * （新規デプロイするとURLが変わるので注意）。
@@ -21,9 +22,15 @@
  */
 
 const SHEET_NAME = "お問い合わせ";
-const HEADERS = ["受信日時", "お名前", "メールアドレス", "相談内容", "受付ID", "通知"];
-const COL = { name: 2, email: 3, message: 4, requestId: 5, notified: 6 };
-const DUP_SCAN_ROWS = 500; // 受付IDの重複確認で見る直近の行数
+const HEADERS = ["受信日時", "お名前", "メールアドレス", "相談内容", "受付ID", "通知", "再送回数", "最終再送"];
+const COL = { received: 1, name: 2, email: 3, message: 4, requestId: 5, notified: 6, tries: 7, lastTry: 8 };
+// 「通知」列の状態: 未送信(保存直後) → 送信済 / 失敗。再送ジョブが処理中の行は「送信中」
+const RESEND = {
+  perRun: 10,                    // 1回の実行で送り直す最大件数(メールの1日の上限を使い切らない)
+  maxTries: 5,                   // 再送の上限回数。超えた行はシートで確認して手動で対応する
+  pendingAfterMs: 10 * 60 * 1000, // 保存から10分たっても「未送信」の行は、途中で止まったとみなして回収する
+  staleClaimMs: 30 * 60 * 1000,  // 「送信中」のまま30分たった行も回収する
+};
 
 // 通知メールの宛先。空のままなら、このスクリプトを実行するアカウント（デプロイした本人）に送る。
 // 別のアドレスに送りたいときだけ設定する（例: "you@example.com"）。
@@ -37,40 +44,77 @@ function getSheet_() {
     sheet = ss.insertSheet(SHEET_NAME);
     sheet.appendRow(HEADERS);
   }
-  // 以前の4列のシートにも「受付ID」「通知」の見出しを足す
+  // 以前の4列・6列のシートにも、足りない見出し(受付ID〜最終再送)を足す
   const head = sheet.getRange(1, 1, 1, HEADERS.length).getValues()[0];
-  if (head[COL.requestId - 1] !== HEADERS[COL.requestId - 1] || head[COL.notified - 1] !== HEADERS[COL.notified - 1]) {
-    sheet.getRange(1, COL.requestId, 1, 2).setValues([[HEADERS[COL.requestId - 1], HEADERS[COL.notified - 1]]]);
+  const extra = HEADERS.slice(COL.requestId - 1);
+  if (extra.some(function (h, i) { return head[COL.requestId - 1 + i] !== h; })) {
+    sheet.getRange(1, COL.requestId, 1, extra.length).setValues([extra]);
   }
   return sheet;
 }
 
-// 直近の行に同じ受付IDがあるか(キャッシュが消えていても重複を見つけるため、シートに残したIDで確かめる)
+// 同じ受付IDの行があるか。キャッシュが消えていても重複を見つけられるよう、シートの受付ID列を全部見る
 function hasRequestId_(sheet, requestId) {
   const last = sheet.getLastRow();
   if (last < 2) return false;
-  const from = Math.max(2, last - DUP_SCAN_ROWS + 1);
-  const ids = sheet.getRange(from, COL.requestId, last - from + 1, 1).getValues();
+  const ids = sheet.getRange(2, COL.requestId, last - 1, 1).getValues();
   return ids.some(function (r) { return r[0] === requestId; });
 }
 
-// 通知メールに失敗した行(「通知」列が「失敗」)を送り直す。
-// 時間主導トリガー(例: 1時間ごと)に登録するか、エディタから手動で実行する
+function ageMs_(value, now) {
+  return value && typeof value.getTime === "function" ? now - value.getTime() : Infinity;
+}
+
+// 通知メールが届いていない問い合わせを送り直す(installResendTrigger で1時間ごとに実行)。
+// 対象: 「失敗」の行、保存から時間がたっても「未送信」の行、「送信中」のまま止まった行。
+// 二重送信を避けるため、短いロックの中で対象を「送信中」にして確保し、メールはロックの外で送る
 function resendFailedNotifications() {
-  const sheet = getSheet_();
-  const last = sheet.getLastRow();
-  if (last < 2) return;
-  const values = sheet.getRange(2, 1, last - 1, HEADERS.length).getValues();
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) return; // ほかの受付・再送が動いているときは次の回に回す
+  const claimed = [];
+  let sheet;
+  try {
+    sheet = getSheet_();
+    const last = sheet.getLastRow();
+    if (last < 2) return;
+    const values = sheet.getRange(2, 1, last - 1, HEADERS.length).getValues();
+    const now = Date.now();
+    for (let i = 0; i < values.length && claimed.length < RESEND.perRun; i++) {
+      const r = values[i];
+      const state = r[COL.notified - 1];
+      const tries = Number(r[COL.tries - 1] || 0);
+      if (tries >= RESEND.maxTries) continue;
+      const due =
+        state === "失敗" ||
+        (state === "未送信" && ageMs_(r[COL.received - 1], now) >= RESEND.pendingAfterMs) ||
+        (state === "送信中" && ageMs_(r[COL.lastTry - 1], now) >= RESEND.staleClaimMs);
+      if (!due) continue;
+      sheet.getRange(i + 2, COL.notified, 1, 3).setValues([["送信中", tries + 1, new Date()]]);
+      claimed.push({ row: i + 2, data: { name: r[COL.name - 1], email: r[COL.email - 1], message: r[COL.message - 1] } });
+    }
+    SpreadsheetApp.flush();
+  } finally {
+    lock.releaseLock();
+  }
+  if (!claimed.length) return;
   const url = sheet.getParent().getUrl();
-  values.forEach(function (row, i) {
-    if (row[COL.notified - 1] !== "失敗") return;
+  claimed.forEach(function (c) {
     try {
-      notify_({ name: row[COL.name - 1], email: row[COL.email - 1], message: row[COL.message - 1] }, url);
-      sheet.getRange(i + 2, COL.notified).setValue("送信済");
+      notify_(c.data, url);
+      sheet.getRange(c.row, COL.notified).setValue("送信済");
     } catch (err) {
       console.error("通知の再送に失敗: " + err);
+      sheet.getRange(c.row, COL.notified).setValue("失敗");
     }
   });
+}
+
+// 再送ジョブ(1時間ごと)を登録する。エディタから1回実行する。何度実行しても1つだけ
+function installResendTrigger() {
+  const exists = ScriptApp.getProjectTriggers().some(function (t) {
+    return t.getHandlerFunction() === "resendFailedNotifications";
+  });
+  if (!exists) ScriptApp.newTrigger("resendFailedNotifications").timeBased().everyHours(1).create();
 }
 
 // 初回に1回だけ手動実行して、権限承認と見出し行の作成を済ませる
@@ -93,7 +137,7 @@ function oneLine_(value, max) {
 
 function notify_(data, sheetUrl) {
   const to = NOTIFY_TO || Session.getEffectiveUser().getEmail();
-  if (!to) return;
+  if (!to) throw new Error("通知先のメールアドレスが取得できません(NOTIFY_TO を設定してください)");
 
   const name = oneLine_(data.name, 40);
   const email = oneLine_(data.email, 200);
@@ -210,10 +254,16 @@ function doPost(e) {
       return reply_({ ok: false, error: "busy" });
     }
 
-    sheet.appendRow([new Date(), safeCell_(name), safeCell_(email), safeCell_(message), requestId, "未送信"]);
+    sheet.appendRow([new Date(), safeCell_(name), safeCell_(email), safeCell_(message), requestId, "未送信", 0, ""]);
     row = sheet.getLastRow();
     SpreadsheetApp.flush(); // 保存を確定させてからロックを外す
-    if (requestId) cache.put("req:" + requestId, "1", REQUEST_ID_TTL);
+    if (requestId) {
+      try {
+        cache.put("req:" + requestId, "1", REQUEST_ID_TTL); // 重複確認の近道。失敗してもシートで確かめられる
+      } catch (err) {
+        console.error("受付IDのキャッシュに失敗: " + err);
+      }
+    }
   } finally {
     lock.releaseLock();
   }

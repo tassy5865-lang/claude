@@ -12,7 +12,9 @@ function load(opts = {}) {
   const store = new Map();
   const props = new Map();
   const clock = { hour: '2026102912' };
-  const mailer = { fail: !!opts.mailFails };
+  const mailer = { fail: !!opts.mailFails, onSend: null };
+  const owner = { email: opts.noRecipient ? '' : 'owner@example.com' };
+  const triggers = [];
   const rowAt = (n) => (n === 1 ? header : rows[n - 2]);
   const sheet = {
     appendRow: (r) => { events.push('append'); rows.push([...r]); },
@@ -32,7 +34,11 @@ function load(opts = {}) {
     },
     CacheService: { getScriptCache: () => ({
       get: (k) => store.get(k) ?? null,
-      put: (k, v, ttl) => { if (ttl > 21600) throw new Error('Exception: Invalid argument: expirationInSeconds'); store.set(k, v); },
+      put: (k, v, ttl) => {
+        if (ttl > 21600) throw new Error('Exception: Invalid argument: expirationInSeconds');
+        if (opts.cacheFails && k.startsWith('req:')) throw new Error('cache down');
+        store.set(k, v);
+      },
     }) },
     PropertiesService: { getScriptProperties: () => ({
       getProperty: (k) => (props.has(k) ? props.get(k) : null),
@@ -42,17 +48,26 @@ function load(opts = {}) {
     }) },
     LockService: { getScriptLock: () => ({
       waitLock() { if (opts.lockFails) throw new Error('Lock timeout'); events.push('lock'); },
+      tryLock() { if (opts.lockFails) return false; events.push('lock'); return true; },
       releaseLock() { events.push('release'); },
     }) },
     ContentService: { MimeType: { JSON: 'json' }, createTextOutput: (t) => ({ t, setMimeType() { return this; } }) },
     Utilities: { formatDate: () => clock.hour },
-    MailApp: { sendEmail: (...a) => { if (mailer.fail) throw new Error('mail quota'); events.push('mail'); mails.push(a); } },
-    Session: { getEffectiveUser: () => ({ getEmail: () => 'owner@example.com' }) },
+    MailApp: { sendEmail: (...a) => {
+      if (mailer.fail) throw new Error('mail quota');
+      events.push('mail'); mails.push(a);
+      if (mailer.onSend) { const f = mailer.onSend; mailer.onSend = null; f(); }
+    } },
+    Session: { getEffectiveUser: () => ({ getEmail: () => owner.email }) },
+    ScriptApp: {
+      getProjectTriggers: () => triggers,
+      newTrigger: (fn) => { const t = { fn, getHandlerFunction: () => fn }; return { timeBased: () => ({ everyHours: (h) => ({ create: () => { t.hours = h; triggers.push(t); return t; } }) }) }; },
+    },
   };
   vm.createContext(sandbox);
   vm.runInContext(readFileSync(new URL('../gas/contact-form.gs', import.meta.url), 'utf8') + '\nthis.doPost = doPost;', sandbox);
   const post = (body) => JSON.parse(sandbox.doPost({ postData: { contents: typeof body === 'string' ? body : JSON.stringify(body) } }).t);
-  return { post, rows, mails, props, clock, store, events, header, mailer, sandbox };
+  return { post, rows, mails, props, clock, store, events, header, mailer, sandbox, triggers };
 }
 const ok = { name: '山田', email: 'a@example.com', message: 'こんにちは' };
 
@@ -180,4 +195,77 @@ test('a failed notification is marked and can be resent later', () => {
   assert.equal(rows[0][5], '送信済');
   sandbox.resendFailedNotifications(); // 送信済みは再送しない
   assert.equal(mails.length, 1);
+});
+
+// ---- codex 4回目の指摘: 通知の状態管理(未送信→送信中→送信済/失敗)と回収 ----
+const minutesAgo = (m) => new Date(Date.now() - m * 60000);
+
+test('a cache failure after saving does not stop the notification', () => {
+  const { post, rows, mails } = load({ cacheFails: true });
+  assert.equal(post({ ...ok, requestId: 'req-cache-0001' }).ok, true);
+  assert.equal(mails.length, 1);
+  assert.equal(rows[0][5], '送信済');
+});
+
+test('a missing recipient is recorded as failed, never as sent', () => {
+  const { post, rows, mails } = load({ noRecipient: true });
+  assert.equal(post(ok).ok, true);
+  assert.equal(mails.length, 0);
+  assert.equal(rows[0][5], '失敗');
+});
+
+test('stale 未送信 rows are recovered by the resend job; fresh ones are left alone', () => {
+  const { post, rows, mails, sandbox } = load();
+  post(ok);
+  post({ ...ok, email: 'b@example.com' });
+  mails.length = 0;
+  rows[0][5] = '未送信'; rows[0][0] = minutesAgo(30); // 保存後に止まった行
+  rows[1][5] = '未送信'; rows[1][0] = minutesAgo(1);  // 送信処理の最中かもしれない行
+  sandbox.resendFailedNotifications();
+  assert.equal(mails.length, 1);
+  assert.equal(rows[0][5], '送信済');
+  assert.equal(rows[1][5], '未送信');
+});
+
+test('the resend job claims rows so an overlapping run does not mail them twice', () => {
+  const { post, rows, mails, mailer, sandbox } = load();
+  post(ok);
+  mails.length = 0;
+  rows[0][5] = '失敗';
+  mailer.onSend = () => sandbox.resendFailedNotifications(); // 1通目の送信中に、もう1つの実行が始まる
+  sandbox.resendFailedNotifications();
+  assert.equal(mails.length, 1);
+  assert.equal(rows[0][5], '送信済');
+});
+
+test('the resend job caps rows per run and gives up after the attempt limit', () => {
+  const { post, rows, mails, mailer, sandbox, clock } = load();
+  for (let i = 0; i < 15; i++) { clock.hour = '20261114' + String(i).padStart(2, '0'); post({ ...ok, email: `c${i}@example.com` }); }
+  mails.length = 0;
+  rows.forEach((r) => { r[5] = '失敗'; });
+  mailer.fail = true;
+  sandbox.resendFailedNotifications();
+  assert.equal(rows.filter((r) => Number(r[6]) === 1).length, 10); // 1回の実行で10件まで
+  for (let k = 0; k < 10; k++) { rows.forEach((r) => { r[7] = minutesAgo(120); }); sandbox.resendFailedNotifications(); }
+  assert.ok(rows.every((r) => Number(r[6]) <= 5), 'attempt limit');
+  assert.ok(rows.every((r) => r[5] === '失敗'));
+});
+
+test('duplicate detection checks the whole request id column', () => {
+  const { post, rows, store } = load();
+  post({ ...ok, requestId: 'req-old-00001' });
+  for (let i = 0; i < 600; i++) rows.push([new Date(), 'x', 'x@example.com', 'x', `req-fill-${i}`, '送信済', 0, '']);
+  store.clear();
+  const again = post({ ...ok, requestId: 'req-old-00001' });
+  assert.equal(again.duplicate, true);
+  assert.equal(rows.length, 601);
+});
+
+test('installResendTrigger adds one hourly trigger and is safe to run twice', () => {
+  const { sandbox, triggers } = load();
+  sandbox.installResendTrigger();
+  sandbox.installResendTrigger();
+  assert.equal(triggers.length, 1);
+  assert.equal(triggers[0].fn, 'resendFailedNotifications');
+  assert.equal(triggers[0].hours, 1);
 });
