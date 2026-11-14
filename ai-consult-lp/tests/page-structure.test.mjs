@@ -73,3 +73,9 @@ test('copy only states verified facts (review 2026-11-14)', () => {
   assert.match(text, /予約システムとのLINE連携（開発・テスト済み）/);
   assert.doesNotMatch(html, /alt="[^"]*ご予約ボタン/);           // 画像に予約ボタンは写っていない
 });
+
+test('in-page scroll respects prefers-reduced-motion', () => {
+  const js = readFileSync(new URL('../main.js', import.meta.url), 'utf8');
+  assert.match(js, /matchMedia\(\s*["']\(prefers-reduced-motion: reduce\)["']\s*\)/);
+  assert.doesNotMatch(js, /scrollIntoView\(\{\s*behavior:\s*"smooth"\s*\}\)/); // 常に smooth にしない
+});

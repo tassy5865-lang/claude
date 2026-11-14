@@ -8,7 +8,9 @@ document.addEventListener("DOMContentLoaded", () => {
       const target = document.querySelector(link.getAttribute("href"));
       if (!target) return;
       event.preventDefault();
-      target.scrollIntoView({ behavior: "smooth" });
+      // 「動きを減らす」設定の人には、なめらかなスクロールをせずに一瞬で移動する
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      target.scrollIntoView({ behavior: reduce ? "auto" : "smooth" });
       // 「本文へ移動」などでキーボードのフォーカスも移す(tabindex="-1" の要素)
       if (target.hasAttribute("tabindex")) target.focus({ preventScroll: true });
     });
