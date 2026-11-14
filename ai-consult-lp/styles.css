@@ -187,7 +187,7 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .case-points li { font-size: 14px; color: var(--muted); padding-left: 14px; border-left: 2px solid rgba(126, 231, 255, 0.5); }
 .case-points strong { display: block; color: var(--text); font-size: 14px; }
 .case-links { display: flex; flex-wrap: wrap; gap: 18px; margin-top: 20px; }
-.case-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.case-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 .case { padding: 22px 20px; display: flex; flex-direction: column; gap: 8px; }
 .case h3 { font-size: 17px; }
 .case p:not(.case-tag) { color: var(--muted); font-size: 14px; flex: 1; }
