@@ -1,0 +1,74 @@
+// main.js の「送信結果 → 画面表示」の判定を確かめるテスト。
+// 受け口(GAS)の返事を読んで、受付できた時だけ「送信しました」と入力消去をする。
+// 実行: node --test ai-consult-lp/tests/*.test.mjs
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import vm from 'node:vm';
+
+const src = readFileSync(new URL('../main.js', import.meta.url), 'utf8');
+
+function load() {
+  const sandbox = { document: { addEventListener() {} }, console };
+  sandbox.window = sandbox;
+  vm.createContext(sandbox);
+  vm.runInContext(src, sandbox);
+  return sandbox.NexsistForm;
+}
+
+test('main.js exposes describeResult', () => {
+  const f = load();
+  assert.equal(typeof f?.describeResult, 'function');
+});
+
+test('only an ok:true reply counts as received and clears the form', () => {
+  const { describeResult } = load();
+  const r = describeResult({ type: 'response', body: { ok: true } });
+  assert.equal(r.ok, true);
+  assert.equal(r.clear, true);
+  assert.match(r.text, /受け付けました/);
+  assert.match(r.text, /2営業日/);
+});
+
+test('field errors keep the input and point to the field', () => {
+  const { describeResult } = load();
+  const email = describeResult({ type: 'response', body: { ok: false, error: 'bad_email' } });
+  assert.equal(email.ok, false);
+  assert.equal(email.clear, false);
+  assert.equal(email.field, 'email');
+  assert.match(email.text, /メールアドレス/);
+  const missing = describeResult({ type: 'response', body: { ok: false, error: 'missing_field' } });
+  assert.equal(missing.clear, false);
+  assert.match(missing.text, /入力/);
+});
+
+test('busy (rate limit) asks to wait or use LINE, keeps input', () => {
+  const { describeResult } = load();
+  const r = describeResult({ type: 'response', body: { ok: false, error: 'busy' } });
+  assert.equal(r.ok, false);
+  assert.equal(r.clear, false);
+  assert.match(r.text, /時間をおいて/);
+  assert.match(r.text, /LINE/);
+});
+
+test('network error, timeout and unreadable reply never claim success', () => {
+  const { describeResult } = load();
+  for (const type of ['network', 'timeout', 'unreadable']) {
+    const r = describeResult({ type });
+    assert.equal(r.ok, false, type);
+    assert.equal(r.clear, false, type);
+    assert.doesNotMatch(r.text, /受け付けました|送信しました/, type);
+    assert.match(r.text, /LINE/, type);
+  }
+  const unknown = describeResult({ type: 'response', body: { ok: false, error: 'something_new' } });
+  assert.equal(unknown.ok, false);
+  assert.equal(unknown.clear, false);
+});
+
+test('submit handler reads the reply instead of no-cors and guards double submit', () => {
+  assert.doesNotMatch(src, /no-cors/);
+  assert.match(src, /\.json\(\)/);
+  assert.match(src, /AbortController/);
+  assert.match(src, /\.disabled\s*=\s*true/);
+  assert.match(src, /\.disabled\s*=\s*false/);
+});

@@ -88,3 +88,31 @@ test('threads service keeps a human approval step', () => {
   assert.match(card[0], /承認/);
   assert.equal([...html.matchAll(/class="glass service-card"/g)].length, 5);
 });
+
+// codex 評価(2026-11-14)を受けた追加: 料金の考え方・本人紹介・FAQ・相談条件・個人情報
+test('page answers pre-inquiry questions (pricing, about, faq)', () => {
+  for (const id of ['pricing', 'about', 'faq']) assert.match(html, new RegExp(`<section id="${id}"`), id);
+  assert.match(html, /<a class="nav-item" href="#pricing">/);
+  const text = html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<[^>]+>/g, ' ');
+  assert.match(text, /ご相談・お見積もりは無料/);
+  assert.match(text, /費用が変わる/);
+  assert.match(text, /別途/);               // 外部サービス利用料・保守などの扱い
+  assert.match(text, /臨床工学技士/);       // 本人紹介
+  assert.ok((html.match(/<details/g) || []).length >= 4, 'faq items');
+});
+
+test('contact form states conditions and handles personal data', () => {
+  const form = html.match(/<form id="contact-form"[\s\S]*?<\/form>/)[0];
+  assert.equal((form.match(/必須/g) || []).length >= 3, true, '必須 marks');
+  assert.match(form, /placeholder="[^"]+"/);
+  assert.match(html, /2営業日以内/);
+  assert.match(html, /個人情報/);
+  assert.match(html, /機密/);
+  assert.match(form, /aria-live="polite"|role="status"/);
+});
+
+test('tool screenshots are labeled as sample data', () => {
+  for (const f of ['assets/work-ocr.png', 'assets/work-filedata.png']) assert.ok(html.includes(`src="${f}"`), f);
+  const caps = [...html.matchAll(/<figcaption>([^<]*)<\/figcaption>/g)].map((m) => m[1]);
+  assert.ok(caps.filter((c) => /サンプル|架空/.test(c)).length >= 2, caps.join(' | '));
+});
