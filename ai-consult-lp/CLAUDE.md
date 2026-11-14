@@ -1,28 +1,31 @@
-# AIコンサル事業LP
+# Nexsist サービスサイト（旧 AIコンサルLP）
 
-田代裕貴の個人AIコンサル事業（業務自動化・AIツール開発支援／AI活用伴走コンサル）を売り込む単体ランディングページ。
+屋号 **Nexsist**（運営：田代裕貴）のサービスサイト。ホームページ制作・予約システム・LINE公式／Lステップ構築・AIツール開発を、お店・小規模事業者向けに案内する単体ページ。フォルダ名と公開URL（`https://tassy5865-lang.github.io/claude/ai-consult-lp/`）は旧名のまま。
 
 ## 概要
 - 静的HTML/CSS/JS、ビルド不要
-- 自己紹介HP・ポートフォリオとは独立したサイト。統合するかは公開後に判断
-- デザイン: ダーク×紫〜シアンのネオングラデーション（Leonardo.ai/Runway.ml系を参照）
-- 実績セクションはAI-OCR／営業AI社員／風袋管理データツール(FileData)を実名で紹介
+- デザイン（2026-11-14 リニューアル）: ダーク(#06061a)×紫(#7b5cff)〜水色(#22d3ee)の光＋半透明カード＋大きな英字（WEB. LINE. AI.／SERVICE／WORKS…）。設計 `docs/superpowers/specs/2026-11-14-ai-consult-lp-renewal-design.md`、たたき台 `...-mockup-v1.html`
+- 大英字は装飾（`.giant`＋`aria-hidden="true"`）。縁取りは可変フォントの輪郭の重なりを隠すため `color: var(--bg); paint-order: stroke fill` で描く
+- 料金は載せない（「まずは相談」）
 
 ## 構成
-- `index.html` — 1ページ完結（ヘッダー/ヒーロー/課題提起/サービス/実績/流れ/お問い合わせ/フッター）
-- `styles.css` — グローバルスタイル
-- `main.js` — スムーススクロール・フォーム送信（GAS_ENDPOINT未設定時はLINE誘導メッセージを表示）
-- `assets/profile-qr.png` — LINE公式QR（自己紹介HPから流用）
-- `assets/social-card.png` — OGP画像(1200x630)。`assets/build-og-card.py` で再生成（`python build-og-card.py social-card.png`、Pillow+Windows日本語フォント使用）
-- `tests/contact-form.test.mjs` — GAS受け口のテスト(`node --test tests/contact-form.test.mjs`)。受け口の防御: ハニーポット欄 `website`・入力長の上限・先頭が `=+-@` の無害化・回数制限(同一メール3件/時、全体20件/時・60件/日。メール上限を守るため)。**GASを修正したら貼り直し→新バージョンで更新が必要(2026-10-29の防御強化は2026-11-14にデプロイ済み・本番テスト送信で行追加と通知メール到達を確認)**
-- `gas/contact-form.gs` — 問い合わせフォーム受信用GAS Web Appソース（スプレッドシートに追記＋通知メール。宛先は既定でデプロイした本人、`NOTIFY_TO` で変更可。修正したらGAS側へ貼り直し、エディタで `testNotify` を1回実行して権限承認→「デプロイを管理」で新バージョンに更新）
+- `index.html` — ヘッダー/ヒーロー/悩み/サービス(4)/実績/流れ/相談/フッター
+- `styles.css` — 全スタイル（`:root` のトークン）
+- `main.js` — スムーススクロール・フォーム送信（変更しない）
+- `assets/work-kohaku.png` — 琥珀サイトのトップ画面（2026-11-14 撮影、1200×504）
+- `assets/profile-qr.png` — LINE公式QR
+- `assets/social-card.png` — OGP画像(1200×630)。`assets/build-og-card.py` で再生成（`python build-og-card.py social-card.png`、Pillow＋Windowsの Yu Gothic／Arial Black）
+- `tests/` — `node --test ai-consult-lp/tests/*.test.mjs`（このNodeではディレクトリ指定 `tests/` は動かない）
+  - `contact-form.test.mjs` — GAS受け口（ハニーポット `website`・入力長上限・先頭 `=+-@` 無害化・回数制限）
+  - `page-structure.test.mjs` — フォームの id/name/maxlength、CSP 文字列、外部スクリプトなし・画像は `assets/` のみ、Nexsist のメタ/JSON-LD、4サービスと実績リンク、**数値の成果・料金を書いていないこと**、大英字が `aria-hidden`
+  - `cross-links.test.mjs` — 自己紹介HP（v2・旧版）とポートフォリオから LP へのリンク表記が Nexsist（2026.09 のお知らせ1件は過去記録として除外）
+- `gas/contact-form.gs` — 問い合わせ受信用GAS（スプレッドシート追記＋通知メール。修正したらGASに貼り直し→`testNotify`→「デプロイを管理」で新バージョン。2026-10-29 の防御強化は 2026-11-14 にデプロイ済み）
+
+## 実績欄の方針（事実ベース）
+- 成果の数値（%・倍・時間短縮・件数など）は書かない。テストで検出する
+- 琥珀：公式サイトは公開中。予約システムは「開発済み・本番切替前」（デモは `GAS_URL` 空で実データにつながらない）。LINE連携は「確認メールのリンクから連携」のみ（テスト環境で確認済み）。LINEトーク内予約は載せない
+- Lステップ連携：事業者名は伏せる。具体的な機能は聞いていないので書かない
+- 店名・スクリーンショットの掲載は本人了承済み（2026-11-14）
 
 ## 状態
-- 全8セクション実装済み・PC/スマホ幅で表示確認済み（2026-09-20）
-- GAS Web Appデプロイ済み・`main.js` の `GAS_ENDPOINT` 設定済み・実送信テスト済み（2026-09-20）
-- 実績セクションは事実ベースに修正済み（自作ツールの「こんな課題に/できること」＋公開中ツールへのリンク。成果の数値・導入事例的な表現は載せない）（2026-09-20）
-- OGP/Twitterカード・canonical・JSON-LD(WebPage/ProfessionalService/Person)・Webフォント(Inter/Noto Sans JP)設定済み（2026-09-20）。canonicalとog:imageは公開予定URL `https://tassy5865-lang.github.io/claude/ai-consult-lp/` を前提（push後に到達を要確認）
-- 未対応: 公開(push)、自己紹介HP・ポートフォリオからのリンク追加
-
-## 参照
-- 設計スペック: `docs/superpowers/specs/2026-09-18-ai-consult-lp-design.md`
+- 2026-11-14 Nexsist としてリニューアル（PC/375px 表示、コンソールエラーなしを確認）
