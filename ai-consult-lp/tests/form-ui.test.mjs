@@ -72,3 +72,93 @@ test('submit handler reads the reply instead of no-cors and guards double submit
   assert.match(src, /\.disabled\s*=\s*true/);
   assert.match(src, /\.disabled\s*=\s*false/);
 });
+
+// ---- 送信ハンドラーを実際に動かすテスト(2026-11-14 codex 指摘) ----
+function harness(fetchImpl) {
+  const listeners = {};
+  const fields = { name: '山田', email: 'a@example.com', message: '相談です', website: '' };
+  const focusLog = [];
+  const button = { disabled: true };
+  const status = { textContent: '', dataset: {} };
+  let resets = 0;
+  const elements = Object.fromEntries(Object.keys(fields).map((k) => [k, { focus: () => focusLog.push(k) }]));
+  const form = {
+    elements,
+    _attrs: {},
+    querySelector: (sel) => (sel.includes('submit') ? button : null),
+    addEventListener: (type, fn) => { listeners['form:' + type] = fn; },
+    setAttribute(k, v) { this._attrs[k] = v; },
+    removeAttribute(k) { delete this._attrs[k]; },
+    reset: () => { resets++; },
+  };
+  const sent = [];
+  const sandbox = {
+    console, setTimeout, clearTimeout, AbortController, JSON,
+    crypto: { randomUUID: (() => { let n = 0; return () => `uuid-000000000000${++n}`; })() },
+    FormData: class { constructor() {} get(k) { return fields[k]; } },
+    fetch: async (url, opts) => { sent.push(JSON.parse(opts.body)); return fetchImpl(sent.length); },
+    document: {
+      addEventListener: (type, fn) => { listeners['doc:' + type] = fn; },
+      querySelectorAll: () => [],
+      getElementById: (id) => (id === 'contact-form' ? form : id === 'form-status' ? status : null),
+    },
+    matchMedia: () => ({ matches: false }),
+  };
+  sandbox.window = sandbox;
+  vm.createContext(sandbox);
+  vm.runInContext(src, sandbox);
+  listeners['doc:DOMContentLoaded']();
+  const submit = () => listeners['form:submit']({ preventDefault() {} });
+  return { button, status, form, fields, sent, focusLog, submit, get resets() { return resets; } };
+}
+const reply = (body, ok = true, status = 200) => ({ ok, status, json: async () => body });
+
+test('button starts disabled in HTML and is enabled once the handler is ready', () => {
+  const h = harness(() => reply({ ok: true }));
+  assert.equal(h.button.disabled, false);
+});
+
+test('success clears the form; failure keeps it and re-enables the button', async () => {
+  const good = harness(() => reply({ ok: true }));
+  await good.submit();
+  assert.equal(good.resets, 1);
+  assert.equal(good.status.dataset.state, 'success');
+  assert.equal(good.button.disabled, false);
+
+  const bad = harness(() => reply({ ok: false, error: 'bad_email' }));
+  await bad.submit();
+  assert.equal(bad.resets, 0);
+  assert.equal(bad.status.dataset.state, 'error');
+  assert.deepEqual(bad.focusLog, ['email']);
+  assert.equal(bad.button.disabled, false);
+});
+
+test('an HTTP error is not treated as success even if the body says ok', async () => {
+  const h = harness(() => reply({ ok: true }, false, 500));
+  await h.submit();
+  assert.equal(h.resets, 0);
+  assert.equal(h.status.dataset.state, 'error');
+});
+
+test('unreadable reply and network failure keep the input', async () => {
+  const unreadable = harness(() => ({ ok: true, status: 200, json: async () => { throw new SyntaxError('x'); } }));
+  await unreadable.submit();
+  assert.equal(unreadable.resets, 0);
+  const network = harness(() => { throw new TypeError('Failed to fetch'); });
+  await network.submit();
+  assert.equal(network.resets, 0);
+  assert.match(network.status.textContent, /受け付けられている可能性/);
+});
+
+test('a resend after a failure reuses the same request id; a new message gets a new one', async () => {
+  let n = 0;
+  const h = harness(() => { n++; if (n === 1) throw new TypeError('Failed to fetch'); return reply({ ok: true }); });
+  await h.submit();
+  await h.submit();
+  assert.equal(h.sent.length, 2);
+  assert.ok(/^[A-Za-z0-9-]{8,64}$/.test(h.sent[0].requestId));
+  assert.equal(h.sent[0].requestId, h.sent[1].requestId);
+  h.fields.message = '別の相談です';
+  await h.submit();
+  assert.notEqual(h.sent[2].requestId, h.sent[1].requestId);
+});

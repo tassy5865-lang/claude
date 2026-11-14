@@ -341,7 +341,7 @@
             <a class="btn btn-primary" href="https://lin.ee/5SAPZeC" target="_blank" rel="noopener">LINE公式アカウントを開く</a>
             <img class="qr" src="assets/profile-qr.png" alt="LINE公式アカウントQRコード" width="140" height="140">
           </div>
-          <form id="contact-form" class="glass contact-form">
+          <form id="contact-form" class="glass contact-form" method="post">
             <h3>フォームで相談する</h3>
             <label>
               <span class="label-text">お名前 <span class="req">必須</span></span>
@@ -357,10 +357,15 @@
             </label>
             <p class="form-note">業種・困っている作業・いつ頃までに、がわかると具体的にお返事できます。この段階では、パスワードやお客様の個人情報などの機密情報は書かないでください。</p>
             <div class="hp-field" aria-hidden="true"><label>ウェブサイト(入力しないでください)<input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
-            <button type="submit" class="btn btn-primary">送信する</button>
+            <noscript><p class="form-note">フォームの送信にはJavaScriptが必要です。LINE公式アカウントからご相談ください。</p></noscript>
+            <button type="submit" class="btn btn-primary" disabled>送信する</button>
             <p id="form-status" role="status" aria-live="polite"></p>
-            <p class="form-privacy">いただいた個人情報（お名前・メールアドレス・相談内容）は、ご相談への返信と対応のためだけに使い、法令に基づく場合を除いて第三者には提供しません。</p>
+            <p class="form-privacy">送信前に、下の「個人情報の取り扱い」をご確認ください。</p>
           </form>
+        </div>
+        <div class="privacy" id="privacy">
+          <h3>個人情報の取り扱い</h3>
+          <p>LINE・フォームのどちらからのご相談も、Nexsist（運営：田代裕貴）が受け取ります。いただいたお名前・連絡先・相談内容は、ご相談への返信と、その後のご提案・お見積もり・制作のやりとりのためだけに使い、法令に基づく場合を除いて第三者には提供しません。フォームの内容は、運営者のGoogleアカウントの表計算シートに保存され、通知メールで運営者に届きます。記録の削除をご希望の場合は、LINEまたはフォームからお知らせください。</p>
         </div>
       </div>
     </section>

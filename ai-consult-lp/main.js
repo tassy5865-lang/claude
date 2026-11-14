@@ -6,6 +6,9 @@ const LINE_HINT = "お急ぎの場合はLINE公式アカウントからもご連
 // 受け口の返事(または通信の失敗)を、画面に出す文言と「入力を消すか」に変える。
 // 受付できた(ok:true)と確認できた時だけ成功扱いにし、それ以外は入力を残す。
 function describeResult(result) {
+  if (result && result.type === "response" && result.httpOk === false) {
+    return { ok: false, clear: false, text: "受付の完了を確認できませんでした（サーバーのエラー）。重複を避けるため、LINEから「フォームを送った」とお知らせください。" };
+  }
   if (result && result.type === "response" && result.body && result.body.ok === true) {
     return { ok: true, clear: true, text: "ご相談を受け付けました。2営業日以内に、ご入力のメールアドレスへご返信します。" };
   }
@@ -22,12 +25,18 @@ function describeResult(result) {
     }
   }
   if (result && result.type === "timeout") {
-    return { ok: false, clear: false, text: "送信に時間がかかっています。受付を確認できなかったため、少し時間をおいて再送するか、LINEからご連絡ください。" };
+    return { ok: false, clear: false, text: "送信に時間がかかり、受付を確認できませんでした。受け付けられている可能性もあります。もう一度「送信する」を押しても二重には登録されません。心配な場合はLINEからお知らせください。" };
   }
   if (result && result.type === "unreadable") {
     return { ok: false, clear: false, text: "受付の完了を確認できませんでした。重複を避けるため、LINEから「フォームを送った」とお知らせください。" };
   }
-  return { ok: false, clear: false, text: "通信できませんでした。入力内容は残しています。接続を確かめて再送するか、LINEからご連絡ください。" };
+  return { ok: false, clear: false, text: "通信が途切れ、受付を確認できませんでした。受け付けられている可能性もあります。入力内容は残しているので、接続を確かめてもう一度「送信する」を押してください（二重には登録されません）。心配な場合はLINEからお知らせください。" };
+}
+
+// 送信ごとの受付ID。受け口は同じIDの再送を1件として扱う
+function newRequestId() {
+  if (window.crypto && typeof window.crypto.randomUUID === "function") return window.crypto.randomUUID();
+  return "r" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 12);
 }
 
 window.NexsistForm = { describeResult };
@@ -52,6 +61,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const status = document.getElementById("form-status");
   if (!form) return;
   const button = form.querySelector('button[type="submit"]');
+  // HTMLでは送信ボタンを無効にしておき、この処理の準備ができてから押せるようにする
+  // (JavaScriptが動かないときに、入力内容がURLに付いて送られるのを防ぐ)
+  button.disabled = false;
+  // 受付を確認できなかった送信の内容とID。同じ内容の再送には同じIDを使う
+  let pending = null;
 
   const show = (message, state) => {
     status.textContent = message;
@@ -74,6 +88,9 @@ document.addEventListener("DOMContentLoaded", () => {
       message: formData.get("message"),
       website: formData.get("website"), // ボット対策の見えない欄(人は入力しない)
     };
+    const contentKey = JSON.stringify([payload.name, payload.email, payload.message]);
+    if (!pending || pending.key !== contentKey) pending = { key: contentKey, id: newRequestId() };
+    payload.requestId = pending.id;
 
     button.disabled = true;
     form.setAttribute("aria-busy", "true");
@@ -91,7 +108,7 @@ document.addEventListener("DOMContentLoaded", () => {
         signal: controller.signal,
       });
       try {
-        result = { type: "response", body: await res.json() };
+        result = { type: "response", httpOk: res.ok, body: await res.json() };
       } catch (parseError) {
         result = { type: "unreadable" };
       }
@@ -103,7 +120,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const view = describeResult(result);
     show(view.ok ? view.text : view.text + (view.text.includes("LINE") ? "" : " " + LINE_HINT), view.ok ? "success" : "error");
-    if (view.clear) form.reset();
+    if (view.clear) {
+      form.reset();
+      pending = null;
+    }
     if (view.field && form.elements[view.field]) form.elements[view.field].focus();
     button.disabled = false;
     form.removeAttribute("aria-busy");

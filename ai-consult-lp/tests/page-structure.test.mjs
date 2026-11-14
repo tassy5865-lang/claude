@@ -116,3 +116,18 @@ test('tool screenshots are labeled as sample data', () => {
   const caps = [...html.matchAll(/<figcaption>([^<]*)<\/figcaption>/g)].map((m) => m[1]);
   assert.ok(caps.filter((c) => /サンプル|架空/.test(c)).length >= 2, caps.join(' | '));
 });
+
+test('form cannot leak input into the URL without JavaScript', () => {
+  const form = html.match(/<form id="contact-form"[^>]*>/)[0];
+  assert.match(form, /method="post"/);
+  assert.match(html, /<button type="submit" class="btn btn-primary" disabled>/);
+  assert.match(html, /<noscript>[\s\S]*LINE[\s\S]*<\/noscript>/);
+});
+
+test('privacy notice covers both LINE and the form', () => {
+  const block = html.match(/<div class="privacy"[\s\S]*?<\/div>/);
+  assert.ok(block, 'shared privacy block');
+  assert.match(block[0], /LINE/);
+  assert.match(block[0], /フォーム/);
+  assert.match(block[0], /削除/);
+});

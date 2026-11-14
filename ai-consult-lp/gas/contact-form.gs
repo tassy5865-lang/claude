@@ -104,6 +104,26 @@ function overLimit_(key, limit, ttlSec) {
   return n > limit;
 }
 
+// 1日の件数はスクリプトプロパティで数える(CacheService の有効期限は最大6時間なので日次には使えない)。
+// 日付が変わったら前日までのカウンタを消す。ロックの中から呼ぶこと
+function overDailyLimit_(day, limit) {
+  const props = PropertiesService.getScriptProperties();
+  const key = "daycount:" + day;
+  props.getKeys().forEach(function (k) {
+    if (k.indexOf("daycount:") === 0 && k !== key) props.deleteProperty(k);
+  });
+  const n = Number(props.getProperty(key) || 0) + 1;
+  if (n > limit) return true;
+  props.setProperty(key, String(n));
+  return false;
+}
+
+// 同じ送信(requestId)の再送は1件として扱う。通信が切れて利用者が再送しても二重に保存・通知しない
+const REQUEST_ID_TTL = 21600; // 6時間(CacheService の上限)
+function validRequestId_(id) {
+  return typeof id === "string" && /^[A-Za-z0-9-]{8,64}$/.test(id) ? id : "";
+}
+
 function reply_(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
 }
@@ -132,16 +152,22 @@ function doPost(e) {
   try {
     const hour = Utilities.formatDate(new Date(), "Asia/Tokyo", "yyyyMMddHH");
     const day = hour.slice(0, 8);
+    const requestId = validRequestId_(data.requestId);
+    const cache = CacheService.getScriptCache();
+    if (requestId && cache.get("req:" + requestId)) {
+      return reply_({ ok: true, duplicate: true });
+    }
     if (
       overLimit_("mail:" + hour + ":" + email.toLowerCase(), RATE.perEmailPerHour, 3600) ||
       overLimit_("all:" + hour, RATE.perHour, 3600) ||
-      overLimit_("all:" + day, RATE.perDay, 86400)
+      overDailyLimit_(day, RATE.perDay)
     ) {
       return reply_({ ok: false, error: "busy" });
     }
 
     const sheet = getSheet_();
     sheet.appendRow([new Date(), safeCell_(name), safeCell_(email), safeCell_(message)]);
+    if (requestId) cache.put("req:" + requestId, "1", REQUEST_ID_TTL);
 
     // 通知に失敗しても、シートへの記録と送信者への応答は成功のままにする
     try {
