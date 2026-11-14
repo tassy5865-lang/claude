@@ -30,3 +30,9 @@ test('v2 news has the renewal entry', () => {
   const v2 = read('../../自己紹介HP/v2/index.html');
   assert.match(v2, /<time>2026\.11<\/time>[\s\S]{0,200}Nexsist/);
 });
+
+test('portfolio LP card lists five services', () => {
+  const p = read('../../portfolio/index.html');
+  assert.match(p, /5つのサービス/);
+  assert.doesNotMatch(p, /4つのサービス/);
+});

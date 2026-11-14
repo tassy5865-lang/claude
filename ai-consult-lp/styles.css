@@ -164,6 +164,8 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
   content: ""; position: absolute; inset: auto -40% -60% auto; width: 260px; height: 260px; border-radius: 50%;
   background: radial-gradient(circle, rgba(123, 92, 255, 0.22), transparent 70%); pointer-events: none;
 }
+/* 奇数枚のとき最後のカードを全幅に */
+.service-card:last-child:nth-child(odd) { grid-column: 1 / -1; }
 .service-card:hover { background: var(--glass-hover); border-color: rgba(126, 231, 255, 0.35); transform: translateY(-3px); }
 .service-num { font-family: var(--font-en); font-weight: 800; font-size: 13px; color: var(--cyan-soft); letter-spacing: 0.1em; }
 .service-card h3 { font-size: 20px; margin: 6px 0 10px; }
