@@ -111,7 +111,7 @@ function resendFailedNotifications() {
       // 送信枠がなければ今回はここまで。枠待ちの行は再送回数を使わずに次の回へ
       if (!takeDailySlot_("mailcount:", day, MAIL_PER_DAY)) break;
       sheet.getRange(i + 2, COL.notified, 1, 3).setValues([["送信中", tries + 1, new Date()]]);
-      claimed.push({ row: i + 2, tries: tries + 1, data: { name: r[COL.name - 1], email: r[COL.email - 1], message: r[COL.message - 1] } });
+      claimed.push({ row: i + 2, tries: tries + 1, data: { name: r[COL.name - 1], email: r[COL.email - 1], message: r[COL.message - 1], received: r[COL.received - 1] } });
     }
     SpreadsheetApp.flush();
   } finally {
@@ -167,11 +167,15 @@ function notify_(data, sheetUrl) {
   // 返信するだけで相手に届くよう、形式が正しいときだけ Reply-To に設定する
   if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) options.replyTo = email;
 
-  const received = Utilities.formatDate(new Date(), "Asia/Tokyo", "yyyy-MM-dd HH:mm");
+  // 受付日時はシートに保存した日時を使う(翌日に再送しても、問い合わせが来た日時が分かるように)
+  const at = function (d) { return Utilities.formatDate(d, "Asia/Tokyo", "yyyy-MM-dd HH:mm"); };
+  const hasReceived = data.received && typeof data.received.getTime === "function";
+  const received = at(hasReceived ? data.received : new Date());
+  const sentNow = at(new Date());
   const body = [
     "AIコンサルLPに問い合わせがありました。",
     "",
-    "受信日時: " + received,
+    "受付日時: " + received + (hasReceived && received !== sentNow ? "(このメールは " + sentNow + " に再送)" : ""),
     "お名前: " + (name || "(未入力)"),
     "メールアドレス: " + (email || "(未入力)"),
     "",
@@ -261,6 +265,7 @@ function doPost(e) {
   }
   const requestId = validRequestId_(data.requestId);
   let sheet, row, canMail;
+  const receivedAt = new Date();
   try {
     const hour = Utilities.formatDate(new Date(), "Asia/Tokyo", "yyyyMMddHH");
     const day = hour.slice(0, 8);
@@ -280,7 +285,7 @@ function doPost(e) {
     // 通知メールの送信枠も、再送ジョブと共通の枠からロックの中で確保する
     canMail = takeDailySlot_("mailcount:", day, MAIL_PER_DAY);
     sheet.appendRow([
-      new Date(), safeCell_(name), safeCell_(email), safeCell_(message), requestId, "未送信", 0, "",
+      receivedAt, safeCell_(name), safeCell_(email), safeCell_(message), requestId, "未送信", 0, "",
       canMail ? "" : "1日の送信枠を超えたため、再送ジョブで後から送ります",
     ]);
     row = sheet.getLastRow();
@@ -301,7 +306,7 @@ function doPost(e) {
   // 送信枠がない日は「未送信」のまま残し、再送ジョブが枠の空いた回に送る
   if (!canMail) return reply_({ ok: true });
   try {
-    notify_({ name: name, email: email, message: message }, sheet.getParent().getUrl());
+    notify_({ name: name, email: email, message: message, received: receivedAt }, sheet.getParent().getUrl());
     sheet.getRange(row, COL.notified).setValue("送信済");
   } catch (err) {
     console.error("通知メールの送信に失敗: " + err);

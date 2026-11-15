@@ -52,7 +52,7 @@ function load(opts = {}) {
       releaseLock() { events.push('release'); },
     }) },
     ContentService: { MimeType: { JSON: 'json' }, createTextOutput: (t) => ({ t, setMimeType() { return this; } }) },
-    Utilities: { formatDate: () => clock.hour },
+    Utilities: { formatDate: (d, tz, fmt) => (fmt === 'yyyy-MM-dd HH:mm' ? d.toISOString().slice(0, 16) : clock.hour) },
     MailApp: { sendEmail: (...a) => {
       if (mailer.fail) throw new Error('mail quota');
       events.push('mail'); mails.push(a);
@@ -330,4 +330,17 @@ test('the first failure reason is recorded', () => {
   assert.equal(header[8], '失敗理由');
   assert.equal(rows[0][5], '失敗');
   assert.equal(rows[0][8], 'mail quota');
+});
+
+// codex 6回目: 再送メールの日時は、再送した時刻ではなく受け付けた時刻
+test('a resent notification shows when the inquiry was received, not when it was resent', () => {
+  const { post, rows, mails, mailer, sandbox } = load({ mailFails: true });
+  post(ok);
+  const received = new Date('2026-11-14T03:00:00Z');
+  rows[0][0] = received;
+  mailer.fail = false;
+  sandbox.resendFailedNotifications();
+  const body = mails[0][2];
+  assert.match(body, /受付日時: 2026-11-14T03:00/);
+  assert.match(body, /に再送/);
 });
