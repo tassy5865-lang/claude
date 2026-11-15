@@ -1,31 +1,48 @@
 # Nexsist サービスサイト（旧 AIコンサルLP）
 
-屋号 **Nexsist**（運営：田代裕貴）のサービスサイト。ホームページ制作・予約システム・LINE公式／Lステップ構築・AIツール開発を、お店・小規模事業者向けに案内する単体ページ。フォルダ名と公開URL（`https://tassy5865-lang.github.io/claude/ai-consult-lp/`）は旧名のまま。
+屋号 **Nexsist**（運営：田代裕貴）のサービスサイト。ホームページ制作・予約システム・LINE公式／Lステップ構築・Threads投稿の自動化構築・AIツール開発を、お店・小規模事業者向けに案内する単体ページ。フォルダ名と公開URL（`https://tassy5865-lang.github.io/claude/ai-consult-lp/`）は旧名のまま。
 
 ## 概要
 - 静的HTML/CSS/JS、ビルド不要
 - デザイン（2026-11-14 リニューアル）: ダーク(#06061a)×紫(#7b5cff)〜水色(#22d3ee)の光＋半透明カード＋大きな英字（WEB. LINE. AI.／SERVICE／WORKS…）。設計 `docs/superpowers/specs/2026-11-14-ai-consult-lp-renewal-design.md`、たたき台 `...-mockup-v1.html`
-- 大英字は装飾（`.giant`＋`aria-hidden="true"`）。縁取りは可変フォントの輪郭の重なりを隠すため `color: var(--bg); paint-order: stroke fill` で描く
-- 料金は載せない（「まずは相談」）
+- 大英字は装飾（`.giant`＋`aria-hidden="true"`）。縁取りは可変フォントの輪郭の重なりを隠すため `color: var(--bg); paint-order: stroke fill` で描く。960px以下では見出し・CTAを先に、英字は後ろに小さく1行
+- 主ボタンは白文字のコントラスト確保のため濃いグラデ（#5b3fd6→#0e7490）
+
+## 運営者の決定事項（変えない前提）
+- 料金の金額は載せない。「費用が変わる条件」「別途かかる費用」を載せる
+- 初回相談・お見積もりは無料、費用はお見積もりへの同意後に発生
+- 返信目安は2営業日以内
+- 本人紹介は写真なし（自己紹介HP v2 の経歴を要約）
+- 納品後の対応: 標準は「公開と操作説明まで」。文章や画像の差し替え・機能の追加は別見積もり
+- Threads は「Threads投稿の自動化構築」（継続運用の受託ではない。承認と納品後の操作はお客様側）
 
 ## 構成
-- `index.html` — ヘッダー/ヒーロー/悩み/サービス(4)/実績/流れ/相談/フッター
+- `index.html` — ヘッダー/ヒーロー/悩み(→対応サービス)/サービス(5、各「お渡しするもの」)/実績/料金の考え方(+納品後の対応)/運営者について/流れ(お客様・こちら)/よくある質問/相談(LINE・フォーム・個人情報の取り扱い)/フッター
 - `styles.css` — 全スタイル（`:root` のトークン）
-- `main.js` — スムーススクロール（tabindex付きの移動先にはフォーカスも移す）・フォーム送信（送信部分と `GAS_ENDPOINT` は変更しない）
-- `assets/work-kohaku.png` — 琥珀サイトのトップ画面（2026-11-14 撮影、1200×504）
-- `assets/profile-qr.png` — LINE公式QR
-- `assets/social-card.png` — OGP画像(1200×630)。`assets/build-og-card.py` で再生成（`python build-og-card.py social-card.png`、Pillow＋Windowsの Yu Gothic／Arial Black）
-- `tests/` — `node --test ai-consult-lp/tests/*.test.mjs`（このNodeではディレクトリ指定 `tests/` は動かない）
-  - `contact-form.test.mjs` — GAS受け口（ハニーポット `website`・入力長上限・先頭 `=+-@` 無害化・回数制限）
-  - `page-structure.test.mjs` — フォームの id/name/maxlength、CSP 文字列、外部スクリプトなし・画像は `assets/` のみ、Nexsist のメタ/JSON-LD、4サービスと実績リンク、**数値の成果・料金を書いていないこと**、大英字が `aria-hidden`
-  - `cross-links.test.mjs` — 自己紹介HP（v2・旧版）とポートフォリオから LP へのリンク表記が Nexsist（2026.09 のお知らせ1件は過去記録として除外）
-- `gas/contact-form.gs` — 問い合わせ受信用GAS（スプレッドシート追記＋通知メール。修正したらGASに貼り直し→`testNotify`→「デプロイを管理」で新バージョン。2026-10-29 の防御強化は 2026-11-14 にデプロイ済み）
+- `main.js` — スムーススクロール（reduced-motion対応・tabindex付きの移動先にフォーカス）、フォーム送信:
+  - GASの返事(JSON)を読み、`ok:true` かつ HTTP 成功のときだけ「受け付けました」＋入力消去。拒否・混雑・通信断・タイムアウト(20秒)・読めない返事はそれぞれ案内し入力を残す
+  - 送信ごとに受付ID（`requestId`）。同じ内容の再送は同じID（sessionStorage に保持しページ再読み込みにも対応）
+  - 送信中はボタン無効＋入力欄 readOnly。HTML の送信ボタンは初期 `disabled`（JS無効時の送信防止、`method="post"`、`noscript` で LINE 案内）
+- `gas/contact-form.gs` — 問い合わせ受信GAS。シート列: 受信日時/お名前/メール/相談内容/受付ID/通知/再送回数/最終再送（古いシートも見出し自動追加）
+  - 回数制限: 同一メール3件/時・全体20件/時（キャッシュ）、全体60件/日（スクリプトプロパティ `daycount:YYYYMMDD`）
+  - 受付IDの重複は キャッシュ＋シートの受付ID列全体 で照合 → `{ok:true, duplicate:true}`
+  - 保存後にロックを外し、通知メールはロック外。通知列: 未送信→送信済/失敗（通知先が取れなければ失敗）
+  - `resendFailedNotifications`（1時間ごと）: 失敗・10分超の未送信・30分超の送信中を、短いロック内で「送信中」に確保してから再送。1回10件・1行5回まで
+  - `installResendTrigger` をエディタで1回実行すると1時間ごとの再送トリガーを登録（重複登録しない）
+  - **GASを修正したら貼り直し→新バージョンでデプロイが必要**。2026-11-14 の空送信テストで、本番は古い版のまま動いている可能性が高いと判明（空の名前でも ok:true が返った）
+- `assets/` — work-kohaku.png（琥珀トップ）/ work-ocr.png・work-filedata.png（サンプルデータの画面、原寸リンク付き）/ profile-qr.png / social-card.png（`build-og-card.py` で再生成）
+- `tests/` — `node --test ai-consult-lp/tests/*.test.mjs`（このNodeではディレクトリ指定は不可）。62件（2026-11-14）
+  - `contact-form.test.mjs` — GAS（制限・重複・キャッシュ消失・通知失敗・宛先なし・ロック失敗・再送の確保/上限・トリガー登録）
+  - `form-ui.test.mjs` — main.js の送信ハンドラーを実際に動かす（成功/拒否/HTTPエラー/通信断/再送ID/送信中readOnly）
+  - `page-structure.test.mjs` — フォーム契約・CSP・メタ・サービス・事実ベース文言・料金/運営者/FAQ/個人情報/納品後の範囲 など
+  - `cross-links.test.mjs` — 自己紹介HP・ポートフォリオのリンク表記
 
 ## 実績欄の方針（事実ベース）
 - 成果の数値（%・倍・時間短縮・件数など）は書かない。テストで検出する
-- 琥珀：公式サイトは公開中。予約システムは「開発済み・本番切替前」（デモは `GAS_URL` 空で実データにつながらない）。LINE連携は「確認メールのリンクから連携」のみ（テスト環境で確認済み）。LINEトーク内予約は載せない
-- Lステップ連携：事業者名は伏せる。具体的な機能は聞いていないので書かない
+- 琥珀：課題/担当範囲/設計の工夫/現在 はポートフォリオで確認済みの事実のみ。予約システムは「開発済み・本番切替前」、LINE連携は確認メールからの連携のみ（テスト環境で確認済み）
+- Lステップ連携：琥珀と同じお店（2026-11-15 本人確認）。別事例にせず琥珀の事例に統合（重複して実績を水増ししない）。相談前=HPなし・無料予約サイトでメニュー変更/追加が扱いづらい、作ったもの=HP・予約サイト・LINE構築・Lステップ連携、今の流れ=公式LINEリッチメニュー→メッセージカード(ご新規/リピーター)→HPかnoteのメニュー→LINEのメッセージで予約
 - 店名・スクリーンショットの掲載は本人了承済み（2026-11-14）
 
 ## 状態
-- 2026-11-14 Nexsist としてリニューアル（PC/375px 表示、コンソールエラーなしを確認）
+- 2026-11-14 Nexsist としてリニューアル公開（PR #22〜#27）
+- 2026-11-14 codex 厳格評価の改善を作業ブランチ `feature/lp-codex-review` で実施中（未公開）。評価の経過と残課題は `docs/ai-consult-lp-codex-review-2026-11-14.md`

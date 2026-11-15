@@ -40,7 +40,7 @@ test('brand and meta are Nexsist', () => {
 });
 
 test('four services and works are present', () => {
-  for (const s of ['ホームページ制作', '予約システム', 'LINE公式・Lステップ構築', 'Threads自動運用', 'AIツール開発・業務自動化']) assert.ok(html.includes(s), s);
+  for (const s of ['ホームページ制作', '予約システム', 'LINE公式・Lステップ構築', 'Threads投稿の自動化構築', 'AIツール開発・業務自動化']) assert.ok(html.includes(s), s);
   assert.ok(html.includes('https://tassy5865-lang.github.io/kohaku-site/'));
   assert.ok(html.includes('https://tassy5865-lang.github.io/claude/kohaku-booking/index.html'));
   assert.ok(html.includes('本番'));
@@ -83,8 +83,106 @@ test('in-page scroll respects prefers-reduced-motion', () => {
 });
 
 test('threads service keeps a human approval step', () => {
-  const card = html.match(/<article class="glass service-card">(?:(?!<\/article>)[\s\S])*?Threads自動運用[\s\S]*?<\/article>/);
+  const card = html.match(/<article class="glass service-card">(?:(?!<\/article>)[\s\S])*?Threads投稿の自動化構築[\s\S]*?<\/article>/);
   assert.ok(card, 'Threads card');
   assert.match(card[0], /承認/);
   assert.equal([...html.matchAll(/class="glass service-card"/g)].length, 5);
+});
+
+// codex 評価(2026-11-14)を受けた追加: 料金の考え方・本人紹介・FAQ・相談条件・個人情報
+test('page answers pre-inquiry questions (pricing, about, faq)', () => {
+  for (const id of ['pricing', 'about', 'faq']) assert.match(html, new RegExp(`<section id="${id}"`), id);
+  assert.match(html, /<a class="nav-item" href="#pricing">/);
+  const text = html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<[^>]+>/g, ' ');
+  assert.match(text, /ご相談・お見積もりは無料/);
+  assert.match(text, /費用が変わる/);
+  assert.match(text, /別途/);               // 外部サービス利用料・保守などの扱い
+  assert.match(text, /臨床工学技士/);       // 本人紹介
+  assert.ok((html.match(/<details/g) || []).length >= 4, 'faq items');
+});
+
+test('contact form states conditions and handles personal data', () => {
+  const form = html.match(/<form id="contact-form"[\s\S]*?<\/form>/)[0];
+  assert.equal((form.match(/必須/g) || []).length >= 3, true, '必須 marks');
+  assert.match(form, /placeholder="[^"]+"/);
+  assert.match(html, /2営業日以内/);
+  assert.match(html, /個人情報/);
+  assert.match(html, /機密/);
+  assert.match(form, /aria-live="polite"|role="status"/);
+});
+
+test('tool screenshots are labeled as sample data', () => {
+  for (const f of ['assets/work-ocr.png', 'assets/work-filedata.png']) assert.ok(html.includes(`src="${f}"`), f);
+  const caps = [...html.matchAll(/<figcaption>([^<]*)<\/figcaption>/g)].map((m) => m[1]);
+  assert.ok(caps.filter((c) => /サンプル|架空/.test(c)).length >= 2, caps.join(' | '));
+});
+
+test('form cannot leak input into the URL without JavaScript', () => {
+  const form = html.match(/<form id="contact-form"[^>]*>/)[0];
+  assert.match(form, /method="post"/);
+  assert.match(html, /<button type="submit" class="btn btn-primary" disabled>/);
+  assert.match(html, /<noscript>[\s\S]*LINE[\s\S]*<\/noscript>/);
+});
+
+test('privacy notice covers both LINE and the form', () => {
+  const block = html.match(/<div class="privacy"[\s\S]*?<\/div>/);
+  assert.ok(block, 'shared privacy block');
+  assert.match(block[0], /LINE/);
+  assert.match(block[0], /フォーム/);
+  assert.match(block[0], /削除/);
+});
+
+// ---- codex 3回目の指摘 + 運営者の決定(2026-11-14: 公開と操作説明までが標準、差し替え・機能追加は別見積もり) ----
+test('after-delivery scope is stated plainly', () => {
+  const text = html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<[^>]+>/g, ' ');
+  assert.match(text, /公開と操作説明まで/);
+  assert.match(text, /文章や画像の差し替え/);
+  assert.match(text, /機能の追加/);
+  assert.match(text, /別途お見積もり/);
+  assert.doesNotMatch(text, /運用まで伴走|設計から運用まで/);
+});
+
+test('privacy notice is linked from the hero, LINE and the form', () => {
+  assert.ok((html.match(/href="#privacy"/g) || []).length >= 3);
+  assert.match(html.match(/<section id="hero"[\s\S]*?<\/section>/)[0], /href="#privacy"/);
+  assert.match(html.match(/<div class="glass contact-line">[\s\S]*?<\/div>/)[0], /href="#privacy"/);
+  assert.match(html.match(/<form id="contact-form"[\s\S]*?<\/form>/)[0], /href="#privacy"/);
+});
+
+test('each pain points to a matching service', () => {
+  const pains = [...html.matchAll(/<li class="glass pain-item">[\s\S]*?<\/li>/g)].map((m) => m[0]);
+  assert.equal(pains.length, 4);
+  assert.ok(pains.every((p) => /class="pain-to"/.test(p)));
+});
+
+test('kohaku case explains the problem, scope and design choice', () => {
+  const kohaku = html.match(/<article class="case-feature">[\s\S]*?<\/article>/)[0];
+  for (const w of ['相談時の課題', '担当範囲', '設計の工夫', '現在']) assert.ok(kohaku.includes(w), w);
+});
+
+test('tool screenshots open at full size', () => {
+  for (const f of ['assets/work-ocr.png', 'assets/work-filedata.png']) assert.match(html, new RegExp(`<a href="${f}"[^>]*><img src="${f}"`));
+});
+
+// codex 4回目の指摘: Threads は「構築」と分かる名前に、納品後に誰が操作するかも明記。琥珀の画像は切り抜かない
+test('threads is named as a build service and says who operates it', () => {
+  assert.doesNotMatch(html, /Threads自動運用/);
+  const card = html.match(/<article class="glass service-card">(?:(?!<\/article>)[\s\S])*?Threads投稿の自動化構築[\s\S]*?<\/article>/)[0];
+  assert.match(card, /納品後/);
+});
+
+test('kohaku screenshot is not cropped to the text height', () => {
+  const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+  const rule = css.match(/\.case-media img \{[^}]*\}/)[0];
+  assert.doesNotMatch(rule, /object-fit:\s*cover/);
+});
+
+// 2026-11-15 本人確認: Lステップ事例は琥珀と同じお店。別事例として並べない(実績の水増しに見える)
+test('the Lステップ work is part of the 琥珀 case, not a separate case', () => {
+  assert.doesNotMatch(html, /CASE 02/);
+  assert.doesNotMatch(html, /事業者名は伏せ/);
+  const kohaku = html.slice(html.indexOf('class="case-feature"'), html.indexOf('class="case-grid"'));
+  assert.match(kohaku, /Lステップ/);
+  assert.match(kohaku, /LINEのメッセージで予約/);
+  assert.match(kohaku, /本番切替の前/); // 自作の予約システムが稼働中と誤解させない
 });

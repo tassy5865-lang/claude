@@ -36,3 +36,8 @@ test('portfolio LP card lists five services', () => {
   assert.match(p, /5つのサービス/);
   assert.doesNotMatch(p, /4つのサービス/);
 });
+
+test('portfolio uses the new Threads service name', () => {
+  const p = read('../../portfolio/index.html');
+  assert.doesNotMatch(p, /Threads自動運用/);
+});
