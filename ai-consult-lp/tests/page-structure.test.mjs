@@ -176,3 +176,13 @@ test('kohaku screenshot is not cropped to the text height', () => {
   const rule = css.match(/\.case-media img \{[^}]*\}/)[0];
   assert.doesNotMatch(rule, /object-fit:\s*cover/);
 });
+
+// 2026-11-15 本人確認: Lステップ事例は琥珀と同じお店。別事例として並べない(実績の水増しに見える)
+test('the Lステップ work is part of the 琥珀 case, not a separate case', () => {
+  assert.doesNotMatch(html, /CASE 02/);
+  assert.doesNotMatch(html, /事業者名は伏せ/);
+  const kohaku = html.slice(html.indexOf('class="case-feature"'), html.indexOf('class="case-grid"'));
+  assert.match(kohaku, /Lステップ/);
+  assert.match(kohaku, /LINEのメッセージで予約/);
+  assert.match(kohaku, /本番切替の前/); // 自作の予約システムが稼働中と誤解させない
+});
