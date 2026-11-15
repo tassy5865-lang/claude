@@ -250,7 +250,12 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
   .contact-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 640px) {
-  .nav-item { display: none; }
+  /* スマホでも主要な行き先(サービス・実績・料金)へ飛べるよう、小さくして残す */
+  .header-inner { gap: 10px; }
+  .logo { font-size: 14px; letter-spacing: 0.12em; }
+  .nav { gap: 12px; font-size: 12.5px; }
+  .nav-wide { display: none; }
+  .nav-cta { padding: 6px 12px; }
   .giant-stack .giant { font-size: clamp(34px, 11vw, 56px); }
   .giant-outline { -webkit-text-stroke-width: 2.4px; }
   .service-grid, .pain-list, .case-grid, .flow-steps { grid-template-columns: 1fr; }
@@ -301,7 +306,7 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .faq-item summary { cursor: pointer; list-style: none; padding: 18px 48px 18px 22px; font-weight: 700; position: relative; }
 .faq-item summary::-webkit-details-marker { display: none; }
 .faq-item summary::after { content: "+"; position: absolute; right: 22px; top: 50%; transform: translateY(-50%); color: var(--cyan-soft); font-size: 20px; font-weight: 400; }
-.faq-item[open] summary::after { content: "−"; }
+.faq-item[open] summary::after { content: "\2212"; } /* MINUS SIGN */
 .faq-item p { padding: 0 22px 20px; color: var(--muted); font-size: 14px; }
 
 .label-text { display: flex; align-items: center; gap: 8px; }
@@ -347,4 +352,9 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
   .scope-grid { grid-template-columns: 1fr; }
   .case-story { grid-template-columns: 1fr; gap: 2px; }
   .case-story dd { margin-bottom: 8px; }
+}
+
+/* ---------- codex 5回目の指摘: スマホの目次 ---------- */
+@media (max-width: 374px) {
+  .nav-item[href="#pricing"] { display: none; }
 }

@@ -246,9 +246,10 @@ test('the resend job caps rows per run and gives up after the attempt limit', ()
   mailer.fail = true;
   sandbox.resendFailedNotifications();
   assert.equal(rows.filter((r) => Number(r[6]) === 1).length, 10); // 1回の実行で10件まで
-  for (let k = 0; k < 10; k++) { rows.forEach((r) => { r[7] = minutesAgo(120); }); sandbox.resendFailedNotifications(); }
+  for (let k = 0; k < 10; k++) { clock.hour = `202612${String(k + 1).padStart(2, '0')}00`; rows.forEach((r) => { r[7] = minutesAgo(120); }); sandbox.resendFailedNotifications(); } // 日を進めて送信枠を戻す
   assert.ok(rows.every((r) => Number(r[6]) <= 5), 'attempt limit');
-  assert.ok(rows.every((r) => r[5] === '失敗'));
+  assert.ok(rows.every((r) => r[5] === '要手動対応'), rows.map((r) => r[5]).join(','));
+  assert.ok(rows.every((r) => r[8] === 'mail quota')); // 最後の失敗理由が残る
 });
 
 test('duplicate detection checks the whole request id column', () => {
@@ -268,4 +269,65 @@ test('installResendTrigger adds one hourly trigger and is safe to run twice', ()
   assert.equal(triggers.length, 1);
   assert.equal(triggers[0].fn, 'resendFailedNotifications');
   assert.equal(triggers[0].hours, 1);
+});
+
+// ---- codex 5回目の指摘: 送信枠を初回と再送で共通に・上限に達した行は「要手動対応」 ----
+test('new notifications and resends share one daily mail budget (80)', () => {
+  const { post, rows, mails, props, sandbox, clock } = load();
+  clock.hour = '2026111509';
+  for (let h = 0; h < 3; h++) { // 60件受付(1日の受付上限) → 60通
+    clock.hour = '202611150' + h;
+    for (let i = 0; i < 20; i++) post({ ...ok, email: `n${h}-${i}@example.com` });
+  }
+  assert.equal(mails.length, 60);
+  for (let i = 0; i < 30; i++) rows.push([minutesAgo(60), 'x', `f${i}@example.com`, 'x', '', '失敗', 1, minutesAgo(60), 'mail quota']);
+  for (let k = 0; k < 3; k++) sandbox.resendFailedNotifications();
+  assert.equal(mails.length, 80); // 合算で80通まで
+  assert.equal(props.get('mailcount:20261115'), '80');
+  const waiting = rows.filter((r) => r[5] === '失敗');
+  assert.equal(waiting.length, 10);
+  assert.ok(waiting.every((r) => Number(r[6]) === 1), '枠待ちでは再送回数を使わない');
+  clock.hour = '2026111600'; // 翌日は枠が戻る
+  sandbox.resendFailedNotifications();
+  assert.equal(mails.length, 90);
+});
+
+test('a submission over the mail budget is saved and mailed later by the resend job', () => {
+  const { post, rows, mails, props, sandbox, clock } = load();
+  clock.hour = '2026111510';
+  props.set('mailcount:20261115', '80'); // 今日の送信枠を使い切った状態
+  assert.deepEqual(post(ok), { ok: true });
+  assert.equal(mails.length, 0);
+  assert.equal(rows[0][5], '未送信');
+  assert.ok(rows[0][8].includes('送信枠'));
+  rows[0][0] = minutesAgo(30);
+  sandbox.resendFailedNotifications();
+  assert.equal(mails.length, 0); // 同じ日のうちは送らない
+  assert.equal(Number(rows[0][6]), 0);
+  clock.hour = '2026111600';
+  sandbox.resendFailedNotifications();
+  assert.equal(mails.length, 1);
+  assert.equal(rows[0][5], '送信済');
+});
+
+test('a 5th attempt that stopped midway becomes 要手動対応, not 送信中 forever', () => {
+  const { post, rows, mails, sandbox } = load();
+  post(ok);
+  mails.length = 0;
+  rows[0][5] = '送信中'; rows[0][6] = 5; rows[0][7] = minutesAgo(60);
+  sandbox.resendFailedNotifications();
+  assert.equal(mails.length, 0);
+  assert.equal(rows[0][5], '要手動対応');
+  assert.ok(rows[0][8].includes('止まりました'));
+  sandbox.resendFailedNotifications(); // 要手動対応の行には触らない
+  assert.equal(mails.length, 0);
+  assert.equal(rows[0][5], '要手動対応');
+});
+
+test('the first failure reason is recorded', () => {
+  const { post, rows, header } = load({ mailFails: true });
+  post(ok);
+  assert.equal(header[8], '失敗理由');
+  assert.equal(rows[0][5], '失敗');
+  assert.equal(rows[0][8], 'mail quota');
 });

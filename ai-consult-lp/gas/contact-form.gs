@@ -22,9 +22,13 @@
  */
 
 const SHEET_NAME = "お問い合わせ";
-const HEADERS = ["受信日時", "お名前", "メールアドレス", "相談内容", "受付ID", "通知", "再送回数", "最終再送"];
-const COL = { received: 1, name: 2, email: 3, message: 4, requestId: 5, notified: 6, tries: 7, lastTry: 8 };
-// 「通知」列の状態: 未送信(保存直後) → 送信済 / 失敗。再送ジョブが処理中の行は「送信中」
+const HEADERS = ["受信日時", "お名前", "メールアドレス", "相談内容", "受付ID", "通知", "再送回数", "最終再送", "失敗理由"];
+const COL = { received: 1, name: 2, email: 3, message: 4, requestId: 5, notified: 6, tries: 7, lastTry: 8, reason: 9 };
+// 「通知」列の状態: 未送信(保存直後・送信枠待ち) → 送信済 / 失敗。再送ジョブが処理中の行は「送信中」。
+// 再送の上限まで失敗した行は「要手動対応」(自動では送らない。シートを見て本人が連絡する)
+const MANUAL = "要手動対応";
+// 通知メールの1日の送信枠。初回の通知と再送で共通に使う(MailApp の上限 約100通/日 に余裕を残す)
+const MAIL_PER_DAY = 80;
 const RESEND = {
   perRun: 10,                    // 1回の実行で送り直す最大件数(メールの1日の上限を使い切らない)
   maxTries: 5,                   // 再送の上限回数。超えた行はシートで確認して手動で対応する
@@ -65,6 +69,14 @@ function ageMs_(value, now) {
   return value && typeof value.getTime === "function" ? now - value.getTime() : Infinity;
 }
 
+function today_() {
+  return Utilities.formatDate(new Date(), "Asia/Tokyo", "yyyyMMddHH").slice(0, 8);
+}
+
+function reasonOf_(err) {
+  return oneLine_(err && err.message ? err.message : err, 200);
+}
+
 // 通知メールが届いていない問い合わせを送り直す(installResendTrigger で1時間ごとに実行)。
 // 対象: 「失敗」の行、保存から時間がたっても「未送信」の行、「送信中」のまま止まった行。
 // 二重送信を避けるため、短いロックの中で対象を「送信中」にして確保し、メールはロックの外で送る
@@ -79,18 +91,27 @@ function resendFailedNotifications() {
     if (last < 2) return;
     const values = sheet.getRange(2, 1, last - 1, HEADERS.length).getValues();
     const now = Date.now();
+    const day = today_();
     for (let i = 0; i < values.length && claimed.length < RESEND.perRun; i++) {
       const r = values[i];
       const state = r[COL.notified - 1];
       const tries = Number(r[COL.tries - 1] || 0);
-      if (tries >= RESEND.maxTries) continue;
       const due =
         state === "失敗" ||
         (state === "未送信" && ageMs_(r[COL.received - 1], now) >= RESEND.pendingAfterMs) ||
         (state === "送信中" && ageMs_(r[COL.lastTry - 1], now) >= RESEND.staleClaimMs);
       if (!due) continue;
+      if (tries >= RESEND.maxTries) {
+        // 上限まで試した行(最後の試行が途中で止まった行も含む)は自動では送らず、手動対応に回す
+        const why = state === "送信中" ? "最後の再送が途中で止まりました" : String(r[COL.reason - 1] || "再送の上限に達しました");
+        sheet.getRange(i + 2, COL.notified).setValue(MANUAL);
+        sheet.getRange(i + 2, COL.reason).setValue(why);
+        continue;
+      }
+      // 送信枠がなければ今回はここまで。枠待ちの行は再送回数を使わずに次の回へ
+      if (!takeDailySlot_("mailcount:", day, MAIL_PER_DAY)) break;
       sheet.getRange(i + 2, COL.notified, 1, 3).setValues([["送信中", tries + 1, new Date()]]);
-      claimed.push({ row: i + 2, data: { name: r[COL.name - 1], email: r[COL.email - 1], message: r[COL.message - 1] } });
+      claimed.push({ row: i + 2, tries: tries + 1, data: { name: r[COL.name - 1], email: r[COL.email - 1], message: r[COL.message - 1] } });
     }
     SpreadsheetApp.flush();
   } finally {
@@ -104,7 +125,8 @@ function resendFailedNotifications() {
       sheet.getRange(c.row, COL.notified).setValue("送信済");
     } catch (err) {
       console.error("通知の再送に失敗: " + err);
-      sheet.getRange(c.row, COL.notified).setValue("失敗");
+      sheet.getRange(c.row, COL.notified).setValue(c.tries >= RESEND.maxTries ? MANUAL : "失敗");
+      sheet.getRange(c.row, COL.reason).setValue(reasonOf_(err));
     }
   });
 }
@@ -187,17 +209,18 @@ function overLimit_(key, limit, ttlSec) {
 }
 
 // 1日の件数はスクリプトプロパティで数える(CacheService の有効期限は最大6時間なので日次には使えない)。
+// 枠が残っていれば1つ使って true、なければ何も変えずに false。
 // 日付が変わったら前日までのカウンタを消す。ロックの中から呼ぶこと
-function overDailyLimit_(day, limit) {
+function takeDailySlot_(prefix, day, limit) {
   const props = PropertiesService.getScriptProperties();
-  const key = "daycount:" + day;
+  const key = prefix + day;
   props.getKeys().forEach(function (k) {
-    if (k.indexOf("daycount:") === 0 && k !== key) props.deleteProperty(k);
+    if (k.indexOf(prefix) === 0 && k !== key) props.deleteProperty(k);
   });
   const n = Number(props.getProperty(key) || 0) + 1;
-  if (n > limit) return true;
+  if (n > limit) return false;
   props.setProperty(key, String(n));
-  return false;
+  return true;
 }
 
 // 同じ送信(requestId)の再送は1件として扱う。通信が切れて利用者が再送しても二重に保存・通知しない
@@ -237,7 +260,7 @@ function doPost(e) {
     return reply_({ ok: false, error: "busy" });
   }
   const requestId = validRequestId_(data.requestId);
-  let sheet, row;
+  let sheet, row, canMail;
   try {
     const hour = Utilities.formatDate(new Date(), "Asia/Tokyo", "yyyyMMddHH");
     const day = hour.slice(0, 8);
@@ -249,12 +272,17 @@ function doPost(e) {
     if (
       overLimit_("mail:" + hour + ":" + email.toLowerCase(), RATE.perEmailPerHour, 3600) ||
       overLimit_("all:" + hour, RATE.perHour, 3600) ||
-      overDailyLimit_(day, RATE.perDay)
+      !takeDailySlot_("daycount:", day, RATE.perDay)
     ) {
       return reply_({ ok: false, error: "busy" });
     }
 
-    sheet.appendRow([new Date(), safeCell_(name), safeCell_(email), safeCell_(message), requestId, "未送信", 0, ""]);
+    // 通知メールの送信枠も、再送ジョブと共通の枠からロックの中で確保する
+    canMail = takeDailySlot_("mailcount:", day, MAIL_PER_DAY);
+    sheet.appendRow([
+      new Date(), safeCell_(name), safeCell_(email), safeCell_(message), requestId, "未送信", 0, "",
+      canMail ? "" : "1日の送信枠を超えたため、再送ジョブで後から送ります",
+    ]);
     row = sheet.getLastRow();
     SpreadsheetApp.flush(); // 保存を確定させてからロックを外す
     if (requestId) {
@@ -269,13 +297,16 @@ function doPost(e) {
   }
 
   // 通知はロックの外で送る(メールが遅くても、ほかの問い合わせを待たせない)。
-  // 失敗しても受付は成功のまま。「通知」列に結果を残し、resendFailedNotifications で送り直せる
+  // 失敗しても受付は成功のまま。「通知」列に結果を残し、resendFailedNotifications で送り直せる。
+  // 送信枠がない日は「未送信」のまま残し、再送ジョブが枠の空いた回に送る
+  if (!canMail) return reply_({ ok: true });
   try {
     notify_({ name: name, email: email, message: message }, sheet.getParent().getUrl());
     sheet.getRange(row, COL.notified).setValue("送信済");
   } catch (err) {
     console.error("通知メールの送信に失敗: " + err);
     sheet.getRange(row, COL.notified).setValue("失敗");
+    sheet.getRange(row, COL.reason).setValue(reasonOf_(err));
   }
 
   return reply_({ ok: true });
