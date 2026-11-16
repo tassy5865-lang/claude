@@ -40,3 +40,10 @@ Meta公式で確認できる事実と仮説・経験則を分ける。
 ## THRETICSとの境界
 このSkillは手入力・対話型の購入特典。
 THRETICSの内部仕様、API構成、独自指標、分析ロジック、内部計算、未公開機能は含めない。
+
+## 参照ファイル
+- ①②：references/rewrite-flow.md
+- ③④⑤：references/analysis-flow.md
+- ⑥：references/fact-check-flow.md
+- ⑦：references/hypothesis-flow.md
+- 全体共通：references/meta-rules.md
