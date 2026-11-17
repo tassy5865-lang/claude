@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TateCut — 縦型ショート編集スタジオ</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><span class="logo">▮</span>TateCut <small>縦型ショート編集</small></div>
+  <div class="top-actions">
+    <button id="btnUndo" title="元に戻す (Ctrl+Z)">↶</button>
+    <button id="btnRedo" title="やり直す (Ctrl+Shift+Z)">↷</button>
+    <button id="btnAuto" class="primary">✦ おまかせ編集</button>
+  </div>
+</header>
+
+<main class="workspace">
+  <section class="side">
+    <nav class="tabs" id="tabs">
+      <button data-tab="media" class="on">素材</button>
+      <button data-tab="auto">おまかせ</button>
+      <button data-tab="caption">テロップ</button>
+      <button data-tab="adjust">調整</button>
+      <button data-tab="post">投稿文</button>
+      <button data-tab="export">書き出し</button>
+    </nav>
+
+    <div class="pane on" data-pane="media">
+      <label class="drop" id="drop">
+        <input type="file" id="file" multiple accept="video/*,image/*,audio/*" hidden>
+        <b>＋ 素材を追加</b>
+        <span>動画・画像・音楽をタップまたはドロップ<br>（ファイルは端末の中だけで処理されます）</span>
+      </label>
+      <div id="mediaList" class="media-list"></div>
+    </div>
+
+    <div class="pane" data-pane="auto">
+      <h3>無音カット</h3>
+      <label class="row">しきい値 <output id="oTh"></output><input type="range" id="sTh" min="-60" max="-15" value="-38"></label>
+      <label class="row">無音とみなす長さ <output id="oSil"></output><input type="range" id="sSil" min="0.15" max="1.5" step="0.05" value="0.4"></label>
+      <label class="row">前後の余白 <output id="oPad"></output><input type="range" id="sPad" min="0" max="0.3" step="0.01" value="0.08"></label>
+      <button id="btnCut">無音をカット</button>
+      <h3>おまかせ編集の内容</h3>
+      <label class="check"><input type="checkbox" id="aCut" checked> 無音カット</label>
+      <label class="check"><input type="checkbox" id="aAsr" checked> 音声からテロップを自動生成</label>
+      <label class="check"><input type="checkbox" id="aZoom" checked> カットごとにパンチズーム</label>
+      <label class="check"><input type="checkbox" id="aGrade" checked> カラー補正（シネマ）</label>
+      <label class="check"><input type="checkbox" id="aPost" checked> 投稿文の下書き</label>
+      <h3>作業ログ</h3>
+      <div id="log" class="log"></div>
+    </div>
+
+    <div class="pane" data-pane="caption">
+      <h3>音声から自動生成</h3>
+      <label class="row">モデル
+        <select id="asrModel">
+          <option value="Xenova/whisper-tiny">tiny（約40MB・速い）</option>
+          <option value="Xenova/whisper-base" selected>base（約80MB・標準）</option>
+          <option value="Xenova/whisper-small">small（約250MB・高精度）</option>
+        </select>
+      </label>
+      <label class="row">言語
+        <select id="asrLang"><option value="japanese">日本語</option><option value="english">English</option></select>
+      </label>
+      <button id="btnAsr">文字起こししてテロップ化</button>
+      <p class="hint">初回のみモデルをダウンロードします。音声は外部に送信されません。</p>
+      <h3>台本から流し込み</h3>
+      <textarea id="script" rows="5" placeholder="台本を貼り付けると、話している区間に合わせて自動で割り振ります"></textarea>
+      <button id="btnScript">台本をテロップ化</button>
+      <h3>一括設定</h3>
+      <label class="row">1枚の最大文字数 <output id="oMax"></output><input type="range" id="sMax" min="6" max="24" value="12"></label>
+      <label class="row">スタイル
+        <select id="capPreset">
+          <option value="stroke">白文字＋黒フチ</option>
+          <option value="pop">黄色ポップ</option>
+          <option value="box">カラー帯</option>
+          <option value="dark">黒帯</option>
+          <option value="title">タイトル</option>
+        </select>
+      </label>
+      <button id="btnCapAll">全テロップにスタイルを適用</button>
+      <button id="btnAddText">＋ 再生位置にテロップを追加</button>
+    </div>
+
+    <div class="pane" data-pane="adjust">
+      <h3>選択中のクリップ</h3>
+      <div id="inspector" class="inspector"><p class="hint">タイムラインのクリップを選ぶと、ここで編集できます。</p></div>
+      <h3>全体のカラー</h3>
+      <div class="chips" id="gradePresets"></div>
+      <div id="gradeSliders"></div>
+    </div>
+
+    <div class="pane" data-pane="post">
+      <label class="row">投稿先
+        <select id="platform">
+          <option value="ig">Instagram リール</option>
+          <option value="tt">TikTok</option>
+          <option value="yt">YouTube ショート</option>
+          <option value="x">X</option>
+        </select>
+      </label>
+      <textarea id="postText" rows="11" placeholder="投稿文をここで編集"></textarea>
+      <div class="counter" id="postCount"></div>
+      <label class="row">キーワード（カンマ区切り）<input type="text" id="postKeys" placeholder="例: AI, 動画編集"></label>
+      <div class="btnrow">
+        <button id="btnDraft">テロップから下書き</button>
+        <button id="btnTags">ハッシュタグ整形</button>
+        <button id="btnCopy">コピー</button>
+      </div>
+    </div>
+
+    <div class="pane" data-pane="export">
+      <p class="hint">再生しながら録画する方式です。動画の長さと同じ時間がかかります。書き出し中はこのタブを開いたままにしてください。</p>
+      <button id="btnExport" class="primary">動画を書き出す</button>
+      <button id="btnFrame">いまのフレームを画像で保存</button>
+      <div id="exportStatus" class="hint"></div>
+      <div id="downloads"></div>
+    </div>
+  </section>
+
+  <section class="stage">
+    <div class="canvas-wrap"><canvas id="cv" width="1080" height="1920"></canvas></div>
+    <div class="transport">
+      <button id="btnStart" title="先頭へ">⏮</button>
+      <button id="btnPlay" class="play" title="再生/停止 (Space)">▶</button>
+      <span id="tc" class="tc">0:00.0 / 0:00.0</span>
+      <button id="btnSplit" title="分割 (S)">✂ 分割</button>
+      <button id="btnDel" title="削除 (Delete)">🗑 削除</button>
+    </div>
+  </section>
+</main>
+
+<section class="timeline">
+  <div class="tl-head">
+    <div class="tl-label">T テロップ</div>
+    <div class="tl-label">B 差し込み</div>
+    <div class="tl-label">A メイン</div>
+    <div class="tl-label">♪ 音楽</div>
+  </div>
+  <div class="tl-scroll" id="tlScroll">
+    <div class="tl-inner" id="tlInner">
+      <div class="ruler" id="ruler"></div>
+      <div class="track" data-track="text"></div>
+      <div class="track" data-track="b"></div>
+      <div class="track" data-track="a"></div>
+      <div class="track" data-track="music"></div>
+      <div class="playhead" id="playhead"></div>
+    </div>
+  </div>
+  <label class="zoom">拡大 <input type="range" id="sZoom" min="10" max="200" value="60"></label>
+</section>
+
+<div id="pool" class="pool" aria-hidden="true"></div>
+<script src="app.js"></script>
+</body>
+</html>
