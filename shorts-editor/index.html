@@ -3,16 +3,21 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>TateCut — 縦型ショート編集スタジオ</title>
+<title>TateCut — 動画編集スタジオ</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <header class="topbar">
-  <div class="brand"><span class="logo">▮</span>TateCut <small>縦型ショート編集</small></div>
+  <div class="brand"><span class="logo">▮</span>TateCut <small>動画編集スタジオ</small></div>
   <div class="top-actions">
+    <div class="seg" id="tools">
+      <button data-tool="select" class="on" title="選択ツール (V)">➤<span> 選択</span></button>
+      <button data-tool="razor" title="レーザーツール (C)">✂<span> レーザー</span></button>
+    </div>
+    <button id="btnSnap" class="toggle on" title="スナップ (S)">🧲</button>
     <button id="btnUndo" title="元に戻す (Ctrl+Z)">↶</button>
     <button id="btnRedo" title="やり直す (Ctrl+Shift+Z)">↷</button>
-    <button id="btnAuto" class="primary">✦ おまかせ編集</button>
+    <button id="btnAuto" class="primary">✦<span> おまかせ編集</span></button>
   </div>
 </header>
 
@@ -20,9 +25,10 @@
   <section class="side">
     <nav class="tabs" id="tabs">
       <button data-tab="media" class="on">素材</button>
-      <button data-tab="auto">おまかせ</button>
+      <button data-tab="clip">クリップ</button>
+      <button data-tab="color">カラー</button>
+      <button data-tab="auto">自動編集</button>
       <button data-tab="caption">テロップ</button>
-      <button data-tab="adjust">調整</button>
       <button data-tab="post">投稿文</button>
       <button data-tab="export">書き出し</button>
     </nav>
@@ -30,14 +36,32 @@
     <div class="pane on" data-pane="media">
       <label class="drop" id="drop">
         <input type="file" id="file" multiple accept="video/*,image/*,audio/*" hidden>
-        <b>＋ 素材を追加</b>
+        <b>＋ 素材を読み込む</b>
         <span>動画・画像・音楽をタップまたはドロップ<br>（ファイルは端末の中だけで処理されます）</span>
       </label>
+      <div class="btnrow" style="margin-top:8px">
+        <button id="btnAddText">＋ テキスト</button>
+        <button id="btnAddSolid">＋ カラーマット</button>
+      </div>
       <div id="mediaList" class="media-list"></div>
     </div>
 
+    <div class="pane" data-pane="clip">
+      <div id="inspector" class="inspector"></div>
+    </div>
+
+    <div class="pane" data-pane="color">
+      <h3>スコープ（RGBヒストグラム）</h3>
+      <canvas id="scope" width="340" height="110" class="scope"></canvas>
+      <h3>ルック</h3>
+      <div class="chips" id="gradePresets"></div>
+      <h3>全体の補正</h3>
+      <div id="gradeSliders"></div>
+      <p class="hint">クリップごとの色調整は「クリップ」タブにあります。</p>
+    </div>
+
     <div class="pane" data-pane="auto">
-      <h3>無音カット</h3>
+      <h3>無音カット（V1トラック）</h3>
       <label class="row">しきい値 <output id="oTh"></output><input type="range" id="sTh" min="-60" max="-15" value="-38"></label>
       <label class="row">無音とみなす長さ <output id="oSil"></output><input type="range" id="sSil" min="0.15" max="1.5" step="0.05" value="0.4"></label>
       <label class="row">前後の余白 <output id="oPad"></output><input type="range" id="sPad" min="0" max="0.3" step="0.01" value="0.08"></label>
@@ -67,29 +91,12 @@
       <button id="btnAsr">文字起こししてテロップ化</button>
       <p class="hint">初回のみモデルをダウンロードします。音声は外部に送信されません。</p>
       <h3>台本から流し込み</h3>
-      <textarea id="script" rows="5" placeholder="台本を貼り付けると、話している区間に合わせて自動で割り振ります"></textarea>
+      <textarea id="script" rows="5" placeholder="台本を貼り付けると、V1トラックの長さに合わせて自動で割り振ります"></textarea>
       <button id="btnScript">台本をテロップ化</button>
       <h3>一括設定</h3>
       <label class="row">1枚の最大文字数 <output id="oMax"></output><input type="range" id="sMax" min="6" max="24" value="12"></label>
-      <label class="row">スタイル
-        <select id="capPreset">
-          <option value="stroke">白文字＋黒フチ</option>
-          <option value="pop">黄色ポップ</option>
-          <option value="box">カラー帯</option>
-          <option value="dark">黒帯</option>
-          <option value="title">タイトル</option>
-        </select>
-      </label>
+      <label class="row">スタイル<select id="capPreset"></select></label>
       <button id="btnCapAll">全テロップにスタイルを適用</button>
-      <button id="btnAddText">＋ 再生位置にテロップを追加</button>
-    </div>
-
-    <div class="pane" data-pane="adjust">
-      <h3>選択中のクリップ</h3>
-      <div id="inspector" class="inspector"><p class="hint">タイムラインのクリップを選ぶと、ここで編集できます。</p></div>
-      <h3>全体のカラー</h3>
-      <div class="chips" id="gradePresets"></div>
-      <div id="gradeSliders"></div>
     </div>
 
     <div class="pane" data-pane="post">
@@ -112,44 +119,70 @@
     </div>
 
     <div class="pane" data-pane="export">
-      <p class="hint">再生しながら録画する方式です。動画の長さと同じ時間がかかります。書き出し中はこのタブを開いたままにしてください。</p>
+      <h3>シーケンス設定</h3>
+      <label class="row">画面サイズ
+        <select id="seqSize">
+          <option value="1080x1920">縦 9:16（1080×1920）</option>
+          <option value="1920x1080">横 16:9（1920×1080）</option>
+          <option value="1080x1080">正方形 1:1（1080×1080）</option>
+          <option value="1080x1350">縦 4:5（1080×1350）</option>
+        </select>
+      </label>
+      <label class="row">フレームレート
+        <select id="seqFps"><option>24</option><option selected>30</option><option>60</option></select>
+      </label>
+      <h3>書き出し</h3>
+      <label class="row">範囲
+        <select id="expRange"><option value="all">シーケンス全体</option><option value="io">イン点〜アウト点</option></select>
+      </label>
+      <div class="btnrow">
+        <button id="btnIn" title="I">イン点を設定</button>
+        <button id="btnOut" title="O">アウト点を設定</button>
+        <button id="btnIoClear">解除</button>
+      </div>
+      <label class="row" style="margin-top:9px">画質
+        <select id="expRate"><option value="4">軽い（4Mbps）</option><option value="8" selected>標準（8Mbps）</option><option value="16">高画質（16Mbps）</option></select>
+      </label>
       <button id="btnExport" class="primary">動画を書き出す</button>
       <button id="btnFrame">いまのフレームを画像で保存</button>
-      <div id="exportStatus" class="hint"></div>
+      <div id="exportStatus" class="hint">再生しながら録画するため、動画の長さと同じ時間がかかります。</div>
       <div id="downloads"></div>
+      <h3>プロジェクト</h3>
+      <p class="hint" id="saveStatus">編集内容はこのブラウザに自動保存されます。</p>
+      <button id="btnNew">新規プロジェクト（すべて消去）</button>
     </div>
   </section>
 
   <section class="stage">
     <div class="canvas-wrap"><canvas id="cv" width="1080" height="1920"></canvas></div>
     <div class="transport">
-      <button id="btnStart" title="先頭へ">⏮</button>
+      <button id="btnStart" title="先頭へ (Home)">⏮</button>
       <button id="btnPlay" class="play" title="再生/停止 (Space)">▶</button>
-      <span id="tc" class="tc">0:00.0 / 0:00.0</span>
-      <button id="btnSplit" title="分割 (S)">✂ 分割</button>
-      <button id="btnDel" title="削除 (Delete)">🗑 削除</button>
+      <span id="tc" class="tc">0:00.00 / 0:00.00</span>
+      <canvas id="meter" width="60" height="14" class="meter" title="音量メーター"></canvas>
+      <button id="btnSplit" title="再生位置で分割 (Ctrl+K)">✂<span> 分割</span></button>
+      <button id="btnDel" title="削除 (Delete)">🗑<span> 削除</span></button>
+      <button id="btnRipple" title="詰めて削除 (Shift+Delete)">⇤<span> 詰めて削除</span></button>
+      <button id="btnMarker" title="マーカー (M)">◆<span> マーカー</span></button>
+      <span class="tl-tools">
+        <button id="btnAddV" title="映像トラックを追加">＋V</button>
+        <button id="btnAddA" title="音声トラックを追加">＋A</button>
+        <button id="btnFit" title="全体を表示">全体</button>
+        <input type="range" id="sZoom" min="4" max="240" value="60" title="タイムラインの拡大">
+      </span>
     </div>
   </section>
 </main>
 
 <section class="timeline">
-  <div class="tl-head">
-    <div class="tl-label">T テロップ</div>
-    <div class="tl-label">B 差し込み</div>
-    <div class="tl-label">A メイン</div>
-    <div class="tl-label">♪ 音楽</div>
-  </div>
+  <div class="tl-head" id="tlHead"></div>
   <div class="tl-scroll" id="tlScroll">
     <div class="tl-inner" id="tlInner">
       <div class="ruler" id="ruler"></div>
-      <div class="track" data-track="text"></div>
-      <div class="track" data-track="b"></div>
-      <div class="track" data-track="a"></div>
-      <div class="track" data-track="music"></div>
+      <div id="rows"></div>
       <div class="playhead" id="playhead"></div>
     </div>
   </div>
-  <label class="zoom">拡大 <input type="range" id="sZoom" min="10" max="200" value="60"></label>
 </section>
 
 <div id="pool" class="pool" aria-hidden="true"></div>
