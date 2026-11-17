@@ -30,7 +30,8 @@
 |---|---|---|
 | 要件定義・設計 (`pm-planner`) | `opus` | 曖昧さと重大な設計判断を扱う |
 | 最終QA・受入判定 (`qa-tester`) | `opus` | 独立した高精度レビューが必要 |
-| 実装・営業文・商談設計 | `sonnet` | 品質と速度・費用のバランス |
+| 公開文面の表記チェック (`compliance-checker`) | `opus` | 独立したレビューで、見落としの影響が大きい |
+| 実装・営業文・商談設計・LINE設計・保守点検 | `sonnet` | 品質と速度・費用のバランス |
 | 定型的な案件探索・一次整理 | `haiku` | 構造化された反復作業 |
 
 モデルを上げる場合は、判断の複雑さ・リスク・失敗時の影響を理由として報告する。単に文章を長くする目的では上げない。
@@ -41,8 +42,11 @@ projects/<案件名>/
   01_requirements.md   # PMが作る
   02_design.md         # PMが作る
   src/                 # developerが作る
+  02_line_design.md    # line-architectが作る（LINE構築を含む案件のみ）
   03_test.md           # qa-testerが作る
+  03_compliance.md     # compliance-checkerが作る（公開文面がある案件）
   04_delivery.md       # 納品物一覧・引き継ぎ手順
+  05_maintenance/      # maintainerが作る点検報告（<YYYY-MM-DD>.md）
 sales/
   examples/            # 公開可能な匿名サンプル
   private/leads.md     # deal-scoutが更新（Git管理外）

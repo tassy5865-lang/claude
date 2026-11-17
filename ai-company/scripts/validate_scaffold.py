@@ -63,7 +63,7 @@ for rule in {
     check(rule in deny, f"permission-deny:{rule}")
 
 agent_files = sorted((ROOT / ".claude/agents").glob("*.md"))
-check(len(agent_files) == 6, "agent-count", str(len(agent_files)))
+check(len(agent_files) == 9, "agent-count", str(len(agent_files)))
 for path in agent_files:
     meta = frontmatter(path.read_text(encoding="utf-8"))
     check(bool(meta.get("name")), f"agent-name:{path.name}")
@@ -72,7 +72,7 @@ for path in agent_files:
 
 legacy = list((ROOT / ".claude/commands").glob("*.md")) if (ROOT / ".claude/commands").exists() else []
 check(not legacy, "legacy-commands-removed", ", ".join(p.name for p in legacy))
-for name in ("new-project", "build", "find-deals", "propose"):
+for name in ("new-project", "build", "find-deals", "propose", "maintenance-check"):
     path = ROOT / ".claude/skills" / name / "SKILL.md"
     check(path.exists(), f"skill:{name}")
     if path.exists():
