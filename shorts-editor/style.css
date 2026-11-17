@@ -5,9 +5,10 @@
   --th: 40px;
 }
 * { box-sizing: border-box; }
+html { color-scheme: dark; }
 html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink);
   font: 14px/1.5 -apple-system, "Hiragino Sans", "Noto Sans JP", "Yu Gothic UI", sans-serif; }
-body { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100dvh; }
+body { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100%; }
 button, select, input, textarea { font: inherit; color: inherit; }
 button { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; cursor: pointer; white-space: nowrap; }
 button:hover { border-color: var(--mute); }

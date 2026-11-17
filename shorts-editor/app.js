@@ -823,10 +823,21 @@ function pickMime() {
     if (window.MediaRecorder && MediaRecorder.isTypeSupported(t)) return t;
   return null;
 }
+let dlCap;  // claude.ai の Artifact 内では downloads 機能で保存、それ以外は通常のダウンロード
+if (window.claude && window.claude.use) dlCap = window.claude.use('downloads').catch(() => null);
+async function saveBlob(blob, name) {
+  const cap = dlCap && await dlCap;
+  if (cap) {
+    try { await cap.save({ filename: name, data: blob }); return '保存しました'; }
+    catch (e) { return e && e.code === 'declined' ? '保存をキャンセルしました' : '保存できませんでした（' + (e && e.code || 'error') + '）'; }
+  }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); return '保存しました';
+}
 function download(blob, name) {
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.textContent = `⬇ ${name}（${(blob.size / 1e6).toFixed(1)}MB）`;
-  a.style.cssText = 'display:block;margin-top:8px;color:#4fd1c5';
-  $('#downloads').prepend(a); a.click();
+  const b = document.createElement('button'); b.textContent = `⬇ ${name}（${(blob.size / 1e6).toFixed(1)}MB）を保存`;
+  b.style.cssText = 'display:block;width:100%;margin-top:8px;color:#4fd1c5';
+  b.onclick = async () => { b.disabled = true; b.textContent = await saveBlob(blob, name) + `：${name}`; b.disabled = false; };
+  $('#downloads').prepend(b); b.click();
 }
 async function exportVideo() {
   const mime = pickMime(), st = $('#exportStatus');
@@ -911,7 +922,10 @@ $('#seqFps').onchange = e => { commit(); state.seq.fps = +e.target.value; saveSo
 $('#btnIn').onclick = () => setIO('inPt'); $('#btnOut').onclick = () => setIO('outPt'); $('#btnIoClear').onclick = () => setIO(null);
 $('#btnExport').onclick = exportVideo;
 $('#btnFrame').onclick = () => { render(state.t); cv.toBlob(b => download(b, `tatecut-frame-${Date.now()}.png`), 'image/png'); };
-$('#btnNew').onclick = async () => { if (!confirm('読み込んだ素材と編集内容をすべて消去します。よろしいですか？')) return; ready = false; try { await dbSet('project', null); await dbSet('media', []); } catch (e) {} location.reload(); };
+let newArm = 0;
+$('#btnNew').onclick = async () => {
+  if (Date.now() - newArm > 4000) { newArm = Date.now(); $('#btnNew').textContent = 'もう一度押すと素材と編集内容をすべて消去します'; setTimeout(() => $('#btnNew').textContent = '新規プロジェクト（すべて消去）', 4000); return; }
+  ready = false; try { await dbSet('project', null); await dbSet('media', []); } catch (e) {} location.reload(); };
 for (const [k, [n]] of Object.entries(TEXT_PRESETS)) $('#capPreset').add(new Option(n, k));
 const bindOut = (s, o, f) => { const u = () => $(o).textContent = f($(s).value); $(s).addEventListener('input', u); u(); };
 bindOut('#sTh', '#oTh', v => v + ' dB'); bindOut('#sSil', '#oSil', v => (+v).toFixed(2) + ' 秒');
