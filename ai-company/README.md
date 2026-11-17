@@ -27,7 +27,7 @@
 | コマンド | 動き |
 |---|---|
 | `/new-project 案件名` | pm-planner が要件定義＋設計まで |
-| `/build 案件名` | developer 実装 → qa-tester 検証 → 納品書作成 |
+| `/build 案件名` | （LINE案件は line-architect 設計）→ developer 実装 → qa-tester 検証 →（公開文面は compliance-checker）→ 納品書作成 |
 | `/find-deals 条件` | deal-scout が案件リサーチ → leads.md |
 | `/propose 案件名` | sales-writer + account-exec で提案一式 |
 | `/maintenance-check 案件名` | maintainer が納品済み案件を点検 → 点検報告 |
@@ -43,8 +43,8 @@
 /maintenance-check <案件名> → 納品後の定期点検
 ```
 
-LINE構築を含む案件は、`/new-project` の後に `line-architect` で `02_line_design.md` を作ります。
-公開する文面（LP、配信文、投稿文）は、公開・納品の前に `compliance-checker` に通します。
+`/build` は、LINE構築を含む案件なら実装前に `line-architect` の設計を、公開する文面があれば納品前に `compliance-checker` の表記チェックを自動で通します。
+「人間・専門家の判断が必要」となった表現は、あなたが判断するまで納品を止めます。
 
 ## 人間（あなた）が必ず握る判断
 - 応募・返信の送信
