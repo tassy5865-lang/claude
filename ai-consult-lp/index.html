@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; media-src 'self'; connect-src 'self' https://script.google.com https://script.googleusercontent.com">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; media-src 'self'; connect-src 'self' https://script.google.com https://script.googleusercontent.com">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Nexsist｜ホームページ・予約システム・LINE・AIの仕組みづくり</title>
@@ -176,6 +176,15 @@
             <p class="service-deliver"><span>お渡しするもの</span>合意した機能のツール、使い方の説明、サンプルデータでの動作確認</p>
           </article>
         </div>
+        <div class="combo">
+          <h3 class="combo-title">ご依頼の組み合わせ例</h3>
+          <ul class="combo-list">
+            <li class="glass combo-item"><p class="combo-set">ホームページだけ</p><p>まずは自分で更新できるお店のサイトがほしい。</p></li>
+            <li class="glass combo-item"><p class="combo-set">ホームページ ＋ LINE公式</p><p>サイトを見た人を、LINEの友だち登録と問い合わせにつなげたい。</p></li>
+            <li class="glass combo-item"><p class="combo-set">ホームページ ＋ 予約 ＋ LINE</p><p>集客から予約・来店前の連絡までを、ひとつの流れにしたい。</p></li>
+            <li class="glass combo-item"><p class="combo-set">AIツールだけ</p><p>転記や集計など、決まった作業を一つだけ軽くしたい。</p></li>
+          </ul>
+        </div>
       </div>
     </section>
 
@@ -197,14 +206,14 @@
             <p>姫路の女性専用・完全予約制サロンの、集客と予約まわりを一式で手がけています。</p>
             <dl class="case-story">
               <dt>相談時の課題</dt><dd>ホームページがなく、無料の予約サイトを使っていたが、メニューの変更や追加がしづらかった。</dd>
-              <dt>担当範囲</dt><dd>公式サイトの制作と公開、更新用の管理画面、アクセス解析の設定、予約システムの開発、LINE公式アカウントの構築とLステップ連携。</dd>
+              <dt>担当範囲</dt><dd>下の4つの設計・制作・設定をひとりで担当。それぞれの稼働状況は項目ごとに記載。</dd>
               <dt>設計の工夫</dt><dd>公開後も店主さんが自分で文章・写真・メニューを直せるよう、更新を管理画面に集めた。LINE・地図のクリックを計測し、見直しに使えるようにした。</dd>
-              <dt>現在</dt><dd>公式LINEのリッチメニューから「ご新規」「リピーター」別のメニューを選び、ホームページかnoteのメニューを見て、LINEのメッセージで予約する流れで運用中。自作の予約システムは本番切替の前。</dd>
+              <dt>現在</dt><dd>公式LINEからホームページかnoteのメニューを見て、LINEのメッセージで予約する流れで運用中。自作の予約システムは本番切替の前。</dd>
             </dl>
             <ul class="case-points">
-              <li><strong>公式サイト（公開中）</strong>来店の流れ・メニュー料金・よくある質問・アクセスを一ページに。文章や写真、メニューを店主が自分で直せる管理画面つき。LINE・地図のクリックをアクセス解析で計測。</li>
+              <li><strong>公式サイト（公開中）</strong>来店の流れ・メニュー料金・よくある質問・アクセスを一ページに。更新用の管理画面つき。</li>
               <li><strong>予約システム（開発済み・本番切替前）</strong>空き枠表示・予約受付・確認メール・リマインド、メニュー・クーポン・顧客・分析を扱う管理画面。</li>
-              <li><strong>公式LINE・Lステップ（運用中）</strong>リッチメニューからメッセージカードで「ご新規」「リピーター」を選び、それぞれのメニューの案内へ進む導線。予約はLINEのメッセージで受付。</li>
+              <li><strong>公式LINE・Lステップ（運用中）</strong>リッチメニューからメッセージカードで「ご新規」「リピーター」を選び、それぞれのメニューの案内へ進む導線。</li>
               <li><strong>予約システムのLINE連携（テスト済み）</strong>確認メールのリンクからLINEとつなぎ、予約内容を確かめられる仕組み。テスト環境で動作を確認済み。</li>
             </ul>
             <div class="case-links">

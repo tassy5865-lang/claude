@@ -354,7 +354,23 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
   .case-story dd { margin-bottom: 8px; }
 }
 
-/* ---------- codex 5回目の指摘: スマホの目次 ---------- */
+/* ---------- codex 5回目の指摘: スマホの目次(320pxでもサービス・実績・料金を残す) ---------- */
 @media (max-width: 374px) {
-  .nav-item[href="#pricing"] { display: none; }
+  .header-inner { gap: 8px; }
+  .logo { font-size: 13px; letter-spacing: 0.06em; }
+  .nav { gap: 9px; font-size: 12px; }
+  .nav-cta { padding: 5px 10px; }
 }
+
+/* ページ内リンクの移動先(見出しの区切り)はフォーカス枠を出さない。キーボード操作時のみ表示 */
+[tabindex="-1"]:focus:not(:focus-visible) { outline: none; }
+
+/* ---------- ご依頼の組み合わせ例 ---------- */
+.combo { margin-top: 28px; }
+.combo-title { font-size: 17px; margin-bottom: 12px; }
+.combo-list { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.combo-item { padding: 16px 18px; }
+.combo-item p { color: var(--muted); font-size: 13.5px; }
+.combo-item .combo-set { color: var(--text); font-weight: 700; font-size: 14.5px; margin-bottom: 6px; }
+@media (max-width: 960px) { .combo-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .combo-list { grid-template-columns: 1fr; } }

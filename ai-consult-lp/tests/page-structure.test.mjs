@@ -6,8 +6,8 @@ import { readFileSync } from 'node:fs';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 
-// 2026-11-14 時点の CSP。変えるときはこのテストも意図して直す。
-const CSP_CURRENT = "default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; media-src 'self'; connect-src 'self' https://script.google.com https://script.googleusercontent.com";
+// 2026-11-20 時点の CSP(実行するインラインスクリプトはないので script-src から 'unsafe-inline' を外した)。変えるときはこのテストも意図して直す。
+const CSP_CURRENT = "default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; media-src 'self'; connect-src 'self' https://script.google.com https://script.googleusercontent.com";
 
 test('form contract is unchanged', () => {
   assert.match(html, /<form id="contact-form"/);
@@ -185,4 +185,32 @@ test('the Lステップ work is part of the 琥珀 case, not a separate case', (
   assert.match(kohaku, /Lステップ/);
   assert.match(kohaku, /LINEのメッセージで予約/);
   assert.match(kohaku, /本番切替の前/); // 自作の予約システムが稼働中と誤解させない
+});
+
+// codex 6回目の残り(2026-11-20): ページ内リンク・狭い画面の目次・琥珀の重複・依頼の組み合わせ例
+test('in-page links update the URL and move focus to the target', () => {
+  const js = readFileSync(new URL('../main.js', import.meta.url), 'utf8');
+  assert.match(js, /history\.pushState\(null, "", hash\)/);
+  assert.match(js, /setAttribute\("tabindex", "-1"\)/);
+  assert.match(js, /event\.metaKey \|\| event\.ctrlKey/); // 新しいタブで開く操作は邪魔しない
+});
+
+test('pricing link stays in the header on narrow phones', () => {
+  const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+  assert.doesNotMatch(css, /\.nav-item\[href="#pricing"\]\s*\{\s*display:\s*none/);
+});
+
+test('kohaku case does not repeat the same facts in the story and the list', () => {
+  const kohaku = html.slice(html.indexOf('class="case-feature"'), html.indexOf('class="case-grid"'));
+  const text = kohaku.replace(/<[^>]+>/g, ' ');
+  assert.equal((text.match(/LINEのメッセージで予約|LINEのメッセージで受付/g) || []).length, 1);
+  assert.equal((text.match(/地図のクリック/g) || []).length, 1);
+});
+
+test('services show example combinations of requests', () => {
+  const services = html.match(/<section id="services"[\s\S]*?<\/section>/)[0];
+  const items = [...services.matchAll(/class="glass combo-item"/g)];
+  assert.ok(items.length >= 3);
+  assert.match(services, /ご依頼の組み合わせ例/);
+  assert.doesNotMatch(services.match(/class="combo"[\s\S]*$/)[0], /円/); // 料金は載せない方針
 });

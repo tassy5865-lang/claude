@@ -91,10 +91,14 @@ test('spreadsheet formulas are neutralised', () => {
   assert.equal(rows[0][3][0], "'");
 });
 
-test('over-long input is cut; bad input is rejected', () => {
-  const { post, rows } = load();
-  post({ ...ok, message: 'あ'.repeat(5000) });
+test('over-long or non-string input is rejected, not silently cut', () => {
+  const { post, rows, mails } = load();
+  assert.deepEqual(post({ ...ok, message: 'あ'.repeat(2003) }), { ok: false, error: 'too_long', field: 'message' });
+  assert.deepEqual(post({ ...ok, name: { x: 1 } }), { ok: false, error: 'bad_request', field: 'name' });
+  assert.equal(rows.length + mails.length, 0);
+  assert.equal(post({ ...ok, message: 'あ'.repeat(2000) }).ok, true); // 上限ちょうどは受け付ける
   assert.equal(rows[0][3].length, 2000);
+  assert.equal(post({ ...ok, email: 'x2@example.com', message: '  ' }).field, 'message');
   assert.equal(post('not json').error, 'bad_request');
   assert.equal(post({ ...ok, email: 'nope' }).error, 'bad_email');
   assert.equal(post({ ...ok, name: '  ' }).error, 'missing_field');
