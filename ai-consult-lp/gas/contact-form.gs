@@ -194,9 +194,12 @@ function notify_(data, sheetUrl) {
 const LIMITS = { name: 40, email: 200, message: 2000 };
 const RATE = { perEmailPerHour: 3, perHour: 20, perDay: 60 }; // メール上限(約100通/日)を使い切られないため
 
-// 前後の空白・制御文字を除き、長さを制限する
-function clean_(value, max) {
-  return String(value == null ? "" : value).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, "").trim().slice(0, max);
+// 前後の空白・制御文字を除く。文字列以外は bad_request、上限超えは黙って切らずに too_long で返す
+function field_(value, max) {
+  if (value == null) return { value: "" };
+  if (typeof value !== "string") return { error: "bad_request" };
+  const s = value.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, "").trim();
+  return s.length > max ? { error: "too_long" } : { value: s };
 }
 
 // スプレッドシートで式として実行されないよう、先頭が = + - @ のときは ' を付けて文字にする
@@ -249,10 +252,15 @@ function doPost(e) {
   // ハニーポット: 人には見えない欄に入力があれば、ボットとみなして何も保存・通知しない
   if (data.website) return reply_({ ok: true });
 
-  const name = clean_(data.name, LIMITS.name);
-  const email = clean_(data.email, LIMITS.email);
-  const message = clean_(data.message, LIMITS.message);
-  if (!name || !message) return reply_({ ok: false, error: "missing_field" });
+  const fields = { name: field_(data.name, LIMITS.name), email: field_(data.email, LIMITS.email), message: field_(data.message, LIMITS.message) };
+  for (const k of ["name", "email", "message"]) {
+    if (fields[k].error) return reply_({ ok: false, error: fields[k].error, field: k });
+  }
+  const name = fields.name.value;
+  const email = fields.email.value;
+  const message = fields.message.value;
+  if (!name) return reply_({ ok: false, error: "missing_field", field: "name" });
+  if (!message) return reply_({ ok: false, error: "missing_field", field: "message" });
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return reply_({ ok: false, error: "bad_email" });
 
   // 回数制限・重複確認・保存はロックの中で行う(カウンタとシートの更新を競合させない)。

@@ -40,6 +40,13 @@ test('field errors keep the input and point to the field', () => {
   const missing = describeResult({ type: 'response', body: { ok: false, error: 'missing_field' } });
   assert.equal(missing.clear, false);
   assert.match(missing.text, /入力/);
+  // 不足している欄へ案内する(相談内容が空なら相談内容の欄)
+  const noMsg = describeResult({ type: 'response', body: { ok: false, error: 'missing_field', field: 'message' } });
+  assert.equal(noMsg.field, 'message');
+  const tooLong = describeResult({ type: 'response', body: { ok: false, error: 'too_long', field: 'message' } });
+  assert.equal(tooLong.clear, false);
+  assert.equal(tooLong.field, 'message');
+  assert.match(tooLong.text, /長すぎ/);
 });
 
 test('busy (rate limit) asks to wait or use LINE, keeps input', () => {
@@ -103,6 +110,7 @@ function harness(fetchImpl, storage = new Map()) {
       getElementById: (id) => (id === 'contact-form' ? form : id === 'form-status' ? status : null),
     },
     matchMedia: () => ({ matches: false }),
+    addEventListener: (type, fn) => { listeners['win:' + type] = fn; },
     sessionStorage: { getItem: (k) => (storage.has(k) ? storage.get(k) : null), setItem: (k, v) => storage.set(k, String(v)), removeItem: (k) => storage.delete(k) },
   };
   sandbox.window = sandbox;
@@ -193,4 +201,15 @@ test('resend guidance does not over-promise', () => {
     assert.doesNotMatch(t, /二重には登録されません/);
     assert.match(t, /同じ送信として/);
   }
+});
+
+// codex 7回目(2026-11-20): 空白だけの入力は送らず、その欄へ案内する
+test('blank-only message is not sent and focuses the message field', async () => {
+  const h = harness(() => reply({ ok: true }));
+  h.fields.message = '   ';
+  await h.submit();
+  assert.equal(h.sent.length, 0);
+  assert.deepEqual(h.focusLog, ['message']);
+  assert.match(h.status.textContent, /相談内容/);
+  assert.equal(h.button.disabled, false);
 });

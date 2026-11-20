@@ -16,8 +16,12 @@ function describeResult(result) {
     switch (result.body.error) {
       case "bad_email":
         return { ok: false, clear: false, field: "email", text: "メールアドレスの形式をご確認ください。入力内容はそのまま残しています。" };
-      case "missing_field":
-        return { ok: false, clear: false, field: "name", text: "お名前と相談内容を入力してください。" };
+      case "missing_field": {
+        const field = result.body.field === "message" ? "message" : "name";
+        return { ok: false, clear: false, field, text: field === "message" ? "相談内容を入力してください。" : "お名前を入力してください。" };
+      }
+      case "too_long":
+        return { ok: false, clear: false, field: ["name", "email", "message"].includes(result.body.field) ? result.body.field : undefined, text: "入力が長すぎるため受け付けられませんでした。入力内容はそのまま残しているので、短くして再度お送りください。" };
       case "busy":
         return { ok: false, clear: false, text: "ただいま送信が集中しています。少し時間をおいて再度お送りいただくか、LINEからご連絡ください。" };
       default:
@@ -60,19 +64,45 @@ function savePending(v) {
 
 window.NexsistForm = { describeResult };
 
+// キーボードや読み上げの位置を移動先へ移す。フォーカスできない要素は一時的に可能にする
+function focusSection(target) {
+  if (!target.hasAttribute("tabindex")) target.setAttribute("tabindex", "-1");
+  target.focus({ preventScroll: true });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   // ページ内リンクのスムーススクロール
   document.querySelectorAll('a[href^="#"]').forEach((link) => {
     link.addEventListener("click", (event) => {
-      const target = document.querySelector(link.getAttribute("href"));
+      const hash = link.getAttribute("href");
+      let target = null;
+      try {
+        target = hash.length > 1 ? document.querySelector(hash) : null;
+      } catch (e) {
+        target = null;
+      }
       if (!target) return;
+      // 新しいタブで開く操作などは、ブラウザに任せる
+      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
       event.preventDefault();
       // 「動きを減らす」設定の人には、なめらかなスクロールをせずに一瞬で移動する
       const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       target.scrollIntoView({ behavior: reduce ? "auto" : "smooth" });
-      // 「本文へ移動」などでキーボードのフォーカスも移す(tabindex="-1" の要素)
-      if (target.hasAttribute("tabindex")) target.focus({ preventScroll: true });
+      // URLにも移動先を残す(戻るボタン・リンクの共有で同じ場所に戻れる)
+      if (window.location.hash !== hash) window.history.pushState(null, "", hash);
+      focusSection(target);
     });
+  });
+
+  // 戻る・進むでページ内を移動したときも、フォーカスを移動先に合わせる(スクロールはブラウザに任せる)
+  window.addEventListener("popstate", () => {
+    let target = null;
+    try {
+      target = window.location.hash.length > 1 ? document.querySelector(window.location.hash) : document.getElementById("main");
+    } catch (e) {
+      target = null;
+    }
+    if (target) focusSection(target);
   });
 
   // 問い合わせフォーム送信
@@ -110,6 +140,13 @@ document.addEventListener("DOMContentLoaded", () => {
       message: formData.get("message"),
       website: formData.get("website"), // ボット対策の見えない欄(人は入力しない)
     };
+    // 空白だけの入力は送らずに、その欄へ案内する(受け口でも同じ確認をする)
+    const blank = ["name", "message"].find((k) => !String(payload[k] || "").trim());
+    if (blank) {
+      show(blank === "message" ? "相談内容を入力してください。" : "お名前を入力してください。", "error");
+      form.elements[blank].focus();
+      return;
+    }
     const contentKey = JSON.stringify([payload.name, payload.email, payload.message]);
     if (!pending || pending.key !== contentKey) pending = { key: contentKey, id: newRequestId() };
     payload.requestId = pending.id;
