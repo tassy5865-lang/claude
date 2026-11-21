@@ -211,11 +211,39 @@
     };
   }
 
-  window.NexsistMotion = { nodeCount, createNodes, stepNodes, linksFor, startNet };
+  // ---- スクロール出現 ----
+  const REVEAL_TARGETS = ".section-head, .pain-item, .service-card, .combo-item, .case-feature, .case, .price-card, .scope, .about-body, .flow-step, .faq-item, .contact-grid > *";
+  const STAGGER_MS = 70;
+  const STAGGER_MAX_MS = 280;
+
+  // 画面に入った要素に is-in を付ける。使えない環境・動きを減らす設定では何もしない(最初から全部見える)
+  function setupReveal(root, opts) {
+    if ((opts && opts.reduce) || typeof window.IntersectionObserver !== "function") return false;
+    const els = Array.prototype.slice.call(root.querySelectorAll(REVEAL_TARGETS));
+    const seen = new Map(); // 親ごとの何番目か
+    for (const el of els) {
+      const i = seen.get(el.parentElement) || 0;
+      seen.set(el.parentElement, i + 1);
+      if (i > 0) el.style.animationDelay = Math.min(i * STAGGER_MS, STAGGER_MAX_MS) + "ms";
+    }
+    const io = new window.IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (!e.isIntersecting) continue;
+        e.target.classList.add("is-in");
+        io.unobserve(e.target);
+      }
+    }, { rootMargin: "0px 0px -8% 0px" });
+    root.documentElement.classList.add("js-motion");
+    els.forEach((el) => io.observe(el));
+    return true;
+  }
+
+  window.NexsistMotion = { nodeCount, createNodes, stepNodes, linksFor, startNet, setupReveal };
 
   document.addEventListener("DOMContentLoaded", () => {
     const reduce = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
     const canvas = document.querySelector(".hero-net");
     if (canvas) startNet(canvas, { reduce });
+    setupReveal(document, { reduce });
   });
 })();

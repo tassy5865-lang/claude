@@ -391,3 +391,12 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .combo-item .combo-set { color: var(--text); font-weight: 700; font-size: 14.5px; margin-bottom: 6px; }
 @media (max-width: 960px) { .combo-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .combo-list { grid-template-columns: 1fr; } }
+
+/* ---------- 2026-11-21 スクロール出現(motion.js が <html> に js-motion を付けたときだけ隠す) ---------- */
+@keyframes reveal-in {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: none; }
+}
+.js-motion .section-head:not(.is-in), .js-motion .pain-item:not(.is-in), .js-motion .service-card:not(.is-in), .js-motion .combo-item:not(.is-in), .js-motion .case-feature:not(.is-in), .js-motion .case:not(.is-in), .js-motion .price-card:not(.is-in), .js-motion .scope:not(.is-in), .js-motion .about-body:not(.is-in), .js-motion .flow-step:not(.is-in), .js-motion .faq-item:not(.is-in), .js-motion .contact-grid > :not(.is-in) { opacity: 0; }
+/* 終わったら通常のスタイルに戻す(backwards)ので、カードのホバー効果はそのまま */
+.js-motion .is-in { animation: reveal-in .6s cubic-bezier(.2, .7, .2, 1) backwards; }

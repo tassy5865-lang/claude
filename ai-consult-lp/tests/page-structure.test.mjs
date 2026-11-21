@@ -236,3 +236,14 @@ test('hero text entrance is CSS-only and ends visible', () => {
   assert.match(css, /\.hero-copy > \* \{[^}]*animation:[^}]*hero-in[^}]*both/);
   assert.match(css, /prefers-reduced-motion: reduce\)\s*\{\s*\*, \*::before, \*::after \{ animation: none !important/);
 });
+
+test('content is hidden only under js-motion', () => {
+  const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+  const rules = css.replace(/@keyframes[^{]*\{(?:[^{}]*\{[^}]*\})*\s*\}/g, '').replace(/\/\*[\s\S]*?\*\//g, ''); // アニメーション定義とコメントは除く
+  const hiding = [...rules.matchAll(/([^{}]+)\{[^}]*opacity:\s*0[;\s]/g)].map((m) => m[1].trim());
+  assert.ok(hiding.length > 0, 'reveal rule exists');
+  for (const rule of hiding) for (const sel of rule.split(',')) assert.match(sel.trim(), /^\.js-motion /, sel);
+  // 対象: 各セクションの見出しとカード(ヒーロー以外)
+  assert.match(css, /\.js-motion \.service-card/);
+  assert.match(css, /\.is-in/);
+});

@@ -163,3 +163,53 @@ test('pointer listeners are passive', () => {
   assert.equal(h.heroListeners.pointermove.opts.passive, true);
   assert.equal(h.heroListeners.pointerleave.opts.passive, true);
 });
+
+// ---- Task 3: スクロール出現 ----
+function classList() {
+  const s = new Set();
+  return { add: (c) => s.add(c), remove: (c) => s.delete(c), contains: (c) => s.has(c) };
+}
+function revealHarness({ withIO = true } = {}) {
+  const parent = {};
+  const els = [0, 1, 2, 3, 4, 5].map(() => ({ classList: classList(), style: {}, parentElement: parent }));
+  const root = { documentElement: { classList: classList() }, querySelectorAll: () => els };
+  const ios = [];
+  const extra = withIO
+    ? { IntersectionObserver: class { constructor(cb, opts) { this.cb = cb; this.opts = opts; this.watched = new Set(); ios.push(this); } observe(el) { this.watched.add(el); } unobserve(el) { this.watched.delete(el); } disconnect() {} } }
+    : {};
+  const M = load(extra).NexsistMotion;
+  return { M, root, els, ios };
+}
+
+test('reveal is skipped without IntersectionObserver', () => {
+  const h = revealHarness({ withIO: false });
+  assert.equal(h.M.setupReveal(h.root, { reduce: false }), false);
+  assert.equal(h.root.documentElement.classList.contains('js-motion'), false);
+});
+
+test('reveal is skipped for reduced motion', () => {
+  const h = revealHarness();
+  assert.equal(h.M.setupReveal(h.root, { reduce: true }), false);
+  assert.equal(h.root.documentElement.classList.contains('js-motion'), false);
+  assert.equal(h.ios.length, 0);
+});
+
+test('revealed elements stay revealed', () => {
+  const h = revealHarness();
+  assert.equal(h.M.setupReveal(h.root, { reduce: false }), true);
+  assert.equal(h.root.documentElement.classList.contains('js-motion'), true);
+  const io = h.ios[0];
+  assert.equal(io.watched.size, 6);
+  io.cb([{ target: h.els[0], isIntersecting: true }, { target: h.els[1], isIntersecting: false }]);
+  assert.equal(h.els[0].classList.contains('is-in'), true);
+  assert.equal(h.els[1].classList.contains('is-in'), false);
+  assert.equal(io.watched.has(h.els[0]), false, 'unobserved after reveal');
+  assert.equal(io.watched.has(h.els[1]), true);
+});
+
+test('siblings get a short stagger capped at 280ms', () => {
+  const h = revealHarness();
+  h.M.setupReveal(h.root, { reduce: false });
+  const delays = h.els.map((e) => parseInt(e.style.animationDelay || '0', 10));
+  assert.deepEqual(delays, [0, 70, 140, 210, 280, 280]);
+});
