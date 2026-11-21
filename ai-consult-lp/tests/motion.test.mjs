@@ -79,7 +79,7 @@ test('linksFor returns pairs closer than maxDist with fading alpha', () => {
 });
 
 // ---- Task 2: 描画と停止の制御(ブラウザの部品はモック) ----
-function netHarness({ visibility = 'visible' } = {}) {
+function netHarness({ visibility = 'visible', withIO = true, withRO = false } = {}) {
   const calls = { raf: 0, arc: 0, stroke: 0 };
   const rafQueue = [];
   const docListeners = {};
@@ -106,17 +106,21 @@ function netHarness({ visibility = 'visible' } = {}) {
     visibilityState: visibility,
     addEventListener: (type, fn) => { (docListeners[type] ||= []).push(fn); },
   };
-  const sb = load({
+  const winListeners = {};
+  const ros = [];
+  const extra = {
     document: doc,
     devicePixelRatio: 3,
     requestAnimationFrame: (fn) => { calls.raf++; rafQueue.push(fn); return calls.raf; },
     cancelAnimationFrame: () => { rafQueue.length = 0; },
-    IntersectionObserver: class { constructor(cb) { this.cb = cb; ios.push(this); } observe() {} unobserve() {} disconnect() {} },
-    addEventListener() {},
-  });
+    addEventListener: (type, fn, opts) => { winListeners[type] = { fn, opts }; },
+  };
+  if (withIO) extra.IntersectionObserver = class { constructor(cb) { this.cb = cb; ios.push(this); } observe() {} unobserve() {} disconnect() {} };
+  if (withRO) extra.ResizeObserver = class { constructor(cb) { this.cb = cb; ros.push(this); } observe() {} disconnect() {} };
+  const sb = load(extra);
   let clock = 0;
   const frame = (dt = 17) => { clock += dt; const fns = rafQueue.splice(0); fns.forEach((f) => f(clock)); };
-  return { M: sb.NexsistMotion, canvas, hero, heroListeners, docListeners, ios, calls, frame, doc };
+  return { M: sb.NexsistMotion, canvas, hero, heroListeners, docListeners, winListeners, ios, ros, calls, frame, doc };
 }
 
 test('reduced motion draws one still frame and never loops', () => {
@@ -252,4 +256,74 @@ test('turning on reduced motion mid-visit stops the net and shows all content', 
   onChange({ matches: true });
   assert.equal(net.isRunning(), false);
   assert.equal(root.documentElement.classList.contains('js-motion'), false);
+});
+
+// ---- 見送っていた細部の改善(2026-11-21) ----
+test('segmentHitsRect detects lines inside or crossing the copy box', () => {
+  const { segmentHitsRect } = load().NexsistMotion;
+  const r = { left: 100, top: 100, right: 200, bottom: 200 };
+  assert.equal(segmentHitsRect({ x: 120, y: 120 }, { x: 150, y: 150 }, r), true);  // 中
+  assert.equal(segmentHitsRect({ x: 50, y: 150 }, { x: 250, y: 150 }, r), true);   // 横切る(両端は外)
+  assert.equal(segmentHitsRect({ x: 0, y: 0 }, { x: 90, y: 300 }, r), false);      // 外
+  assert.equal(segmentHitsRect({ x: 0, y: 0 }, { x: 50, y: 50 }, null), false);
+});
+
+test('resizeNodes keeps the network when the count is unchanged', () => {
+  const { resizeNodes } = load().NexsistMotion;
+  const nodes = [{ x: 100, y: 50, vx: 0.1, vy: 0 }, { x: 300, y: 150, vx: 0, vy: 0.1 }];
+  const same = resizeNodes(nodes, 400, 200, 400, 220, 2, seeded(1));
+  assert.equal(same, nodes, 'same array (no jump)');
+  assert.deepEqual([nodes[0].x, nodes[0].y], [100, 55]);
+  const more = resizeNodes(nodes, 400, 200, 1200, 800, 40, seeded(1));
+  assert.equal(more.length, 40);
+});
+
+test('without IntersectionObserver the net draws one still frame instead of looping forever', () => {
+  const h = netHarness({ withIO: false });
+  const net = h.M.startNet(h.canvas, { reduce: false });
+  assert.equal(h.calls.raf, 0);
+  assert.equal(net.isRunning(), false);
+  assert.ok(h.calls.arc > 0);
+});
+
+test('scrolling clears the pointer so lines do not pull to a stale spot', () => {
+  const h = netHarness();
+  const net = h.M.startNet(h.canvas, { reduce: false });
+  h.heroListeners.pointermove.fn({ clientX: 300, clientY: 300 });
+  assert.equal(net.hasPointer(), true);
+  assert.equal(h.winListeners.scroll.opts.passive, true);
+  h.winListeners.scroll.fn();
+  assert.equal(net.hasPointer(), false);
+});
+
+test('ResizeObserver is used and a paused net redraws on resize', () => {
+  const h = netHarness({ withRO: true });
+  const net = h.M.startNet(h.canvas, { reduce: false });
+  assert.equal(h.ros.length, 1);
+  assert.equal(h.winListeners.resize, undefined, 'no duplicate window resize listener');
+  h.ios[0].cb([{ isIntersecting: false }]);
+  assert.equal(net.isRunning(), false);
+  const before = h.calls.arc;
+  h.canvas.clientHeight = 760;
+  h.ros[0].cb([]);
+  assert.ok(h.calls.arc > before, 'redrew while paused');
+  assert.equal(h.canvas.height, 1520);
+});
+
+test('a tab becoming visible does not start the net while the hero is off-screen', () => {
+  const h = netHarness();
+  const net = h.M.startNet(h.canvas, { reduce: false });
+  h.ios[0].cb([{ isIntersecting: false }]);
+  h.doc.visibilityState = 'hidden';
+  h.docListeners.visibilitychange.forEach((f) => f());
+  h.doc.visibilityState = 'visible';
+  h.docListeners.visibilitychange.forEach((f) => f());
+  assert.equal(net.isRunning(), false);
+});
+
+test('copy box is re-measured after the hero text finishes moving', () => {
+  const h = netHarness();
+  h.M.startNet(h.canvas, { reduce: false });
+  assert.ok(h.heroListeners.animationend, 'listens for animationend');
+  assert.equal(h.heroListeners.animationend.opts.passive, true);
 });

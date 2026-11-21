@@ -153,11 +153,16 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .giant-stack .giant { animation: hero-in .7s cubic-bezier(.2, .7, .2, 1) both; }
 .giant-stack .giant:nth-child(2) { animation-delay: .12s; }
 .giant-stack .giant:nth-child(3) { animation-delay: .24s; }
-.hero-copy > * { animation: hero-in .6s cubic-bezier(.2, .7, .2, 1) both; animation-delay: .35s; }
-.hero-copy > :nth-child(2) { animation-delay: .43s; }
-.hero-copy > :nth-child(3) { animation-delay: .51s; }
-.hero-copy > :nth-child(4) { animation-delay: .59s; }
-.hero-copy > :nth-child(5) { animation-delay: .67s; }
+/* 日本語の見出し・ボタンは最初から見せ、位置だけ少し動かす(読める・押せるまで待たせない) */
+@keyframes hero-rise {
+  from { transform: translateY(14px); }
+  to { transform: none; }
+}
+.hero-copy > * { animation: hero-rise .6s cubic-bezier(.2, .7, .2, 1) both; }
+.hero-copy > :nth-child(2) { animation-delay: .05s; }
+.hero-copy > :nth-child(3) { animation-delay: .1s; }
+.hero-copy > :nth-child(4) { animation-delay: .15s; }
+.hero-copy > :nth-child(5) { animation-delay: .2s; }
 .eyebrow { font-family: var(--font-en); font-size: 12px; letter-spacing: 0.28em; color: var(--cyan-soft); margin-bottom: 14px; }
 .hero h1 { font-size: clamp(28px, 3.6vw, 44px); font-weight: 900; letter-spacing: 0.01em; }
 .hero-sub { color: var(--muted); margin-top: 18px; font-size: 15px; }

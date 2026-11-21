@@ -64,6 +64,40 @@
     return links;
   }
 
+  // 線分 p-q が四角形 r に入るか横切るか(見出し・本文の上の線を弱めるため)
+  function segmentHitsRect(p, q, r) {
+    if (!r) return false;
+    const inside = (a) => a.x >= r.left && a.x <= r.right && a.y >= r.top && a.y <= r.bottom;
+    if (inside(p) || inside(q)) return true;
+    // 線分を四角形で切り取れるか(Liang–Barsky)
+    const dx = q.x - p.x;
+    const dy = q.y - p.y;
+    let t0 = 0;
+    let t1 = 1;
+    const edges = [[-dx, p.x - r.left], [dx, r.right - p.x], [-dy, p.y - r.top], [dy, r.bottom - p.y]];
+    for (const [pe, qe] of edges) {
+      if (pe === 0) {
+        if (qe < 0) return false;
+      } else {
+        const t = qe / pe;
+        if (pe < 0) t0 = Math.max(t0, t);
+        else t1 = Math.min(t1, t);
+        if (t0 > t1) return false;
+      }
+    }
+    return true;
+  }
+
+  // 画面サイズが変わったとき、点の数が同じなら位置を拡大縮小して網を保つ(フォント読込などで飛ばない)
+  function resizeNodes(nodes, oldW, oldH, newW, newH, count, rand) {
+    if (nodes.length !== count || !oldW || !oldH) return createNodes(count, newW, newH, rand);
+    for (const n of nodes) {
+      n.x = (n.x * newW) / oldW;
+      n.y = (n.y * newH) / oldH;
+    }
+    return nodes;
+  }
+
   // ---- ヒーローの網を描く ----
   const LINK_DIST = 170;
   const VIOLET = [123, 92, 255];
@@ -91,34 +125,36 @@
     let onScreen = true;
     let rafId = 0;
 
-    function resize() {
-      w = canvas.clientWidth;
-      h = canvas.clientHeight;
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      canvas.width = Math.round(w * dpr);
-      canvas.height = Math.round(h * dpr);
-      if (ctx.setTransform) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      nodes = createNodes(nodeCount(w, h), w, h, Math.random);
+    function measureCopy() {
       const box = canvas.getBoundingClientRect();
       const el = hero.querySelector(".hero-copy");
       const r = el && el.getBoundingClientRect();
       copy = r ? { left: r.left - box.left, top: r.top - box.top, right: r.right - box.left, bottom: r.bottom - box.top } : null;
     }
 
-    function underCopy(x, y) {
-      return !!copy && x >= copy.left && x <= copy.right && y >= copy.top && y <= copy.bottom;
+    function resize() {
+      const oldW = w;
+      const oldH = h;
+      w = canvas.clientWidth;
+      h = canvas.clientHeight;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+      if (ctx.setTransform) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      nodes = resizeNodes(nodes, oldW, oldH, w, h, nodeCount(w, h), Math.random);
+      measureCopy();
     }
 
+    // 見出し・本文にかかる線・点は半分以下の濃さにする
+    const DIM = 0.45;
     function draw() {
       ctx.clearRect(0, 0, w, h);
       ctx.lineWidth = 1;
       for (const l of linksFor(nodes, LINK_DIST)) {
         const p = nodes[l.a];
         const q = nodes[l.b];
-        const mx = (p.x + q.x) / 2;
-        const my = (p.y + q.y) / 2;
-        const alpha = l.alpha * 0.45 * (underCopy(mx, my) ? 0.5 : 1);
-        ctx.strokeStyle = "rgba(" + mix(mx / w) + "," + alpha.toFixed(3) + ")";
+        const alpha = l.alpha * 0.45 * (segmentHitsRect(p, q, copy) ? DIM : 1);
+        ctx.strokeStyle = "rgba(" + mix((p.x + q.x) / 2 / w) + "," + alpha.toFixed(3) + ")";
         ctx.beginPath();
         ctx.moveTo(p.x, p.y);
         ctx.lineTo(q.x, q.y);
@@ -128,7 +164,8 @@
         for (const n of nodes) {
           const d = Math.hypot(n.x - pointer.x, n.y - pointer.y);
           if (d >= PULL_RADIUS) continue;
-          ctx.strokeStyle = "rgba(" + mix(n.x / w) + "," + ((1 - d / PULL_RADIUS) * 0.5).toFixed(3) + ")";
+          const alpha = (1 - d / PULL_RADIUS) * 0.5 * (segmentHitsRect(n, pointer, copy) ? DIM : 1);
+          ctx.strokeStyle = "rgba(" + mix(n.x / w) + "," + alpha.toFixed(3) + ")";
           ctx.beginPath();
           ctx.moveTo(n.x, n.y);
           ctx.lineTo(pointer.x, pointer.y);
@@ -136,7 +173,8 @@
         }
       }
       for (const n of nodes) {
-        ctx.fillStyle = "rgba(" + mix(n.x / w) + ",0.8)";
+        const a = segmentHitsRect(n, n, copy) ? 0.8 * DIM : 0.8;
+        ctx.fillStyle = "rgba(" + mix(n.x / w) + "," + a + ")";
         ctx.beginPath();
         ctx.arc(n.x, n.y, 1.6, 0, Math.PI * 2);
         ctx.fill();
@@ -190,23 +228,26 @@
       window.addEventListener("resize", onResize);
     }
 
-    if (reduce) return idle;
+    // 見出しの登場(位置の移動)が終わったら、文字の範囲を測り直す
+    hero.addEventListener("animationend", measureCopy, { passive: true });
+
+    // 画面外で止める手段がない古いブラウザでは、動かし続けずに止まった1枚にする
+    if (reduce || typeof window.IntersectionObserver !== "function") return idle;
 
     hero.addEventListener("pointermove", (e) => {
       const box = canvas.getBoundingClientRect();
       pointer = { x: e.clientX - box.left, y: e.clientY - box.top };
     }, { passive: true });
     hero.addEventListener("pointerleave", () => { pointer = null; }, { passive: true });
+    // マウスを動かさずにスクロールしたときは、古い位置へ引き寄せない
+    window.addEventListener("scroll", () => { pointer = null; }, { passive: true });
 
-    let io = null;
-    if (typeof window.IntersectionObserver === "function") {
-      io = new window.IntersectionObserver((entries) => {
-        onScreen = entries[entries.length - 1].isIntersecting;
-        if (onScreen) start();
-        else pause();
-      });
-      io.observe(hero);
-    }
+    const io = new window.IntersectionObserver((entries) => {
+      onScreen = entries[entries.length - 1].isIntersecting;
+      if (onScreen) start();
+      else pause();
+    });
+    io.observe(hero);
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "hidden") pause();
       else start();
@@ -217,10 +258,11 @@
       stop() {
         stopped = true;
         pause();
-        if (io) io.disconnect();
+        io.disconnect();
         if (ro) ro.disconnect();
       },
       isRunning: () => running,
+      hasPointer: () => pointer !== null,
     };
   }
 
@@ -261,7 +303,7 @@
     });
   }
 
-  window.NexsistMotion = { nodeCount, createNodes, stepNodes, linksFor, startNet, setupReveal, watchReduce };
+  window.NexsistMotion = { nodeCount, createNodes, stepNodes, linksFor, segmentHitsRect, resizeNodes, startNet, setupReveal, watchReduce };
 
   document.addEventListener("DOMContentLoaded", () => {
     const mq = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : null;

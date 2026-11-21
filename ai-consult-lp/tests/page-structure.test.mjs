@@ -233,7 +233,11 @@ test('hero text entrance is CSS-only and ends visible', () => {
   const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
   assert.match(css, /@keyframes hero-in/);
   assert.match(css, /\.giant-stack \.giant \{[^}]*animation:[^}]*hero-in[^}]*both/);
-  assert.match(css, /\.hero-copy > \* \{[^}]*animation:[^}]*hero-in[^}]*both/);
+  // 日本語の見出し・ボタンは最初から見せ、位置だけ動かす(読める・押せるまで待たせない、LCPも遅らせない)
+  assert.match(css, /\.hero-copy > \* \{[^}]*animation:[^}]*hero-rise/);
+  const rise = css.match(/@keyframes hero-rise \{[\s\S]*?\}\s*\}/);
+  assert.ok(rise, 'hero-rise keyframes');
+  assert.doesNotMatch(rise[0], /opacity/);
   assert.match(css, /prefers-reduced-motion: reduce\)\s*\{\s*\*, \*::before, \*::after \{ animation: none !important/);
 });
 
