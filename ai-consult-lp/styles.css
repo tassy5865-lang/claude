@@ -413,3 +413,13 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .hero.is-paused .orb { animation-play-state: paused; }
 /* 出現アニメーションの途中でフォーカスされたら、待たずにすぐ表示する */
 .js-motion .is-in:focus-within { animation: none; }
+/* 背景の動きを止める／再開するボタン(motion.js が動かせるときだけ表示) */
+.motion-toggle {
+  position: absolute; right: 16px; bottom: 14px; z-index: 2;
+  font: inherit; font-size: 12px; color: var(--muted);
+  background: rgba(6, 6, 26, 0.6); border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px; padding: 6px 12px; cursor: pointer;
+  transition: color .2s, border-color .2s;
+}
+.motion-toggle:hover { color: var(--text); border-color: rgba(255, 255, 255, 0.4); }
+.motion-toggle[hidden] { display: none; }

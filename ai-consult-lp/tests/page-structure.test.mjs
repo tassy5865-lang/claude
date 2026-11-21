@@ -278,3 +278,16 @@ test('a focused element mid-reveal is shown immediately', () => {
   const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
   assert.match(css, /\.js-motion \.is-in:focus-within \{[^}]*animation:\s*none/);
 });
+
+// codex 10回目(2026-11-21): 背景の動きを止めるボタン、ヒーローは便益を先に
+test('hero has a hidden-by-default motion toggle button', () => {
+  const hero = html.match(/<section id="hero"[\s\S]*?<\/section>/)[0];
+  assert.match(hero, /<button type="button" class="motion-toggle" aria-pressed="false" hidden>背景の動きを止める<\/button>/);
+});
+
+test('hero sub copy leads with what the shop gets', () => {
+  const sub = html.match(/<p class="hero-sub">([\s\S]*?)<\/p>/)[1];
+  assert.match(sub, /予約/);
+  assert.match(sub, /手作業/);
+  assert.doesNotMatch(sub, /Threads|Lステップ/); // 詳細なサービス名はサービス欄へ
+});

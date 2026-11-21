@@ -118,7 +118,7 @@ function netHarness({ visibility = 'visible', withIO = true, withRO = false } = 
     addEventListener: (type, fn, opts) => { winListeners[type] = { fn, opts }; },
   };
   if (withIO) extra.IntersectionObserver = class { constructor(cb) { this.cb = cb; ios.push(this); } observe() {} unobserve() {} disconnect() {} };
-  if (withRO) extra.ResizeObserver = class { constructor(cb) { this.cb = cb; ros.push(this); } observe() {} disconnect() {} };
+  if (withRO) extra.ResizeObserver = class { constructor(cb) { this._cb = cb; this.off = false; ros.push(this); this.cb = (e) => { if (!this.off) this._cb(e); }; } observe() {} disconnect() { this.off = true; } };
   const sb = load(extra);
   let clock = 0;
   const frame = (dt = 17) => { clock += dt; const fns = rafQueue.splice(0); fns.forEach((f) => f(clock)); };
@@ -344,4 +344,96 @@ test('canvas size comes from the hero, never from its own (unstyled) size', () =
   assert.equal(h.canvas.style.position, 'absolute'); // CSSが無くてもレイアウトを押し下げない
   h.ros[0].cb([]);
   assert.equal(h.canvas.width, 2400, 'stable after a resize notification');
+});
+
+// ---- codex 10回目の指摘(2026-11-21) ----
+test('without IntersectionObserver the orbs are paused too', () => {
+  const h = netHarness({ withIO: false });
+  h.M.startNet(h.canvas, { reduce: false });
+  assert.equal(h.hero.classList.contains('is-paused'), true);
+});
+
+test('when canvas is unavailable the orbs are paused too', () => {
+  const h = netHarness();
+  h.canvas.getContext = () => null;
+  h.M.startNet(h.canvas, { reduce: false });
+  assert.equal(h.hero.classList.contains('is-paused'), true);
+});
+
+test('a stopped net still follows size changes (still frame stays correct)', () => {
+  const h = netHarness({ withRO: true });
+  const net = h.M.startNet(h.canvas, { reduce: false });
+  net.stop();
+  const before = h.calls.arc;
+  h.hero.clientWidth = 400;
+  h.ros[0].cb([]);
+  assert.equal(h.canvas.width, 800);
+  assert.ok(h.calls.arc > before, 'redrew');
+});
+
+test('stepNodes scales movement by elapsed time', () => {
+  const { stepNodes } = load().NexsistMotion;
+  const a = { x: 100, y: 100, vx: 0.2, vy: 0 };
+  const b = { x: 100, y: 100, vx: 0.2, vy: 0 };
+  stepNodes([a], 800, 600, null, 1);
+  stepNodes([b], 800, 600, null, 2);
+  assert.ok(Math.abs((b.x - 100) - 2 * (a.x - 100)) < 1e-9);
+});
+
+test('viewer can pause and resume the background', () => {
+  const h = netHarness();
+  const net = h.M.startNet(h.canvas, { reduce: false });
+  assert.equal(net.canAnimate, true);
+  net.setUserPaused(true);
+  assert.equal(net.isRunning(), false);
+  assert.equal(h.hero.classList.contains('is-paused'), true);
+  h.ios[0].cb([{ isIntersecting: true }]); // 画面に入っても勝手に再開しない
+  assert.equal(net.isRunning(), false);
+  net.setUserPaused(false);
+  assert.equal(net.isRunning(), true);
+});
+
+test('reduced motion and no-IO nets cannot animate (no toggle shown)', () => {
+  assert.equal(netHarness().M.startNet(netHarness().canvas, { reduce: true }).canAnimate, false);
+  const h = netHarness({ withIO: false });
+  assert.equal(h.M.startNet(h.canvas, { reduce: false }).canAnimate, false);
+});
+
+function toggleHarness(saved = null) {
+  const store = new Map(saved == null ? [] : [['nexsist-motion-paused', saved]]);
+  const attrs = { 'aria-pressed': 'false' };
+  let click = null;
+  const button = {
+    hidden: true, textContent: '背景の動きを止める',
+    setAttribute: (k, v) => { attrs[k] = String(v); }, getAttribute: (k) => attrs[k],
+    addEventListener: (type, fn) => { if (type === 'click') click = fn; },
+  };
+  const net = { paused: false, canAnimate: true, setUserPaused(v) { this.paused = v; } };
+  const M = load({ localStorage: { getItem: (k) => (store.has(k) ? store.get(k) : null), setItem: (k, v) => store.set(k, String(v)), removeItem: (k) => store.delete(k) } }).NexsistMotion;
+  return { M, button, net, attrs, store, click: () => click() };
+}
+
+test('motion toggle button pauses, resumes and remembers the choice', () => {
+  const t = toggleHarness();
+  t.M.setupMotionToggle(t.button, t.net);
+  assert.equal(t.button.hidden, false);
+  t.click();
+  assert.equal(t.net.paused, true);
+  assert.equal(t.attrs['aria-pressed'], 'true');
+  assert.match(t.button.textContent, /再開/);
+  assert.equal(t.store.get('nexsist-motion-paused'), '1');
+  t.click();
+  assert.equal(t.net.paused, false);
+  assert.equal(t.attrs['aria-pressed'], 'false');
+  assert.match(t.button.textContent, /止める/);
+  const again = toggleHarness('1');
+  again.M.setupMotionToggle(again.button, again.net);
+  assert.equal(again.net.paused, true, 'restored');
+});
+
+test('motion toggle stays hidden when the net cannot animate', () => {
+  const t = toggleHarness();
+  t.net.canAnimate = false;
+  t.M.setupMotionToggle(t.button, t.net);
+  assert.equal(t.button.hidden, true);
 });

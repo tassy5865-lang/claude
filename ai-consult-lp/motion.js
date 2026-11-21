@@ -28,7 +28,8 @@
     return nodes;
   }
 
-  function stepNodes(nodes, width, height, pointer) {
+  // k = 経過時間 ÷ 60Hzの1フレーム。画面の更新頻度が違っても同じ速さで動く
+  function stepNodes(nodes, width, height, pointer, k = 1) {
     for (const n of nodes) {
       if (pointer) {
         const dx = pointer.x - n.x;
@@ -40,8 +41,8 @@
           n.y += (dy / d) * pull;
         }
       }
-      n.x += n.vx;
-      n.y += n.vy;
+      n.x += n.vx * k;
+      n.y += n.vy * k;
       if (n.x < 0 || n.x > width) {
         n.vx = -n.vx;
         n.x = Math.min(width, Math.max(0, n.x));
@@ -112,8 +113,14 @@
     const reduce = !!(opts && opts.reduce);
     const hero = canvas.parentElement;
     const ctx = canvas.getContext && canvas.getContext("2d");
-    const idle = { stop() {}, isRunning: () => false };
-    if (!ctx || !hero) return idle;
+    const idle = { stop() {}, isRunning: () => false, hasPointer: () => false, setUserPaused() {}, canAnimate: false };
+    if (!hero) return idle;
+    // 網を動かさないときは、背景の光(orb)も止める
+    const pauseOrbs = () => { if (hero.classList) hero.classList.add("is-paused"); };
+    if (!ctx) {
+      pauseOrbs();
+      return idle;
+    }
 
     let w = 0;
     let h = 0;
@@ -190,15 +197,18 @@
       }
     }
 
-    // 120Hzなどの画面でも約60回/秒に抑える(動きの速さをそろえ、描画回数も増やさない)
+    // 120Hzなどの画面でも約60回/秒に抑える。動く量は経過時間で決め、速さを画面の更新頻度によらずそろえる
     const MIN_FRAME_MS = 15;
+    const BASE_FRAME_MS = 1000 / 60;
     let last = -Infinity;
     function tick(t) {
       if (!running) return;
       rafId = window.requestAnimationFrame(tick);
       if (t - last < MIN_FRAME_MS) return;
+      // 再開直後など間が空いたときに一気に飛ばないよう、最大3フレーム分まで
+      const k = last === -Infinity ? 1 : Math.min(3, (t - last) / BASE_FRAME_MS);
       last = t;
-      stepNodes(nodes, w, h, pointer);
+      stepNodes(nodes, w, h, pointer, k);
       draw();
     }
 
@@ -207,8 +217,9 @@
       if (hero.classList) hero.classList[on ? "add" : "remove"]("is-paused");
     }
 
+    let userPaused = false; // 見ている人が「背景の動きを止める」を押した
     function start() {
-      if (running || stopped || reduce || !onScreen || document.visibilityState === "hidden") return;
+      if (running || stopped || userPaused || reduce || !onScreen || document.visibilityState === "hidden") return;
       running = true;
       setPaused(false);
       last = -Infinity;
@@ -240,8 +251,11 @@
     // 見出しの登場(位置の移動)が終わったら、文字の範囲を測り直す
     hero.addEventListener("animationend", measureCopy, { passive: true });
 
-    // 画面外で止める手段がない古いブラウザでは、動かし続けずに止まった1枚にする
-    if (reduce || typeof window.IntersectionObserver !== "function") return idle;
+    // 画面外で止める手段がない古いブラウザでは、動かし続けずに止まった1枚にする(光も止める)
+    if (reduce || typeof window.IntersectionObserver !== "function") {
+      pauseOrbs();
+      return idle;
+    }
 
     hero.addEventListener("pointermove", (e) => {
       const box = canvas.getBoundingClientRect();
@@ -264,14 +278,20 @@
 
     start();
     return {
+      // 動きを止める。大きさの変化には引き続き追従し、止まった絵を描き直す(スマホの回転など)
       stop() {
         stopped = true;
         pause();
         io.disconnect();
-        if (ro) ro.disconnect();
+      },
+      setUserPaused(on) {
+        userPaused = !!on;
+        if (userPaused) pause();
+        else start();
       },
       isRunning: () => running,
       hasPointer: () => pointer !== null,
+      canAnimate: true,
     };
   }
 
@@ -309,10 +329,43 @@
       if (!e.matches) return;
       if (net) net.stop();
       root.documentElement.classList.remove("js-motion");
+      // 止めた後は「背景の動きを止める」ボタンも不要
+      const toggle = root.querySelector && root.querySelector(".motion-toggle");
+      if (toggle) toggle.hidden = true;
     });
   }
 
-  window.NexsistMotion = { nodeCount, createNodes, stepNodes, linksFor, segmentHitsRect, resizeNodes, startNet, setupReveal, watchReduce };
+  // 「背景の動きを止める／再開する」ボタン。選んだ状態はこの端末に覚えておく(保存できなくても動く)
+  const MOTION_KEY = "nexsist-motion-paused";
+  function setupMotionToggle(button, net) {
+    if (!button || !net || !net.canAnimate) return;
+    const render = (paused) => {
+      button.setAttribute("aria-pressed", paused ? "true" : "false");
+      button.textContent = paused ? "背景の動きを再開する" : "背景の動きを止める";
+    };
+    let paused = false;
+    try {
+      paused = window.localStorage.getItem(MOTION_KEY) === "1";
+    } catch (e) {
+      paused = false;
+    }
+    if (paused) net.setUserPaused(true);
+    render(paused);
+    button.hidden = false;
+    button.addEventListener("click", () => {
+      paused = !paused;
+      net.setUserPaused(paused);
+      render(paused);
+      try {
+        if (paused) window.localStorage.setItem(MOTION_KEY, "1");
+        else window.localStorage.removeItem(MOTION_KEY);
+      } catch (e) {
+        /* 保存できない環境では、このページを開いている間だけ有効 */
+      }
+    });
+  }
+
+  window.NexsistMotion = { nodeCount, createNodes, stepNodes, linksFor, segmentHitsRect, resizeNodes, startNet, setupReveal, watchReduce, setupMotionToggle };
 
   document.addEventListener("DOMContentLoaded", () => {
     const mq = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : null;
@@ -320,6 +373,7 @@
     const canvas = document.querySelector(".hero-net");
     const net = canvas ? startNet(canvas, { reduce }) : null;
     setupReveal(document, { reduce });
+    setupMotionToggle(document.querySelector(".motion-toggle"), net);
     if (!reduce) watchReduce(mq, net, document);
   });
 })();
