@@ -32,7 +32,7 @@
   - `installResendTrigger` をエディタで1回実行すると1時間ごとの再送トリガーを登録（重複登録しない）
   - **GASを修正したら貼り直し→新バージョンでデプロイが必要**。2026-11-14 の空送信テストで、本番は古い版のまま動いている可能性が高いと判明（空の名前でも ok:true が返った）
 - `assets/` — work-kohaku.png（琥珀トップ）/ work-ocr.png・work-filedata.png（サンプルデータの画面、原寸リンク付き）/ profile-qr.png / social-card.png（`build-og-card.py` で再生成）
-- `tests/` — `node --test ai-consult-lp/tests/*.test.mjs`（このNodeではディレクトリ指定は不可）。96件（2026-11-21）
+- `tests/` — `node --test ai-consult-lp/tests/*.test.mjs`（このNodeではディレクトリ指定は不可）。97件（2026-11-21）
   - `contact-form.test.mjs` — GAS（制限・重複・キャッシュ消失・通知失敗・宛先なし・ロック失敗・再送の確保/上限・トリガー登録）
   - `form-ui.test.mjs` — main.js の送信ハンドラーを実際に動かす（成功/拒否/HTTPエラー/通信断/再送ID/送信中readOnly）
   - `page-structure.test.mjs` — フォーム契約・CSP・メタ・サービス・事実ベース文言・料金/運営者/FAQ/個人情報/納品後の範囲 など

@@ -269,3 +269,8 @@ test('orbs pause with the network, and the contact area is never hidden', () => 
   const js = readFileSync(new URL('../motion.js', import.meta.url), 'utf8');
   assert.doesNotMatch(js, /contact-grid/);
 });
+
+test('a focused element mid-reveal is shown immediately', () => {
+  const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+  assert.match(css, /\.js-motion \.is-in:focus-within \{[^}]*animation:\s*none/);
+});

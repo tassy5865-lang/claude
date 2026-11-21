@@ -406,3 +406,5 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 @media print { .js-motion :not(.is-in) { opacity: 1 !important; } }
 /* 網が止まっている間(画面外・タブが裏・動きを減らす)は、背景の光も止める */
 .hero.is-paused .orb { animation-play-state: paused; }
+/* 出現アニメーションの途中でフォーカスされたら、待たずにすぐ表示する */
+.js-motion .is-in:focus-within { animation: none; }
