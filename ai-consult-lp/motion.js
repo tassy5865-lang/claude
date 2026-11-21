@@ -143,21 +143,34 @@
       }
     }
 
-    function tick() {
+    // 120Hzなどの画面でも約60回/秒に抑える(動きの速さをそろえ、描画回数も増やさない)
+    const MIN_FRAME_MS = 15;
+    let last = -Infinity;
+    function tick(t) {
       if (!running) return;
+      rafId = window.requestAnimationFrame(tick);
+      if (t - last < MIN_FRAME_MS) return;
+      last = t;
       stepNodes(nodes, w, h, pointer);
       draw();
-      rafId = window.requestAnimationFrame(tick);
+    }
+
+    // 止まっている間は .hero に is-paused を付け、CSSの光(orb)も止める
+    function setPaused(on) {
+      if (hero.classList) hero.classList[on ? "add" : "remove"]("is-paused");
     }
 
     function start() {
       if (running || stopped || reduce || !onScreen || document.visibilityState === "hidden") return;
       running = true;
+      setPaused(false);
+      last = -Infinity;
       rafId = window.requestAnimationFrame(tick);
     }
 
     function pause() {
       running = false;
+      setPaused(true);
       window.cancelAnimationFrame(rafId);
     }
 
@@ -212,7 +225,7 @@
   }
 
   // ---- スクロール出現 ----
-  const REVEAL_TARGETS = ".section-head, .pain-item, .service-card, .combo-item, .case-feature, .case, .price-card, .scope, .about-body, .flow-step, .faq-item, .contact-grid > *";
+  const REVEAL_TARGETS = ".section-head, .pain-item, .service-card, .combo-item, .case-feature, .case, .price-card, .scope, .about-body, .flow-step, .faq-item";
   const STAGGER_MS = 70;
   const STAGGER_MAX_MS = 280;
 
@@ -238,12 +251,24 @@
     return true;
   }
 
-  window.NexsistMotion = { nodeCount, createNodes, stepNodes, linksFor, startNet, setupReveal };
+  // 閲覧中に「動きを減らす」がオンになったら、網を止めて出現待ちの要素も全部見せる
+  function watchReduce(mq, net, root) {
+    if (!mq || typeof mq.addEventListener !== "function") return;
+    mq.addEventListener("change", (e) => {
+      if (!e.matches) return;
+      if (net) net.stop();
+      root.documentElement.classList.remove("js-motion");
+    });
+  }
+
+  window.NexsistMotion = { nodeCount, createNodes, stepNodes, linksFor, startNet, setupReveal, watchReduce };
 
   document.addEventListener("DOMContentLoaded", () => {
-    const reduce = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    const mq = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : null;
+    const reduce = !!(mq && mq.matches);
     const canvas = document.querySelector(".hero-net");
-    if (canvas) startNet(canvas, { reduce });
+    const net = canvas ? startNet(canvas, { reduce }) : null;
     setupReveal(document, { reduce });
+    if (!reduce) watchReduce(mq, net, document);
   });
 })();

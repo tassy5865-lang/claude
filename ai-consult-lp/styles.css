@@ -397,6 +397,12 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: none; }
 }
-.js-motion .section-head:not(.is-in), .js-motion .pain-item:not(.is-in), .js-motion .service-card:not(.is-in), .js-motion .combo-item:not(.is-in), .js-motion .case-feature:not(.is-in), .js-motion .case:not(.is-in), .js-motion .price-card:not(.is-in), .js-motion .scope:not(.is-in), .js-motion .about-body:not(.is-in), .js-motion .flow-step:not(.is-in), .js-motion .faq-item:not(.is-in), .js-motion .contact-grid > :not(.is-in) { opacity: 0; }
+.js-motion .section-head:not(.is-in), .js-motion .pain-item:not(.is-in), .js-motion .service-card:not(.is-in), .js-motion .combo-item:not(.is-in), .js-motion .case-feature:not(.is-in), .js-motion .case:not(.is-in), .js-motion .price-card:not(.is-in), .js-motion .scope:not(.is-in), .js-motion .about-body:not(.is-in), .js-motion .flow-step:not(.is-in), .js-motion .faq-item:not(.is-in) { opacity: 0; }
 /* 終わったら通常のスタイルに戻す(backwards)ので、カードのホバー効果はそのまま */
 .js-motion .is-in { animation: reveal-in .6s cubic-bezier(.2, .7, .2, 1) backwards; }
+/* キーボードでフォーカスした要素は、まだ出現していなくても見せる(フォーカス位置を見失わない) */
+.js-motion :not(.is-in):focus-within { opacity: 1; }
+/* 印刷時は出現前の要素も全部見せる */
+@media print { .js-motion :not(.is-in) { opacity: 1 !important; } }
+/* 網が止まっている間(画面外・タブが裏・動きを減らす)は、背景の光も止める */
+.hero.is-paused .orb { animation-play-state: paused; }

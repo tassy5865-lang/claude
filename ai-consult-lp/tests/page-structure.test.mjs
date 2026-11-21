@@ -247,3 +247,25 @@ test('content is hidden only under js-motion', () => {
   assert.match(css, /\.js-motion \.service-card/);
   assert.match(css, /\.is-in/);
 });
+
+// 最終レビュー(2026-11-21): まだ出現していない要素でも、フォーカス時・印刷時は見える
+test('unrevealed content becomes visible on keyboard focus', () => {
+  const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+  const i = css.indexOf('.js-motion :not(.is-in):focus-within');
+  assert.ok(i > 0, 'focus-within rule');
+  assert.match(css.slice(i), /^[^{]*\{[^}]*opacity:\s*1/);
+  assert.ok(i > css.lastIndexOf(':not(.is-in) { opacity: 0; }'), 'comes after the hiding rule');
+});
+
+test('unrevealed content is printed', () => {
+  const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+  assert.match(css, /@media print\s*\{\s*\.js-motion :not\(\.is-in\)\s*\{[^}]*opacity:\s*1 !important/);
+});
+
+test('orbs pause with the network, and the contact area is never hidden', () => {
+  const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+  assert.match(css, /\.hero\.is-paused \.orb \{[^}]*animation-play-state:\s*paused/);
+  assert.doesNotMatch(css, /contact-grid > :not\(\.is-in\)/);
+  const js = readFileSync(new URL('../motion.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(js, /contact-grid/);
+});

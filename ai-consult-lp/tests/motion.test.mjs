@@ -96,6 +96,7 @@ function netHarness({ visibility = 'visible' } = {}) {
   });
   const rect = { left: 0, top: 0, right: 1200, bottom: 700, width: 1200, height: 700 };
   const hero = {
+    classList: classList(),
     addEventListener: (type, fn, opts) => { heroListeners[type] = { fn, opts }; },
     querySelector: () => ({ getBoundingClientRect: () => ({ left: 650, top: 200, right: 1150, bottom: 600 }) }),
     getBoundingClientRect: () => rect,
@@ -113,7 +114,8 @@ function netHarness({ visibility = 'visible' } = {}) {
     IntersectionObserver: class { constructor(cb) { this.cb = cb; ios.push(this); } observe() {} unobserve() {} disconnect() {} },
     addEventListener() {},
   });
-  const frame = () => { const fns = rafQueue.splice(0); fns.forEach((f) => f(16)); };
+  let clock = 0;
+  const frame = (dt = 17) => { clock += dt; const fns = rafQueue.splice(0); fns.forEach((f) => f(clock)); };
   return { M: sb.NexsistMotion, canvas, hero, heroListeners, docListeners, ios, calls, frame, doc };
 }
 
@@ -212,4 +214,42 @@ test('siblings get a short stagger capped at 280ms', () => {
   h.M.setupReveal(h.root, { reduce: false });
   const delays = h.els.map((e) => parseInt(e.style.animationDelay || '0', 10));
   assert.deepEqual(delays, [0, 70, 140, 210, 280, 280]);
+});
+
+// ---- 最終レビュー・codex 8回目(2026-11-21) ----
+test('hero is marked paused while the loop is stopped (orbs pause too)', () => {
+  const h = netHarness();
+  const net = h.M.startNet(h.canvas, { reduce: false });
+  assert.equal(h.hero.classList.contains('is-paused'), false);
+  h.ios[0].cb([{ isIntersecting: false }]);
+  assert.equal(h.hero.classList.contains('is-paused'), true);
+  h.ios[0].cb([{ isIntersecting: true }]);
+  assert.equal(h.hero.classList.contains('is-paused'), false);
+  net.stop();
+  assert.equal(h.hero.classList.contains('is-paused'), true);
+});
+
+test('drawing is capped near 60fps on fast displays', () => {
+  const h = netHarness();
+  h.M.startNet(h.canvas, { reduce: false });
+  h.frame(17);
+  const drawn = h.calls.arc;
+  h.frame(8); // 120Hz の次のフレーム(8ms後)は描かない
+  assert.equal(h.calls.arc, drawn, 'skipped');
+  h.frame(9); // 合計17ms後は描く
+  assert.ok(h.calls.arc > drawn, 'drew again');
+});
+
+test('turning on reduced motion mid-visit stops the net and shows all content', () => {
+  const h = netHarness();
+  const net = h.M.startNet(h.canvas, { reduce: false });
+  const root = { documentElement: { classList: classList() } };
+  root.documentElement.classList.add('js-motion');
+  let onChange = null;
+  const mq = { matches: false, addEventListener: (type, fn) => { if (type === 'change') onChange = fn; } };
+  h.M.watchReduce(mq, net, root);
+  assert.equal(net.isRunning(), true);
+  onChange({ matches: true });
+  assert.equal(net.isRunning(), false);
+  assert.equal(root.documentElement.classList.contains('js-motion'), false);
 });

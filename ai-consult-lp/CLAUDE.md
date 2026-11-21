@@ -23,6 +23,7 @@
   - GASの返事(JSON)を読み、`ok:true` かつ HTTP 成功のときだけ「受け付けました」＋入力消去。拒否・混雑・通信断・タイムアウト(20秒)・読めない返事はそれぞれ案内し入力を残す
   - 送信ごとに受付ID（`requestId`）。同じ内容の再送は同じID（sessionStorage に保持しページ再読み込みにも対応）
   - 送信中はボタン無効＋入力欄 readOnly。HTML の送信ボタンは初期 `disabled`（JS無効時の送信防止、`method="post"`、`noscript` で LINE 案内）
+- `motion.js`（2026-11-21）— ヒーローの「つながる網」(canvas `.hero-net`、画面外・タブが裏で停止(その間は .hero に is-paused を付けて背景の光も停止)、約60回/秒に制限、描画倍率は最大2、点が近い組を線でつなぐ・距離170px、見出しの下は線を半分の濃さ)と、各セクションのスクロール出現(`<html>` に `js-motion` を付けたときだけ隠し、画面に入ると `is-in`)。「動きを減らす」設定では網は静止画1枚・出現なし(閲覧中にオンにしても停止)。相談欄は出現対象外。フォーカス時・印刷時は出現前の要素も表示。数値の調整は motion.js 冒頭の定数。文字の登場は styles.css の `hero-in`(CSSのみ)
 - `gas/contact-form.gs` — 問い合わせ受信GAS。シート列: 受信日時/お名前/メール/相談内容/受付ID/通知/再送回数/最終再送（古いシートも見出し自動追加）
   - 回数制限: 同一メール3件/時・全体20件/時（キャッシュ）、全体60件/日（スクリプトプロパティ `daycount:YYYYMMDD`）
   - 受付IDの重複は キャッシュ＋シートの受付ID列全体 で照合 → `{ok:true, duplicate:true}`
@@ -31,11 +32,12 @@
   - `installResendTrigger` をエディタで1回実行すると1時間ごとの再送トリガーを登録（重複登録しない）
   - **GASを修正したら貼り直し→新バージョンでデプロイが必要**。2026-11-14 の空送信テストで、本番は古い版のまま動いている可能性が高いと判明（空の名前でも ok:true が返った）
 - `assets/` — work-kohaku.png（琥珀トップ）/ work-ocr.png・work-filedata.png（サンプルデータの画面、原寸リンク付き）/ profile-qr.png / social-card.png（`build-og-card.py` で再生成）
-- `tests/` — `node --test ai-consult-lp/tests/*.test.mjs`（このNodeではディレクトリ指定は不可）。62件（2026-11-14）
+- `tests/` — `node --test ai-consult-lp/tests/*.test.mjs`（このNodeではディレクトリ指定は不可）。96件（2026-11-21）
   - `contact-form.test.mjs` — GAS（制限・重複・キャッシュ消失・通知失敗・宛先なし・ロック失敗・再送の確保/上限・トリガー登録）
   - `form-ui.test.mjs` — main.js の送信ハンドラーを実際に動かす（成功/拒否/HTTPエラー/通信断/再送ID/送信中readOnly）
   - `page-structure.test.mjs` — フォーム契約・CSP・メタ・サービス・事実ベース文言・料金/運営者/FAQ/個人情報/納品後の範囲 など
   - `cross-links.test.mjs` — 自己紹介HP・ポートフォリオのリンク表記
+  - `motion.test.mjs` — motion.js の計算部分・網の停止/再開・動きを減らす設定・スクロール出現
 
 ## 実績欄の方針（事実ベース）
 - 成果の数値（%・倍・時間短縮・件数など）は書かない。テストで検出する
