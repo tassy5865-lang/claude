@@ -141,6 +141,23 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 }
 .giant-stack .giant { font-size: clamp(64px, 12.5vw, 176px); }
 .hero-copy { padding-bottom: 8px; }
+
+/* 2026-11-21 動く網(motion.js)。装飾なので触れても下のページ操作を妨げない */
+.hero-net { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+.hero-inner { z-index: 1; }
+/* 文字の登場(CSSのみ。終わった状態が通常表示なので、JSが無くても見える) */
+@keyframes hero-in {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: none; }
+}
+.giant-stack .giant { animation: hero-in .7s cubic-bezier(.2, .7, .2, 1) both; }
+.giant-stack .giant:nth-child(2) { animation-delay: .12s; }
+.giant-stack .giant:nth-child(3) { animation-delay: .24s; }
+.hero-copy > * { animation: hero-in .6s cubic-bezier(.2, .7, .2, 1) both; animation-delay: .35s; }
+.hero-copy > :nth-child(2) { animation-delay: .43s; }
+.hero-copy > :nth-child(3) { animation-delay: .51s; }
+.hero-copy > :nth-child(4) { animation-delay: .59s; }
+.hero-copy > :nth-child(5) { animation-delay: .67s; }
 .eyebrow { font-family: var(--font-en); font-size: 12px; letter-spacing: 0.28em; color: var(--cyan-soft); margin-bottom: 14px; }
 .hero h1 { font-size: clamp(28px, 3.6vw, 44px); font-weight: 900; letter-spacing: 0.01em; }
 .hero-sub { color: var(--muted); margin-top: 18px; font-size: 15px; }

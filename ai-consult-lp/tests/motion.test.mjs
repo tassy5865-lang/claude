@@ -77,3 +77,89 @@ test('linksFor returns pairs closer than maxDist with fading alpha', () => {
   assert.equal(links[0].b, 1);
   assert.ok(Math.abs(links[0].alpha - (1 - 50 / 120)) < 1e-9);
 });
+
+// ---- Task 2: 描画と停止の制御(ブラウザの部品はモック) ----
+function netHarness({ visibility = 'visible' } = {}) {
+  const calls = { raf: 0, arc: 0, stroke: 0 };
+  const rafQueue = [];
+  const docListeners = {};
+  const heroListeners = {};
+  const ios = [];
+  const ctx = new Proxy({}, {
+    get: (t, k) => {
+      if (k === 'arc') return () => { calls.arc++; };
+      if (k === 'stroke') return () => { calls.stroke++; };
+      if (k in t) return t[k];
+      return () => {};
+    },
+    set: (t, k, v) => { t[k] = v; return true; },
+  });
+  const rect = { left: 0, top: 0, right: 1200, bottom: 700, width: 1200, height: 700 };
+  const hero = {
+    addEventListener: (type, fn, opts) => { heroListeners[type] = { fn, opts }; },
+    querySelector: () => ({ getBoundingClientRect: () => ({ left: 650, top: 200, right: 1150, bottom: 600 }) }),
+    getBoundingClientRect: () => rect,
+  };
+  const canvas = { parentElement: hero, clientWidth: 1200, clientHeight: 700, width: 0, height: 0, getContext: () => ctx, getBoundingClientRect: () => rect };
+  const doc = {
+    visibilityState: visibility,
+    addEventListener: (type, fn) => { (docListeners[type] ||= []).push(fn); },
+  };
+  const sb = load({
+    document: doc,
+    devicePixelRatio: 3,
+    requestAnimationFrame: (fn) => { calls.raf++; rafQueue.push(fn); return calls.raf; },
+    cancelAnimationFrame: () => { rafQueue.length = 0; },
+    IntersectionObserver: class { constructor(cb) { this.cb = cb; ios.push(this); } observe() {} unobserve() {} disconnect() {} },
+    addEventListener() {},
+  });
+  const frame = () => { const fns = rafQueue.splice(0); fns.forEach((f) => f(16)); };
+  return { M: sb.NexsistMotion, canvas, hero, heroListeners, docListeners, ios, calls, frame, doc };
+}
+
+test('reduced motion draws one still frame and never loops', () => {
+  const h = netHarness();
+  const net = h.M.startNet(h.canvas, { reduce: true });
+  assert.equal(h.calls.raf, 0);
+  assert.ok(h.calls.arc + h.calls.stroke > 0, 'drew something');
+  assert.equal(net.isRunning(), false);
+  assert.equal(h.heroListeners.pointermove, undefined); // 反応もしない
+});
+
+test('canvas buffer is capped at 2x pixel ratio', () => {
+  const h = netHarness();
+  h.M.startNet(h.canvas, { reduce: true });
+  assert.equal(h.canvas.width, 2400);
+  assert.equal(h.canvas.height, 1400);
+});
+
+test('loop pauses when hidden and resumes when visible', () => {
+  const h = netHarness();
+  const net = h.M.startNet(h.canvas, { reduce: false });
+  assert.equal(net.isRunning(), true);
+  h.frame();
+  assert.ok(h.calls.raf >= 2, 'keeps requesting frames');
+  const io = h.ios[0];
+  io.cb([{ isIntersecting: false }]);
+  assert.equal(net.isRunning(), false);
+  const before = h.calls.raf;
+  h.frame();
+  assert.equal(h.calls.raf, before, 'no frames while off-screen');
+  io.cb([{ isIntersecting: true }]);
+  assert.equal(net.isRunning(), true);
+  h.doc.visibilityState = 'hidden';
+  h.docListeners.visibilitychange.forEach((f) => f());
+  assert.equal(net.isRunning(), false);
+  h.doc.visibilityState = 'visible';
+  h.docListeners.visibilitychange.forEach((f) => f());
+  assert.equal(net.isRunning(), true);
+  net.stop();
+  assert.equal(net.isRunning(), false);
+});
+
+test('pointer listeners are passive', () => {
+  const h = netHarness();
+  h.M.startNet(h.canvas, { reduce: false });
+  assert.equal(h.heroListeners.pointermove.opts.passive, true);
+  assert.equal(h.heroListeners.pointerleave.opts.passive, true);
+});

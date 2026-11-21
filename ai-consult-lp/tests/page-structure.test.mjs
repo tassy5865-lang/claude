@@ -22,7 +22,7 @@ test('form contract is unchanged', () => {
 test('csp and external resources unchanged', () => {
   assert.ok(html.includes(CSP_CURRENT));
   const srcs = [...html.matchAll(/<script[^>]+src="([^"]+)"/g)].map((m) => m[1]);
-  assert.deepEqual(srcs, ['main.js']);
+  assert.deepEqual(srcs, ['main.js', 'motion.js']); // どちらも同じサイト内のファイル(外部スクリプトなし)
   const imgs = [...html.matchAll(/<img[^>]+src="([^"]+)"/g)].map((m) => m[1]);
   assert.ok(imgs.length > 0);
   assert.ok(imgs.every((s) => s.startsWith('assets/')), imgs.join(','));
@@ -213,4 +213,26 @@ test('services show example combinations of requests', () => {
   assert.ok(items.length >= 3);
   assert.match(services, /ご依頼の組み合わせ例/);
   assert.doesNotMatch(services.match(/class="combo"[\s\S]*$/)[0], /円/); // 料金は載せない方針
+});
+
+// ---- 2026-11-21 ヒーローアニメーション(案B) ----
+test('hero has a decorative network canvas', () => {
+  const hero = html.match(/<section id="hero"[\s\S]*?<\/section>/)[0];
+  assert.match(hero, /<canvas class="hero-net" aria-hidden="true"><\/canvas>/);
+  assert.match(html, /<script src="motion.js" defer><\/script>/);
+});
+
+test('hero canvas never blocks touch scrolling', () => {
+  const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+  const rule = css.match(/\.hero-net \{[^}]*\}/);
+  assert.ok(rule, '.hero-net rule');
+  assert.match(rule[0], /pointer-events:\s*none/);
+});
+
+test('hero text entrance is CSS-only and ends visible', () => {
+  const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+  assert.match(css, /@keyframes hero-in/);
+  assert.match(css, /\.giant-stack \.giant \{[^}]*animation:[^}]*hero-in[^}]*both/);
+  assert.match(css, /\.hero-copy > \* \{[^}]*animation:[^}]*hero-in[^}]*both/);
+  assert.match(css, /prefers-reduced-motion: reduce\)\s*\{\s*\*, \*::before, \*::after \{ animation: none !important/);
 });
