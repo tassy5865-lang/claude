@@ -96,12 +96,14 @@ function netHarness({ visibility = 'visible', withIO = true, withRO = false } = 
   });
   const rect = { left: 0, top: 0, right: 1200, bottom: 700, width: 1200, height: 700 };
   const hero = {
+    clientWidth: 1200,
+    clientHeight: 700,
     classList: classList(),
     addEventListener: (type, fn, opts) => { heroListeners[type] = { fn, opts }; },
     querySelector: () => ({ getBoundingClientRect: () => ({ left: 650, top: 200, right: 1150, bottom: 600 }) }),
     getBoundingClientRect: () => rect,
   };
-  const canvas = { parentElement: hero, clientWidth: 1200, clientHeight: 700, width: 0, height: 0, getContext: () => ctx, getBoundingClientRect: () => rect };
+  const canvas = { parentElement: hero, clientWidth: 1200, clientHeight: 700, width: 0, height: 0, getContext: () => ctx, getBoundingClientRect: () => rect, style: {} };
   const doc = {
     visibilityState: visibility,
     addEventListener: (type, fn) => { (docListeners[type] ||= []).push(fn); },
@@ -304,7 +306,7 @@ test('ResizeObserver is used and a paused net redraws on resize', () => {
   h.ios[0].cb([{ isIntersecting: false }]);
   assert.equal(net.isRunning(), false);
   const before = h.calls.arc;
-  h.canvas.clientHeight = 760;
+  h.hero.clientHeight = 760; // 大きさはヒーローから取る
   h.ros[0].cb([]);
   assert.ok(h.calls.arc > before, 'redrew while paused');
   assert.equal(h.canvas.height, 1520);
@@ -326,4 +328,20 @@ test('copy box is re-measured after the hero text finishes moving', () => {
   h.M.startNet(h.canvas, { reduce: false });
   assert.ok(h.heroListeners.animationend, 'listens for animationend');
   assert.equal(h.heroListeners.animationend.opts.passive, true);
+});
+
+// 本番で発生(2026-11-21): 古い styles.css がキャッシュされ .hero-net の指定が無いと、
+// canvas 自身の表示サイズ→描画サイズ→表示サイズ…と際限なく大きくなった。サイズはヒーローから取る
+test('canvas size comes from the hero, never from its own (unstyled) size', () => {
+  const h = netHarness({ withRO: true });
+  h.canvas.clientWidth = 26843546; // CSSが無いと描画サイズに引きずられて巨大になる
+  h.canvas.clientHeight = 99999;
+  h.M.startNet(h.canvas, { reduce: false });
+  assert.equal(h.canvas.width, 2400);
+  assert.equal(h.canvas.height, 1400);
+  assert.equal(h.canvas.style.width, '1200px');
+  assert.equal(h.canvas.style.height, '700px');
+  assert.equal(h.canvas.style.position, 'absolute'); // CSSが無くてもレイアウトを押し下げない
+  h.ros[0].cb([]);
+  assert.equal(h.canvas.width, 2400, 'stable after a resize notification');
 });

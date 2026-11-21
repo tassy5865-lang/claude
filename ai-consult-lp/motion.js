@@ -135,8 +135,17 @@
     function resize() {
       const oldW = w;
       const oldH = h;
-      w = canvas.clientWidth;
-      h = canvas.clientHeight;
+      // 大きさはヒーローから取り、canvas の位置と大きさもここで決める。
+      // canvas 自身の表示サイズを使うと、CSSが古い・読めないときに描画サイズとの間で際限なく大きくなる
+      w = hero.clientWidth;
+      h = hero.clientHeight;
+      const st = canvas.style;
+      st.position = "absolute";
+      st.left = "0";
+      st.top = "0";
+      st.width = w + "px";
+      st.height = h + "px";
+      st.pointerEvents = "none";
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       canvas.width = Math.round(w * dpr);
       canvas.height = Math.round(h * dpr);
@@ -223,7 +232,7 @@
     let ro = null;
     if (typeof window.ResizeObserver === "function") {
       ro = new window.ResizeObserver(onResize);
-      ro.observe(canvas);
+      ro.observe(hero);
     } else {
       window.addEventListener("resize", onResize);
     }
