@@ -36,7 +36,8 @@
         const dy = pointer.y - n.y;
         const d = Math.hypot(dx, dy);
         if (d > 0 && d < PULL_RADIUS) {
-          const pull = Math.min(PULL_MAX, d * 0.01);
+          // 引き寄せも経過時間に合わせる。指先を通り越さないよう距離までで止める
+          const pull = Math.min(d, Math.min(PULL_MAX, d * 0.01) * k);
           n.x += (dx / d) * pull;
           n.y += (dy / d) * pull;
         }
@@ -214,7 +215,10 @@
 
     // 止まっている間は .hero に is-paused を付け、CSSの光(orb)も止める
     function setPaused(on) {
-      if (hero.classList) hero.classList[on ? "add" : "remove"]("is-paused");
+      if (!hero.classList) return;
+      hero.classList[on ? "add" : "remove"]("is-paused");
+      // 背景の光は標準で止めておき、網が動いている間だけ is-live で動かす(JSが動かなければ止まったまま)
+      hero.classList[on ? "remove" : "add"]("is-live");
     }
 
     let userPaused = false; // 見ている人が「背景の動きを止める」を押した

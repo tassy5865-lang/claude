@@ -291,3 +291,11 @@ test('hero sub copy leads with what the shop gets', () => {
   assert.match(sub, /手作業/);
   assert.doesNotMatch(sub, /Threads|Lステップ/); // 詳細なサービス名はサービス欄へ
 });
+
+// codex 11回目(2026-11-22): JSが動かない・読めないときも背景の光は止まっている
+test('orbs are still by default and move only when motion.js marks the hero live', () => {
+  const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+  // .orb-violet などの animation 一括指定が play-state を running に戻すので、それより強い .hero .orb で止める
+  assert.match(css, /\.hero \.orb \{[^}]*animation-play-state:\s*paused/);
+  assert.match(css, /\.hero\.is-live \.orb \{[^}]*animation-play-state:\s*running/);
+});

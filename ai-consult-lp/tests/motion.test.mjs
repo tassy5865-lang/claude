@@ -437,3 +437,31 @@ test('motion toggle stays hidden when the net cannot animate', () => {
   t.M.setupMotionToggle(t.button, t.net);
   assert.equal(t.button.hidden, true);
 });
+
+// ---- codex 11回目(2026-11-22) ----
+test('pointer pull also scales with elapsed time and never overshoots', () => {
+  const { stepNodes } = load().NexsistMotion;
+  const pointer = { x: 400, y: 300 };
+  const a = { x: 300, y: 300, vx: 0, vy: 0 };
+  const b = { x: 300, y: 300, vx: 0, vy: 0 };
+  stepNodes([a], 800, 600, pointer, 1);
+  stepNodes([b], 800, 600, pointer, 2);
+  assert.ok(Math.abs((b.x - 300) - 2 * (a.x - 300)) < 1e-9, `k1 ${a.x - 300} k2 ${b.x - 300}`);
+  const near = { x: 399.5, y: 300, vx: 0, vy: 0 };
+  stepNodes([near], 800, 600, pointer, 3);
+  assert.ok(near.x <= 400 + 1e-9, 'does not pass the pointer');
+});
+
+test('hero is marked live only while the net is running', () => {
+  const h = netHarness();
+  const net = h.M.startNet(h.canvas, { reduce: false });
+  assert.equal(h.hero.classList.contains('is-live'), true);
+  h.ios[0].cb([{ isIntersecting: false }]);
+  assert.equal(h.hero.classList.contains('is-live'), false);
+  h.ios[0].cb([{ isIntersecting: true }]);
+  net.setUserPaused(true);
+  assert.equal(h.hero.classList.contains('is-live'), false);
+  const r = netHarness();
+  r.M.startNet(r.canvas, { reduce: true });
+  assert.equal(r.hero.classList.contains('is-live'), false);
+});
