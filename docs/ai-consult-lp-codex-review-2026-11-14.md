@@ -1,6 +1,6 @@
 # ai-consult-lp codex 厳格評価の記録（2026-11-14）
 
-対象: `ai-consult-lp/`（Nexsist サービスサイト）。作業ブランチ `feature/lp-codex-review`（origin/main から分岐、**未push・未公開**）。
+対象: `ai-consult-lp/`（Nexsist サービスサイト）。6回目までの作業ブランチは `feature/lp-codex-review`（**PR #28 で 2026-11-15 に公開済み**）。
 
 ## 点数の推移
 
@@ -30,7 +30,7 @@ codex の実行: `codex exec -s read-only -C <worktree> -o <結果> - < prompt.m
 5. 【低】FAQ開時の記号 U+2212 は実際は正しいが、念のため CSS エスケープ `\2212` に。
 6. 【提案】ヒーロー直下に依頼の組み合わせ例（「更新できるHPだけ」「HP＋予約＋LINE」など）。
 
-## 公開時の手順（未実施）
+## 公開時の手順（実施済み: 3 は 2026-11-15、ほかは 2026-11-22。1 の版はフォーム受け口の返事で確認、2・4・5（シートの行）は運営者の報告）
 
 1. 新しい `ai-consult-lp/gas/contact-form.gs` を GAS に貼り直し → `setup` 実行（列追加）→ 「デプロイを管理」で新バージョン
 2. エディタで `installResendTrigger` を1回実行
@@ -47,7 +47,7 @@ codex の実行: `codex exec -s read-only -C <worktree> -o <結果> - < prompt.m
 - 6回目の残りを修正: ページ内リンクでURL(履歴)とフォーカスを更新・戻る/進むでもフォーカスを合わせる、374px以下でも料金リンクを残す(320pxで1行を確認)、琥珀の説明の重複を整理、サービス欄に「ご依頼の組み合わせ例」4つ
 - ポートフォリオの琥珀カードに公式LINE・Lステップの担当を追記
 - codex 7回目(gpt-6.1-sol): 96点・【高】なし。指摘を反映: 琥珀の担当範囲を「設計・制作・設定」に(本番切替前と矛盾しない)、GASは文字列以外を bad_request・上限超えを切らずに too_long で返す(field 付き)、フォームは空白だけの欄を送らずその欄へ案内、CSP の script-src から 'unsafe-inline' を外した
-- テスト73件。GAS の変更は本番への貼り直しが必要(フロントは旧GASでも動く)
+- テスト73件。GAS の変更は 2026-11-22 に本番へ反映済み
 - メモ: ~/.codex/config.toml の既定モデル gpt-6.2-astra は ChatGPT アカウントでは使えない。`codex exec -m gpt-6.1-sol` で実行
 
 ## 2026-11-21 アニメーション追加（8回目）
