@@ -24,10 +24,12 @@ cp ai-company/scripts/line.local.json.example ai-company/scripts/line.local.json
 ```json
 {
   "channel_access_token": "（発行した長期トークンを貼る）",
-  "mode": "broadcast",
-  "to": ""
+  "mode": "push",
+  "to": "（自分のLINEユーザーID：U＋32桁）"
 }
 ```
+- **`mode` は `push` だけ**。broadcast（友だち全員宛）は 2026-11-24 に廃止（公式アカウントの友だち追加リンクが公開サイトにあるため、第三者へ届く）。`notify-line.ps1` は push 以外・宛先の形式違いを送信せず exit 1 で止める。
+- ユーザーIDは LINE Developers に **「LINEアカウントでログイン」** した状態で、Messaging API チャネル →「チャネル基本設定」の一番下「あなたのユーザーID」に出る（メールのビジネスIDでログインすると表示されない）。そのLINEが公式アカウントの友だちであること。
 - `line.local.json` は `.gitignore` 済み（`**/*.local.json`）＝コミットされません。
 - Claude の Read ツールからも拒否設定済み（`notify-line.ps1` だけが読む）。
 
@@ -36,7 +38,7 @@ cp ai-company/scripts/line.local.json.example ai-company/scripts/line.local.json
 ```
 powershell -NoProfile -ExecutionPolicy Bypass -File "ai-company\scripts\notify-line.ps1" -Text "テスト通知：Nexsist.cs 案件巡回の設定ができました"
 ```
-- `LINE notify: sent (broadcast).` と出て、LINE に届けば成功。
+- `LINE notify: sent (push).` と出て、自分のLINEに届けば成功（公式アカウント管理画面の配信履歴に一斉配信が増えていないことも確認）。
 - `LINE notify: not configured ...` → `line.local.json` が無い／トークン未設定。
 - `LINE notify: FAILED - ...` → トークンが違う／Messaging API 未有効。エラー本文を確認。
 - 送信ログ: `ai-company/logs/line-notify.log`
