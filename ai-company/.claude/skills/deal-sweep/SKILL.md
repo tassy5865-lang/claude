@@ -5,7 +5,7 @@ argument-hint: [探索条件（省略可）]
 ---
 
 `/loop` から定期起動される想定の「案件巡回1回分」。**対話セッションで claude-in-chrome が使えること前提**。
-条件: $ARGUMENTS （空なら「業務委託・リモート・AI/DX/GAS 業務効率化・時給1,000円以上」）
+条件: $ARGUMENTS （空なら「業務委託・リモート・AI/DX/GAS 業務効率化・HP制作・予約システム構築・動画編集（YouTube・Instagramリール・ショート動画）・時給1,000円以上」。適合判定は `find-deals` のフェーズ0〈evidence.md の実績IDで判定〉と同じ基準）
 
 着手前に `CLAUDE.md`・`DATA_HANDLING.md`・`sales/private/evidence.md`・`sales/private/leads.md`（既存案件の URL/ID を把握＝重複防止）を読む。
 
