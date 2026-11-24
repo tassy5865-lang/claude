@@ -1,10 +1,10 @@
 <#
   Push a text message to the Nexsist.cs LINE Official Account.
   Config file (git-ignored): scripts/line.local.json
-    { "channel_access_token": "<long-lived token>", "mode": "broadcast", "to": "" }
-    - mode "broadcast": send to ALL friends of the OA (no user id needed; best when only you are a friend)
-    - mode "push":      send to one user id / group id in "to"
-    "mode" is REQUIRED and must be exactly "push" or "broadcast" - any other/missing value exits 1 without sending.
+    { "channel_access_token": "<long-lived token>", "mode": "push", "to": "U<32 hex chars>" }
+    - mode "push": send to the one LINE user id in "to" (the owner's own id).
+    - broadcast is DISABLED (2026-11-24): the OA is public, so broadcast reached all friends.
+    "mode" must be exactly "push" and "to" must match ^U[0-9a-f]{32}$ - otherwise exit 1 without sending.
   Usage:
     powershell -NoProfile -ExecutionPolicy Bypass -File scripts/notify-line.ps1 -Text "hello"
   Exit codes: 0 = sent, 2 = not configured (skip, non-fatal), 1 = send failed
@@ -39,29 +39,27 @@ if (-not $token -or $token -like 'PASTE_*') {
   exit 2
 }
 
-# mode must be exactly "push" or "broadcast". An unknown or missing value is a
-# hard error here on purpose: falling back to broadcast on a typo (e.g. "pus h")
-# would blast every friend of the OA. No silent default.
 $mode = "$($cfg.mode)".Trim().ToLowerInvariant()
-if ($mode -ne 'push' -and $mode -ne 'broadcast') {
+# 2026-11-24: broadcast is DISABLED. The OA's add-friend link is public (LP etc.),
+# so broadcast reached everyone who added it. Only push to one user id is allowed.
+if ($mode -ne 'push') {
   $shown = if ("$($cfg.mode)".Trim()) { "'$($cfg.mode)'" } else { '(missing)' }
-  Log "BAD CONFIG: mode must be 'push' or 'broadcast', got $shown"
-  Write-Host "LINE notify: line.local.json 'mode' must be exactly 'push' or 'broadcast' (got $shown). Not sent."
+  Log "BLOCKED: mode must be 'push' (broadcast is disabled), got $shown"
+  Write-Host "LINE notify: only mode 'push' is allowed (got $shown). broadcast is disabled. Not sent."
+  exit 1
+}
+$to = "$($cfg.to)".Trim()
+if ($to -cnotmatch '^U[0-9a-f]{32}$') {
+  Log "BLOCKED: 'to' is not a LINE user id (U + 32 hex chars)"
+  Write-Host "LINE notify: 'to' must be one LINE user id (U + 32 hex chars). Not sent."
   exit 1
 }
 
 # LINE text messages are capped at 5000 chars
 if ($Text.Length -gt 4900) { $Text = $Text.Substring(0, 4900) + " ...(truncated)" }
 
-$bodyObj = @{ messages = @(@{ type = 'text'; text = $Text }) }
-if ($mode -eq 'push') {
-  $to = "$($cfg.to)".Trim()
-  if (-not $to) { Log "PUSH mode but 'to' empty"; Write-Host "LINE notify: mode=push but 'to' is empty."; exit 1 }
-  $bodyObj.to = $to
-  $url = 'https://api.line.me/v2/bot/message/push'
-} else {
-  $url = 'https://api.line.me/v2/bot/message/broadcast'
-}
+$bodyObj = @{ to = $to; messages = @(@{ type = 'text'; text = $Text }) }
+$url = 'https://api.line.me/v2/bot/message/push'
 
 $json = $bodyObj | ConvertTo-Json -Depth 6 -Compress
 try {
